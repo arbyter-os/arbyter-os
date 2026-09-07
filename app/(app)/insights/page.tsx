@@ -2,493 +2,386 @@
 
 import * as React from 'react'
 import {
-  Plus,
-  Search,
-  ShieldCheck,
-  CheckCircle2,
+  Activity,
   AlertTriangle,
-  Clock3,
-  ChevronRight,
+  ArrowDownRight,
+  ArrowUpRight,
+  Bot,
+  CheckCircle2,
+  ShieldCheck,
+  TrendingUp,
 } from 'lucide-react'
 
-type Control = {
-  id: number
-  name: string
+type Signal = {
+  title: string
   description: string
-  category: string
-  framework: string
-  owner: string
-  status: 'Effective' | 'Needs Attention' | 'Not Implemented'
-  coverage: number
-  evidence: number
-  updated: string
+  type: 'positive' | 'warning' | 'critical'
+  value: string
 }
 
-const initialControls: Control[] = [
+const signals: Signal[] = [
   {
-    id: 1,
-    name: 'Human Approval Gate',
+    title: 'Governance posture improving',
     description:
-      'Requires human authorization before high-impact AI decisions are executed.',
-    category: 'Human Oversight',
-    framework: 'EU AI Act',
-    owner: 'AI Governance',
-    status: 'Effective',
-    coverage: 96,
-    evidence: 12,
-    updated: 'Today',
+      'Control coverage increased while high-severity governance issues decreased.',
+    type: 'positive',
+    value: '+8.4%',
   },
   {
-    id: 2,
-    name: 'AI Decision Logging',
+    title: 'Sensitive data controls need review',
     description:
-      'Records material AI decisions, actors, timestamps, and relevant context.',
-    category: 'Auditability',
-    framework: 'NIST AI RMF',
-    owner: 'Compliance Team',
-    status: 'Effective',
-    coverage: 92,
-    evidence: 18,
-    updated: 'Today',
+      'Coverage for sensitive-data safeguards is below the recommended threshold.',
+    type: 'warning',
+    value: '74%',
   },
   {
-    id: 3,
-    name: 'Sensitive Data Access Control',
+    title: 'High-impact decisions require attention',
     description:
-      'Limits AI access to sensitive data based on authorization and purpose.',
-    category: 'Data Privacy',
-    framework: 'ISO/IEC 42001',
-    owner: 'Security Team',
-    status: 'Needs Attention',
-    coverage: 74,
-    evidence: 8,
-    updated: 'Yesterday',
+      'Several AI decisions are operating close to the human-oversight threshold.',
+    type: 'critical',
+    value: '3',
   },
   {
-    id: 4,
-    name: 'Model Performance Monitoring',
+    title: 'Agent activity is stable',
     description:
-      'Monitors production models for performance degradation and unexpected drift.',
-    category: 'Model Risk',
-    framework: 'NIST AI RMF',
-    owner: 'Risk Team',
-    status: 'Needs Attention',
-    coverage: 68,
-    evidence: 6,
-    updated: '2 days ago',
-  },
-  {
-    id: 5,
-    name: 'Agent Permission Review',
-    description:
-      'Periodically reviews tools, data sources, and permissions available to AI agents.',
-    category: 'Security',
-    framework: 'ISO/IEC 42001',
-    owner: 'Security Team',
-    status: 'Effective',
-    coverage: 89,
-    evidence: 14,
-    updated: '3 days ago',
-  },
-  {
-    id: 6,
-    name: 'AI Incident Response',
-    description:
-      'Defines escalation and response procedures for AI-related incidents.',
-    category: 'Incident Management',
-    framework: 'EU AI Act',
-    owner: 'Risk Team',
-    status: 'Not Implemented',
-    coverage: 35,
-    evidence: 2,
-    updated: 'Sep 4, 2026',
+      'AI agent execution volume remains within the expected operating range.',
+    type: 'positive',
+    value: 'Stable',
   },
 ]
 
-function statusClass(status: Control['status']) {
-  switch (status) {
-    case 'Effective':
-      return 'bg-green-50 text-green-700'
-    case 'Needs Attention':
-      return 'bg-yellow-50 text-yellow-700'
-    default:
-      return 'bg-red-50 text-red-700'
+const frameworks = [
+  {
+    name: 'EU AI Act',
+    coverage: 89,
+    controls: 18,
+  },
+  {
+    name: 'NIST AI RMF',
+    coverage: 84,
+    controls: 21,
+  },
+  {
+    name: 'ISO/IEC 42001',
+    coverage: 81,
+    controls: 15,
+  },
+]
+
+const activity = [
+  {
+    label: 'AI decisions reviewed',
+    value: '1,284',
+    change: '+12.6%',
+    positive: true,
+  },
+  {
+    label: 'Policy violations',
+    value: '18',
+    change: '-21.7%',
+    positive: true,
+  },
+  {
+    label: 'Controls evaluated',
+    value: '436',
+    change: '+8.2%',
+    positive: true,
+  },
+  {
+    label: 'Evidence collected',
+    value: '192',
+    change: '+14.1%',
+    positive: true,
+  },
+]
+
+function signalIcon(type: Signal['type']) {
+  if (type === 'positive') {
+    return <CheckCircle2 className="h-5 w-5" />
   }
+
+  if (type === 'critical') {
+    return <AlertTriangle className="h-5 w-5" />
+  }
+
+  return <ShieldCheck className="h-5 w-5" />
 }
 
-function coverageClass(coverage: number) {
-  if (coverage >= 85) return 'text-green-700'
-  if (coverage >= 60) return 'text-yellow-700'
-  return 'text-red-700'
+function signalClass(type: Signal['type']) {
+  if (type === 'positive') {
+    return 'bg-green-50 text-green-700'
+  }
+
+  if (type === 'critical') {
+    return 'bg-red-50 text-red-700'
+  }
+
+  return 'bg-yellow-50 text-yellow-700'
 }
 
-export default function ControlsPage() {
-  const [controls] = React.useState<Control[]>(initialControls)
-  const [search, setSearch] = React.useState('')
-  const [status, setStatus] = React.useState('All')
-  const [framework, setFramework] = React.useState('All')
-  const [showNewControl, setShowNewControl] = React.useState(false)
-
-  const filteredControls = controls.filter((control) => {
-    const query = search.toLowerCase()
-
-    const matchesSearch =
-      control.name.toLowerCase().includes(query) ||
-      control.description.toLowerCase().includes(query) ||
-      control.category.toLowerCase().includes(query)
-
-    const matchesStatus =
-      status === 'All' || control.status === status
-
-    const matchesFramework =
-      framework === 'All' || control.framework === framework
-
-    return matchesSearch && matchesStatus && matchesFramework
-  })
-
-  const effective = controls.filter(
-    (control) => control.status === 'Effective'
-  ).length
-
-  const attention = controls.filter(
-    (control) => control.status === 'Needs Attention'
-  ).length
-
-  const notImplemented = controls.filter(
-    (control) => control.status === 'Not Implemented'
-  ).length
-
-  const averageCoverage = Math.round(
-    controls.reduce((sum, control) => sum + control.coverage, 0) /
-      controls.length
-  )
-
+export default function InsightsPage() {
   return (
     <main className="flex flex-col gap-6">
-      {/* Header */}
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">
-            Governance Enforcement
-          </p>
+      <section>
+        <p className="text-sm font-medium text-muted-foreground">
+          Intelligence & Analytics
+        </p>
 
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            Controls
-          </h1>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+          Insights
+        </h1>
 
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Monitor the safeguards that enforce your AI policies and demonstrate compliance.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowNewControl(true)}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          Add Control
-        </button>
+        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+          Understand what is changing across your AI environment and identify
+          where governance attention is needed.
+        </p>
       </section>
 
-      {/* Summary */}
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Total Controls
+              Governance Health
             </p>
             <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           </div>
 
-          <p className="mt-2 text-2xl font-semibold">
-            {controls.length}
+          <p className="mt-2 text-3xl font-semibold">
+            86
+            <span className="text-base font-medium text-muted-foreground">
+              /100
+            </span>
           </p>
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Configured safeguards
-          </p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Effective
-            </p>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-green-700">
+            <ArrowUpRight className="h-3.5 w-3.5" />
+            8.4% this month
           </div>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {effective}
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            Operating as expected
-          </p>
         </div>
 
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Needs Attention
+              Risk Exposure
             </p>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </div>
 
-          <p className="mt-2 text-2xl font-semibold">
-            {attention}
+          <p className="mt-2 text-3xl font-semibold">
+            14.2
           </p>
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Requiring remediation
-          </p>
+          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-green-700">
+            <ArrowDownRight className="h-3.5 w-3.5" />
+            6.8% lower
+          </div>
         </div>
 
         <div className="rounded-xl border bg-card p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Avg. Coverage
+              Control Effectiveness
             </p>
-            <Clock3 className="h-4 w-4 text-muted-foreground" />
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </div>
 
-          <p className="mt-2 text-2xl font-semibold">
-            {averageCoverage}%
+          <p className="mt-2 text-3xl font-semibold">
+            82%
           </p>
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Across all controls
+          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-green-700">
+            <TrendingUp className="h-3.5 w-3.5" />
+            5.2% improvement
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Active AI Agents
+            </p>
+            <Bot className="h-4 w-4 text-muted-foreground" />
+          </div>
+
+          <p className="mt-2 text-3xl font-semibold">
+            24
           </p>
+
+          <div className="mt-2 flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            <Activity className="h-3.5 w-3.5" />
+            1,284 decisions monitored
+          </div>
         </div>
       </section>
 
-      {/* Coverage */}
       <section className="rounded-xl border bg-card p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-semibold">
-              Control Coverage
+              Governance Intelligence
             </h2>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Overall effectiveness of configured governance safeguards.
+              Signals automatically surfaced from your governance environment.
             </p>
           </div>
 
-          <p className={`text-lg font-semibold ${coverageClass(averageCoverage)}`}>
-            {averageCoverage}%
-          </p>
-        </div>
-
-        <div className="mt-5 h-2 overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-foreground"
-            style={{ width: `${averageCoverage}%` }}
-          />
-        </div>
-      </section>
-
-      {/* Filters */}
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-            <input
-              type="text"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search controls..."
-              className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-              className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
-            >
-              <option value="All">All statuses</option>
-              <option value="Effective">Effective</option>
-              <option value="Needs Attention">Needs Attention</option>
-              <option value="Not Implemented">Not Implemented</option>
-            </select>
-
-            <select
-              value={framework}
-              onChange={(event) => setFramework(event.target.value)}
-              className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
-            >
-              <option value="All">All frameworks</option>
-              <option value="EU AI Act">EU AI Act</option>
-              <option value="NIST AI RMF">NIST AI RMF</option>
-              <option value="ISO/IEC 42001">ISO/IEC 42001</option>
-            </select>
+          <div className="hidden items-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium sm:flex">
+            <span className="h-2 w-2 rounded-full bg-green-500" />
+            Live environment
           </div>
         </div>
-      </section>
 
-      {/* Controls */}
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="border-b p-5">
-          <h2 className="font-semibold">
-            Control Registry
-          </h2>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Safeguards mapped to policies, frameworks, and evidence.
-          </p>
-        </div>
-
-        <div className="divide-y">
-          {filteredControls.map((control) => (
+        <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {signals.map((signal) => (
             <div
-              key={control.id}
-              className="flex flex-col gap-4 p-5 transition hover:bg-muted/20 xl:flex-row xl:items-center"
+              key={signal.title}
+              className="flex items-start gap-4 rounded-xl border p-4 transition hover:bg-muted/20"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background">
-                <ShieldCheck className="h-4 w-4" />
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${signalClass(
+                  signal.type
+                )}`}
+              >
+                {signalIcon(signal.type)}
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="font-medium">
-                    {control.name}
+                    {signal.title}
                   </h3>
 
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(
-                      control.status
-                    )}`}
-                  >
-                    {control.status}
+                  <span className="text-sm font-semibold">
+                    {signal.value}
                   </span>
                 </div>
 
-                <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-                  {control.description}
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {signal.description}
                 </p>
-
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-                  <span>
-                    Category: {control.category}
-                  </span>
-
-                  <span>
-                    Framework: {control.framework}
-                  </span>
-
-                  <span>
-                    Owner: {control.owner}
-                  </span>
-
-                  <span>
-                    Evidence: {control.evidence}
-                  </span>
-
-                  <span>
-                    Updated: {control.updated}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-5 xl:w-36 xl:justify-end">
-                <div>
-                  <p className="text-xs text-muted-foreground">
-                    Coverage
-                  </p>
-
-                  <p
-                    className={`mt-1 text-sm font-semibold ${coverageClass(
-                      control.coverage
-                    )}`}
-                  >
-                    {control.coverage}%
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
               </div>
             </div>
           ))}
-
-          {filteredControls.length === 0 && (
-            <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-              No controls match your filters.
-            </div>
-          )}
         </div>
       </section>
 
-      {/* Add control modal */}
-      {showNewControl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-xl">
-            <div className="mb-5">
-              <h2 className="text-xl font-semibold">
-                Add Control
-              </h2>
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border bg-card p-5">
+          <div>
+            <h2 className="font-semibold">
+              Governance Activity
+            </h2>
 
-              <p className="mt-1 text-sm text-muted-foreground">
-                Create a safeguard that can enforce an AI governance policy.
+            <p className="mt-1 text-sm text-muted-foreground">
+              Activity across your AI governance environment.
+            </p>
+          </div>
+
+          <div className="mt-5 divide-y">
+            {activity.map((item) => (
+              <div
+                key={item.label}
+                className="flex items-center justify-between py-4 first:pt-0 last:pb-0"
+              >
+                <div>
+                  <p className="text-sm font-medium">
+                    {item.label}
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Last 30 days
+                  </p>
+                </div>
+
+                <div className="text-right">
+                  <p className="font-semibold">
+                    {item.value}
+                  </p>
+
+                  <p className="mt-1 text-xs font-medium text-green-700">
+                    {item.change}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-xl border bg-card p-5">
+          <div>
+            <h2 className="font-semibold">
+              Framework Posture
+            </h2>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Current control coverage across major frameworks.
+            </p>
+          </div>
+
+          <div className="mt-5 space-y-5">
+            {frameworks.map((framework) => (
+              <div key={framework.name}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {framework.name}
+                    </p>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {framework.controls} mapped controls
+                    </p>
+                  </div>
+
+                  <p className="text-sm font-semibold">
+                    {framework.coverage}%
+                  </p>
+                </div>
+
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-foreground"
+                    style={{ width: `${framework.coverage}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border bg-card p-5">
+        <div>
+          <h2 className="font-semibold">
+            Executive Takeaway
+          </h2>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            The most important governance signal right now.
+          </p>
+        </div>
+
+        <div className="mt-5 rounded-xl border bg-muted/20 p-5">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h3 className="font-semibold">
+                Governance is trending in the right direction.
+              </h3>
+
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+                Overall governance health has improved over the last 30 days,
+                driven by stronger control coverage and fewer policy violations.
+                The next priority should be improving sensitive-data controls
+                and reviewing high-impact AI decisions.
               </p>
-            </div>
-
-            <div className="space-y-4">
-              <input
-                type="text"
-                placeholder="Control name"
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
-              />
-
-              <textarea
-                placeholder="Describe what this control enforces..."
-                rows={4}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none"
-              />
-
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none">
-                <option>Human Oversight</option>
-                <option>Data Privacy</option>
-                <option>Security</option>
-                <option>Auditability</option>
-                <option>Model Risk</option>
-                <option>Incident Management</option>
-              </select>
-
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none">
-                <option>EU AI Act</option>
-                <option>NIST AI RMF</option>
-                <option>ISO/IEC 42001</option>
-              </select>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowNewControl(false)}
-                className="h-10 rounded-lg border px-4 text-sm font-medium"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowNewControl(false)}
-                className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background"
-              >
-                Add Control
-              </button>
             </div>
           </div>
         </div>
-      )}
+      </section>
     </main>
   )
 }
