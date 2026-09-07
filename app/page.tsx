@@ -5,48 +5,9 @@ import Link from 'next/link'
 import { Intro } from '@/components/landing/intro'
 
 export default function Home() {
-  const [intro, setIntro] = useState(true)
-
-  useEffect(() => {
-    const hasSeenIntro = localStorage.getItem('arbyter-intro-seen')
-
-    if (hasSeenIntro) {
-      setIntro(false)
-      return
-    }
-
-    const timer = setTimeout(() => {
-      localStorage.setItem('arbyter-intro-seen', 'true')
-      setIntro(false)
-    }, 2800)
-
-    return () => clearTimeout(timer)
-  }, [])
-
   return (
     <main className="min-h-screen bg-white text-neutral-950">
-      {intro && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white">
-          <div className="flex flex-col items-center text-center animate-[fadeIn_0.8s_ease-out]">
-            <Image
-              src="/arbyter-logo.svg"
-              alt="Arbyter OS"
-              width={64}
-              height={64}
-              priority
-              className="h-16 w-16 object-contain"
-            />
-
-            <h1 className="mt-5 text-2xl font-semibold tracking-[-0.04em]">
-              ARBYTER OS
-            </h1>
-
-            <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.28em] text-neutral-500">
-              Orchestrate · Govern · Secure
-            </p>
-          </div>
-        </div>
-      )}
+      <Intro />
 
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-8">
         <div className="flex items-center gap-3">
@@ -59,7 +20,10 @@ export default function Home() {
           />
 
           <div>
-            <div className="text-sm font-bold tracking-tight">Arbyter OS</div>
+            <div className="text-sm font-bold tracking-tight">
+              Arbyter OS
+            </div>
+
             <div className="text-[9px] font-medium uppercase tracking-[0.16em] text-neutral-400">
               AI Orchestration
             </div>
@@ -67,13 +31,24 @@ export default function Home() {
         </div>
 
         <div className="hidden items-center gap-8 text-sm text-neutral-500 md:flex">
-          <a href="#platform" className="transition hover:text-neutral-950">
+          <a
+            href="#platform"
+            className="transition hover:text-neutral-950"
+          >
             Platform
           </a>
-          <a href="#governance" className="transition hover:text-neutral-950">
+
+          <a
+            href="#governance"
+            className="transition hover:text-neutral-950"
+          >
             Governance
           </a>
-          <a href="#security" className="transition hover:text-neutral-950">
+
+          <a
+            href="#security"
+            className="transition hover:text-neutral-950"
+          >
             Security
           </a>
         </div>
@@ -92,11 +67,11 @@ export default function Home() {
             AI Governance Infrastructure
           </div>
 
-          <h2 className="text-5xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-6xl lg:text-8xl">
+          <h1 className="text-5xl font-semibold leading-[0.98] tracking-[-0.055em] sm:text-6xl lg:text-8xl">
             AI governance,
             <br />
             orchestrated.
-          </h2>
+          </h1>
 
           <p className="mt-8 max-w-2xl text-lg leading-8 text-neutral-500 sm:text-xl">
             Arbyter OS gives organizations one control layer for managing AI
@@ -125,9 +100,10 @@ export default function Home() {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-400">
               Governance Architecture
             </p>
-            <h3 className="mt-2 text-2xl font-semibold tracking-tight">
+
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
               One control layer for your AI environment.
-            </h3>
+            </h2>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-5">
@@ -145,7 +121,10 @@ export default function Home() {
                 <div className="text-[10px] font-semibold tracking-[0.15em] text-neutral-400">
                   {number}
                 </div>
-                <div className="mt-8 text-sm font-semibold">{label}</div>
+
+                <div className="mt-8 text-sm font-semibold">
+                  {label}
+                </div>
               </div>
             ))}
           </div>
@@ -162,9 +141,9 @@ export default function Home() {
           </p>
 
           <div className="mt-5 grid gap-12 lg:grid-cols-2">
-            <h3 className="text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+            <h2 className="text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
               From autonomous agents to accountable systems.
-            </h3>
+            </h2>
 
             <p className="max-w-xl text-lg leading-8 text-neutral-500">
               Arbyter connects the operational layer of AI with the governance
@@ -199,8 +178,13 @@ export default function Home() {
                 key={item.title}
                 className="rounded-3xl border border-neutral-200 bg-white p-8"
               >
-                <h4 className="text-xl font-semibold">{item.title}</h4>
-                <p className="mt-4 leading-7 text-neutral-500">{item.text}</p>
+                <h3 className="text-xl font-semibold">
+                  {item.title}
+                </h3>
+
+                <p className="mt-4 leading-7 text-neutral-500">
+                  {item.text}
+                </p>
               </div>
             ))}
           </div>
@@ -216,9 +200,9 @@ export default function Home() {
             Built for accountability
           </p>
 
-          <h3 className="mt-5 max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
+          <h2 className="mt-5 max-w-3xl text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
             Make AI systems easier to understand, control, and audit.
-          </h3>
+          </h2>
 
           <Link
             href="/overview"
@@ -232,22 +216,10 @@ export default function Home() {
       <footer className="border-t border-neutral-200 px-6 py-8 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 text-xs text-neutral-400 sm:flex-row">
           <span>© 2026 Arbyter OS</span>
+
           <span>Orchestrate · Govern · Secure</span>
         </div>
       </footer>
-
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(8px) scale(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-      `}</style>
     </main>
   )
-}
+}}
