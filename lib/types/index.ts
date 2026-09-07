@@ -63,3 +63,66 @@ export interface SnapshotNode {
   icon: LucideIcon
   description: string
 }
+
+export type RiskStatus = 'open' | 'investigating' | 'mitigated' | 'closed'
+
+export type RiskCategory =
+  | 'Fairness'
+  | 'Governance'
+  | 'Human Oversight'
+  | 'Data Privacy'
+  | 'Security'
+  | 'Transparency'
+  | 'Robustness'
+
+export interface RiskControl {
+  id: string
+  name: string
+  coverage: string
+}
+
+export interface RiskLink {
+  id: string
+  name: string
+}
+
+export interface RiskAgent {
+  id: string
+  name: string
+  role: string
+}
+
+export interface RiskEvidence {
+  id: string
+  name: string
+  date: string
+}
+
+export interface RiskActivity {
+  id: string
+  actor: string
+  action: string
+  timestamp: string
+}
+
+export interface Risk {
+  id: string
+  name: string
+  description: string
+  aiSystem: string
+  category: RiskCategory
+  severity: Severity
+  owner: string
+  status: RiskStatus
+  /** Human-readable "last reviewed" label, e.g. "2 days ago". */
+  lastReviewed: string
+  /** Numeric days-ago used for sorting; lower = more recent. */
+  lastReviewedDays: number
+  detectedDate: string
+  impact: string
+  controls: RiskControl[]
+  relatedPolicies: RiskLink[]
+  relatedAgents: RiskAgent[]
+  evidence: RiskEvidence[]
+  activity: RiskActivity[]
+}
