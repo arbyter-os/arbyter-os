@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Intro } from '@/components/landing/intro'
+import { Intro } from '@/components/landing/intro.tsx'
 
 export default function Home() {
   return (
