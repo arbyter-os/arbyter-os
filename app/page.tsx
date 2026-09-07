@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Intro } from '@/components/landing/intro.tsx'
+import { Intro } from '@/components/landing/intro'
 
 export default function Home() {
   return (
@@ -222,4 +222,4 @@ export default function Home() {
       </footer>
     </main>
   )
-}}
+}
