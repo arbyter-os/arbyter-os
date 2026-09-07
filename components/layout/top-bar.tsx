@@ -1,6 +1,7 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   Bell,
   Check,
@@ -23,8 +24,7 @@ import {
   MenuSeparator,
   MenuTrigger,
 } from '@/components/ui/menu'
-
-const workspaces = ['Acme Global', 'Acme EU', 'Acme Labs']
+import { createClient } from '@/lib/supabase/client'
 
 const notifications: { title: string; meta: string; icon: LucideIcon }[] = [
   { title: 'Credit model flagged high-risk', meta: '2h ago', icon: Bell },
@@ -40,7 +40,82 @@ export function TopBar({
   onOpenMobile: () => void
 }) {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+
   const current = routeTitles[pathname] ?? 'Overview'
+
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [organizationName, setOrganizationName] = useState('Arbyter')
+  const [loadingProfile, setLoadingProfile] = useState(true)
+
+  useEffect(() => {
+    async function loadProfile() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        router.push('/login')
+        return
+      }
+
+      setEmail(user.email ?? '')
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('full_name, organization_id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile) {
+        setFullName(profile.full_name ?? '')
+
+        if (profile.organization_id) {
+          const { data: organization } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', profile.organization_id)
+            .maybeSingle()
+
+          if (organization?.name) {
+            setOrganizationName(organization.name)
+          }
+        }
+      }
+
+      setLoadingProfile(false)
+    }
+
+    loadProfile()
+  }, [router, supabase])
+
+  const displayName =
+    fullName.trim() ||
+    email.split('@')[0] ||
+    'User'
+
+  const initials = displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'U'
+
+  const workspaceInitials =
+    organizationName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'A'
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
@@ -52,6 +127,7 @@ export function TopBar({
       >
         <MenuIcon className="size-5" />
       </button>
+
       <button
         type="button"
         onClick={onToggleCollapse}
@@ -63,11 +139,18 @@ export function TopBar({
 
       <nav aria-label="Breadcrumb" className="min-w-0">
         <ol className="flex items-center gap-2 text-sm">
-          <li className="hidden text-muted-foreground sm:block">Arbyter OS</li>
-          <li className="hidden text-muted-foreground/40 sm:block" aria-hidden>
+          <li className="hidden text-muted-foreground sm:block">
+            Arbyter OS
+          </li>
+          <li
+            className="hidden text-muted-foreground/40 sm:block"
+            aria-hidden
+          >
             /
           </li>
-          <li className="truncate font-semibold text-foreground">{current}</li>
+          <li className="truncate font-semibold text-foreground">
+            {current}
+          </li>
         </ol>
       </nav>
 
@@ -83,6 +166,7 @@ export function TopBar({
             ⌘K
           </kbd>
         </button>
+
         <button
           type="button"
           aria-label="Search"
@@ -100,14 +184,22 @@ export function TopBar({
             <Bell className="size-[1.15rem]" />
             <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary ring-2 ring-background" />
           </MenuTrigger>
+
           <MenuContent className="w-80">
             <MenuLabel>Notifications</MenuLabel>
             <MenuSeparator />
+
             {notifications.map((n) => (
-              <MenuItem key={n.title} className="items-start gap-2.5 py-2">
+              <MenuItem
+                key={n.title}
+                className="items-start gap-2.5 py-2"
+              >
                 <n.icon className="mt-0.5 size-4" />
+
                 <span className="flex flex-col">
-                  <span className="text-sm text-foreground">{n.title}</span>
+                  <span className="text-sm text-foreground">
+                    {n.title}
+                  </span>
                   <span className="text-xs text-muted-foreground">
                     {n.meta}
                   </span>
@@ -121,20 +213,24 @@ export function TopBar({
         <Menu>
           <MenuTrigger className="hidden h-9 items-center gap-2 rounded-md border border-border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:border-ring/40 aria-expanded:border-ring/40 sm:flex">
             <span className="flex size-5 items-center justify-center rounded bg-primary/10 text-[0.625rem] font-bold text-primary">
-              AG
+              {workspaceInitials}
             </span>
-            <span className="max-w-28 truncate">Acme Global</span>
+
+            <span className="max-w-28 truncate">
+              {loadingProfile ? 'Loading…' : organizationName}
+            </span>
+
             <ChevronsUpDown className="size-3.5 text-muted-foreground" />
           </MenuTrigger>
+
           <MenuContent align="end">
-            <MenuLabel>Workspaces</MenuLabel>
+            <MenuLabel>Workspace</MenuLabel>
             <MenuSeparator />
-            {workspaces.map((w, i) => (
-              <MenuItem key={w}>
-                <span className="flex-1">{w}</span>
-                {i === 0 ? <Check className="size-4 text-primary" /> : null}
-              </MenuItem>
-            ))}
+
+            <MenuItem>
+              <span className="flex-1">{organizationName}</span>
+              <Check className="size-4 text-primary" />
+            </MenuItem>
           </MenuContent>
         </Menu>
 
@@ -144,26 +240,40 @@ export function TopBar({
             aria-label="Account menu"
             className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary transition-shadow hover:ring-2 hover:ring-ring/30 aria-expanded:ring-2 aria-expanded:ring-ring/30"
           >
-            JD
+            {loadingProfile ? '…' : initials}
           </MenuTrigger>
+
           <MenuContent align="end">
             <div className="px-2.5 py-2">
-              <p className="text-sm font-medium text-foreground">Jordan Diaz</p>
+              <p className="text-sm font-medium text-foreground">
+                {loadingProfile ? 'Loading…' : displayName}
+              </p>
+
               <p className="text-xs text-muted-foreground">
-                jordan@acme.com
+                {loadingProfile ? '' : email}
               </p>
             </div>
+
             <MenuSeparator />
+
             <MenuItem>
               <User />
               Profile
             </MenuItem>
-            <MenuItem>
+
+            <MenuItem
+              onClick={() => router.push('/settings')}
+            >
               <Settings />
               Settings
             </MenuItem>
+
             <MenuSeparator />
-            <MenuItem className="text-destructive [&_svg]:text-destructive">
+
+            <MenuItem
+              onClick={handleSignOut}
+              className="text-destructive [&_svg]:text-destructive"
+            >
               <LogOut />
               Sign out
             </MenuItem>
