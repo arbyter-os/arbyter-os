@@ -68,45 +68,41 @@ const initialRisks: Risk[] = [
 ]
 
 function severityClass(severity: Risk['severity']) {
-  if (severity === 'Critical') {
-    return 'border-red-200 bg-red-50 text-red-700'
+  switch (severity) {
+    case 'Critical':
+      return 'border-red-200 bg-red-50 text-red-700'
+    case 'High':
+      return 'border-orange-200 bg-orange-50 text-orange-700'
+    case 'Medium':
+      return 'border-yellow-200 bg-yellow-50 text-yellow-700'
+    default:
+      return 'border-gray-200 bg-gray-50 text-gray-600'
   }
-
-  if (severity === 'High') {
-    return 'border-orange-200 bg-orange-50 text-orange-700'
-  }
-
-  if (severity === 'Medium') {
-    return 'border-yellow-200 bg-yellow-50 text-yellow-700'
-  }
-
-  return 'border-gray-200 bg-gray-50 text-gray-600'
 }
 
 function statusClass(status: Risk['status']) {
-  if (status === 'Investigating') {
-    return 'bg-blue-50 text-blue-700'
+  switch (status) {
+    case 'Investigating':
+      return 'bg-blue-50 text-blue-700'
+    case 'Mitigated':
+      return 'bg-green-50 text-green-700'
+    default:
+      return 'bg-gray-100 text-gray-600'
   }
-
-  if (status === 'Mitigated') {
-    return 'bg-green-50 text-green-700'
-  }
-
-  return 'bg-gray-100 text-gray-600'
 }
 
 export default function RisksPage() {
-  const [risks, setRisks] = React.useState<Risk[]>(initialRisks)
+  const [risks] = React.useState<Risk[]>(initialRisks)
   const [search, setSearch] = React.useState('')
   const [severity, setSeverity] = React.useState('All')
   const [showNewRisk, setShowNewRisk] = React.useState(false)
 
   const filteredRisks = risks.filter((risk) => {
-    const query = search.toLowerCase()
+    const searchText = search.toLowerCase()
 
     const matchesSearch =
-      risk.name.toLowerCase().includes(query) ||
-      risk.system.toLowerCase().includes(query)
+      risk.name.toLowerCase().includes(searchText) ||
+      risk.system.toLowerCase().includes(searchText)
 
     const matchesSeverity =
       severity === 'All' || risk.severity === severity
@@ -114,16 +110,15 @@ export default function RisksPage() {
     return matchesSearch && matchesSeverity
   })
 
-  const counts = {
-    total: risks.length,
-    critical: risks.filter((risk) => risk.severity === 'Critical').length,
-    high: risks.filter((risk) => risk.severity === 'High').length,
-    medium: risks.filter((risk) => risk.severity === 'Medium').length,
-  }
+  const total = risks.length
+  const critical = risks.filter((risk) => risk.severity === 'Critical').length
+  const high = risks.filter((risk) => risk.severity === 'High').length
+  const medium = risks.filter((risk) => risk.severity === 'Medium').length
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <main className="flex flex-col gap-6">
+      {/* Header */}
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">
             Risk Management
@@ -146,31 +141,33 @@ export default function RisksPage() {
           <Plus className="h-4 w-4" />
           New Risk
         </button>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          ['Total Risks', counts.total],
-          ['Critical', counts.critical],
-          ['High', counts.high],
-          ['Medium', counts.medium],
-        ].map(([label, value]) => (
-          <div
-            key={String(label)}
-            className="rounded-xl border bg-card p-5"
-          >
-            <p className="text-sm text-muted-foreground">
-              {label}
-            </p>
+      {/* Summary */}
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-xl border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Total Risks</p>
+          <p className="mt-2 text-2xl font-semibold">{total}</p>
+        </div>
 
-            <p className="mt-2 text-2xl font-semibold tracking-tight">
-              {value}
-            </p>
-          </div>
-        ))}
-      </div>
+        <div className="rounded-xl border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Critical</p>
+          <p className="mt-2 text-2xl font-semibold">{critical}</p>
+        </div>
 
-      <div className="rounded-xl border bg-card">
+        <div className="rounded-xl border bg-card p-5">
+          <p className="text-sm text-muted-foreground">High</p>
+          <p className="mt-2 text-2xl font-semibold">{high}</p>
+        </div>
+
+        <div className="rounded-xl border bg-card p-5">
+          <p className="text-sm text-muted-foreground">Medium</p>
+          <p className="mt-2 text-2xl font-semibold">{medium}</p>
+        </div>
+      </section>
+
+      {/* Risk table */}
+      <section className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-3 border-b p-4 md:flex-row md:items-center md:justify-between">
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -180,7 +177,7 @@ export default function RisksPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search risks..."
-              className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+              className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -189,7 +186,7 @@ export default function RisksPage() {
             onChange={(event) => setSeverity(event.target.value)}
             className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
           >
-            <option value="All">All</option>
+            <option value="All">All severities</option>
             <option value="Critical">Critical</option>
             <option value="High">High</option>
             <option value="Medium">Medium</option>
@@ -208,7 +205,7 @@ export default function RisksPage() {
                 <th className="px-5 py-3">Owner</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Last Reviewed</th>
-                <th className="px-3 py-3" />
+                <th className="px-3 py-3"></th>
               </tr>
             </thead>
 
@@ -216,7 +213,7 @@ export default function RisksPage() {
               {filteredRisks.map((risk) => (
                 <tr
                   key={risk.id}
-                  className="border-b last:border-0 transition hover:bg-muted/20"
+                  className="border-b last:border-0 hover:bg-muted/20"
                 >
                   <td className="px-5 py-4 font-medium">
                     {risk.name}
@@ -261,7 +258,7 @@ export default function RisksPage() {
                   <td className="px-3 py-4">
                     <button
                       type="button"
-                      className="rounded-md p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                      className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -282,8 +279,9 @@ export default function RisksPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
 
+      {/* New Risk modal */}
       {showNewRisk && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-xl">
@@ -344,6 +342,6 @@ export default function RisksPage() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   )
-}</div>
+}
