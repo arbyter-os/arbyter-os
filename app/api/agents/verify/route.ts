@@ -61,8 +61,7 @@ function validateEndpoint(rawUrl: string) {
   if (parsed.username || parsed.password) {
     return {
       valid: false,
-      error:
-        "Endpoint URLs cannot contain embedded credentials.",
+      error: "Endpoint URLs cannot contain embedded credentials.",
     };
   }
 
@@ -80,12 +79,8 @@ function validateEndpoint(rawUrl: string) {
   };
 }
 
-function normalizeConnectionType(
-  connectionType: string | null,
-) {
-  return (connectionType || "api")
-    .trim()
-    .toLowerCase();
+function normalizeConnectionType(connectionType: string | null) {
+  return (connectionType || "api").trim().toLowerCase();
 }
 
 export async function POST(request: Request) {
@@ -124,9 +119,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * Resolve organization from the authenticated application user.
-     */
     const {
       data: userRecord,
       error: userRecordError,
@@ -136,58 +128,38 @@ export async function POST(request: Request) {
       .eq("id", user.id)
       .single();
 
-    if (
-      userRecordError ||
-      !userRecord?.organization_id
-    ) {
+    if (userRecordError || !userRecord?.organization_id) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Could not resolve your organization.",
+          message: "Could not resolve your organization.",
         },
         { status: 403 },
       );
     }
 
-    const organizationId =
-      userRecord.organization_id;
+    const organizationId = userRecord.organization_id;
 
-    /*
-     * Confirm the agent belongs to this organization.
-     */
     const {
       data: agent,
       error: agentError,
     } = await supabase
       .from("ai_agents")
-      .select(
-        "id, name, organization_id, status",
-      )
+      .select("id, name, organization_id, status")
       .eq("id", agentId)
-      .eq(
-        "organization_id",
-        organizationId,
-      )
+      .eq("organization_id", organizationId)
       .single();
 
     if (agentError || !agent) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "Agent not found in your organization.",
+          message: "Agent not found in your organization.",
         },
         { status: 404 },
       );
     }
 
-    /*
-     * Load the latest connection.
-     *
-     * consecutive_failures is intentionally included because
-     * verification needs the current failure count.
-     */
     const {
       data: connection,
       error: connectionError,
@@ -210,10 +182,7 @@ export async function POST(request: Request) {
         `,
       )
       .eq("agent_id", agentId)
-      .eq(
-        "organization_id",
-        organizationId,
-      )
+      .eq("organization_id", organizationId)
       .order("created_at", {
         ascending: false,
       })
@@ -242,29 +211,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const connectionType =
-      normalizeConnectionType(
-        connection.connection_type,
-      );
+    const connectionType = normalizeConnectionType(
+      connection.connection_type,
+    );
 
     /*
-     * IMPORTANT:
-     *
      * Webhooks are inbound connections.
-     *
-     * Arbyter must NOT send GET requests to a webhook
-     * ingestion URL and call that a successful connection.
-     *
-     * This is especially important for the future:
-     *
-     * AgentMail -> Svix/Webhook -> Arbyter
      */
     if (
       connectionType === "webhook" ||
       connectionType === "webhooks"
     ) {
-      const checkedAt =
-        new Date().toISOString();
+      const checkedAt = new Date().toISOString();
 
       const message =
         "Webhook connections cannot be verified with an outbound GET request. Configure the webhook receiver and validate an incoming signed event instead.";
@@ -272,24 +230,17 @@ export async function POST(request: Request) {
       await supabase
         .from("agent_connection_events")
         .insert({
-          organization_id:
-            organizationId,
+          organization_id: organizationId,
           agent_id: agentId,
-          agent_connection_id:
-            connection.id,
-          event_type:
-            "verification_not_applicable",
+          agent_connection_id: connection.id,
+          event_type: "verification_not_applicable",
           status: "pending",
           message,
           metadata: {
-            verification_method:
-              "inbound_webhook_event",
-            connection_type:
-              connection.connection_type,
-            provider:
-              connection.provider,
-            environment:
-              connection.environment,
+            verification_method: "inbound_webhook_event",
+            connection_type: connection.connection_type,
+            provider: connection.provider,
+            environment: connection.environment,
           },
           occurred_at: checkedAt,
         });
@@ -298,12 +249,9 @@ export async function POST(request: Request) {
         {
           success: false,
           verificationRequired: true,
-          verificationMethod:
-            "inbound_webhook_event",
-          connectionStatus:
-            connection.status,
-          healthStatus:
-            connection.health_status,
+          verificationMethod: "inbound_webhook_event",
+          connectionStatus: connection.status,
+          healthStatus: connection.health_status,
           message,
         },
         { status: 400 },
@@ -311,10 +259,7 @@ export async function POST(request: Request) {
     }
 
     /*
-     * SDK connections cannot be verified by probing a URL.
-     *
-     * Later these will be verified through an SDK/runtime
-     * handshake or telemetry signal.
+     * SDK connections require an SDK/runtime handshake.
      */
     if (connectionType === "sdk") {
       const message =
@@ -323,35 +268,26 @@ export async function POST(request: Request) {
       await supabase
         .from("agent_connection_events")
         .insert({
-          organization_id:
-            organizationId,
+          organization_id: organizationId,
           agent_id: agentId,
-          agent_connection_id:
-            connection.id,
-          event_type:
-            "verification_not_applicable",
+          agent_connection_id: connection.id,
+          event_type: "verification_not_applicable",
           status: "pending",
           message,
           metadata: {
-            verification_method:
-              "sdk_runtime_handshake",
-            connection_type:
-              connection.connection_type,
-            provider:
-              connection.provider,
-            environment:
-              connection.environment,
+            verification_method: "sdk_runtime_handshake",
+            connection_type: connection.connection_type,
+            provider: connection.provider,
+            environment: connection.environment,
           },
-          occurred_at:
-            new Date().toISOString(),
+          occurred_at: new Date().toISOString(),
         });
 
       return NextResponse.json(
         {
           success: false,
           verificationRequired: true,
-          verificationMethod:
-            "sdk_runtime_handshake",
+          verificationMethod: "sdk_runtime_handshake",
           message,
         },
         { status: 400 },
@@ -360,48 +296,34 @@ export async function POST(request: Request) {
 
     /*
      * MCP connections require transport-specific verification.
-     *
-     * We do not blindly GET an MCP endpoint because the correct
-     * handshake depends on the configured MCP transport.
      */
-    if (
-      connectionType === "mcp"
-    ) {
+    if (connectionType === "mcp") {
       const message =
         "MCP connections require transport-specific verification. Configure the MCP transport before verification.";
 
       await supabase
         .from("agent_connection_events")
         .insert({
-          organization_id:
-            organizationId,
+          organization_id: organizationId,
           agent_id: agentId,
-          agent_connection_id:
-            connection.id,
-          event_type:
-            "verification_not_applicable",
+          agent_connection_id: connection.id,
+          event_type: "verification_not_applicable",
           status: "pending",
           message,
           metadata: {
-            verification_method:
-              "mcp_transport_handshake",
-            connection_type:
-              connection.connection_type,
-            provider:
-              connection.provider,
-            environment:
-              connection.environment,
+            verification_method: "mcp_transport_handshake",
+            connection_type: connection.connection_type,
+            provider: connection.provider,
+            environment: connection.environment,
           },
-          occurred_at:
-            new Date().toISOString(),
+          occurred_at: new Date().toISOString(),
         });
 
       return NextResponse.json(
         {
           success: false,
           verificationRequired: true,
-          verificationMethod:
-            "mcp_transport_handshake",
+          verificationMethod: "mcp_transport_handshake",
           message,
         },
         { status: 400 },
@@ -410,9 +332,6 @@ export async function POST(request: Request) {
 
     /*
      * REST/API connections reach this point.
-     *
-     * These are the connection types where an outbound HTTPS
-     * reachability check is appropriate.
      */
     if (!connection.endpoint_url) {
       return NextResponse.json(
@@ -425,141 +344,96 @@ export async function POST(request: Request) {
       );
     }
 
-    const endpointValidation =
-      validateEndpoint(
-        connection.endpoint_url,
-      );
+    const endpointValidation = validateEndpoint(
+      connection.endpoint_url,
+    );
 
     if (
       !endpointValidation.valid ||
       !endpointValidation.url
     ) {
-      const checkedAt =
-        new Date().toISOString();
+      const checkedAt = new Date().toISOString();
 
-      const currentFailures =
-        Number(
-          connection.consecutive_failures || 0,
-        );
+      const currentFailures = Number(
+        connection.consecutive_failures || 0,
+      );
 
       await supabase
         .from("agent_health_checks")
         .insert({
-          organization_id:
-            organizationId,
+          organization_id: organizationId,
           agent_id: agentId,
-          agent_connection_id:
-            connection.id,
+          agent_connection_id: connection.id,
           status: "failed",
           latency_ms: 0,
           response_status: null,
-          error_code:
-            "INVALID_ENDPOINT",
-          error_message:
-            endpointValidation.error,
+          error_code: "INVALID_ENDPOINT",
+          error_message: endpointValidation.error,
           details: {
-            verification_stage:
-              "endpoint_validation",
-            provider:
-              connection.provider,
-            connection_type:
-              connection.connection_type,
-            environment:
-              connection.environment,
-            checked_at:
-              checkedAt,
+            verification_stage: "endpoint_validation",
+            provider: connection.provider,
+            connection_type: connection.connection_type,
+            environment: connection.environment,
+            checked_at: checkedAt,
           },
-          checked_at:
-            checkedAt,
+          checked_at: checkedAt,
         });
 
       await supabase
         .from("agent_connections")
         .update({
           status: "error",
-          health_status:
-            "unhealthy",
-          last_health_check_at:
-            checkedAt,
-          consecutive_failures:
-            currentFailures + 1,
+          health_status: "unhealthy",
+          last_health_check_at: checkedAt,
+          consecutive_failures: currentFailures + 1,
         })
-        .eq(
-          "id",
-          connection.id,
-        )
-        .eq(
-          "organization_id",
-          organizationId,
-        );
+        .eq("id", connection.id)
+        .eq("organization_id", organizationId);
 
       await supabase
         .from("agent_connection_events")
         .insert({
-          organization_id:
-            organizationId,
+          organization_id: organizationId,
           agent_id: agentId,
-          agent_connection_id:
-            connection.id,
-          event_type:
-            "verification_failed",
+          agent_connection_id: connection.id,
+          event_type: "verification_failed",
           status: "failed",
-          message:
-            endpointValidation.error,
+          message: endpointValidation.error,
           metadata: {
-            reason:
-              "invalid_or_unsafe_endpoint",
+            reason: "invalid_or_unsafe_endpoint",
           },
-          occurred_at:
-            checkedAt,
+          occurred_at: checkedAt,
         });
 
       return NextResponse.json(
         {
           success: false,
-          message:
-            endpointValidation.error,
-          connectionStatus:
-            "error",
-          healthStatus:
-            "unhealthy",
+          message: endpointValidation.error,
+          connectionStatus: "error",
+          healthStatus: "unhealthy",
         },
         { status: 400 },
       );
     }
 
-    const targetUrl =
-      endpointValidation.url.toString();
+    const targetUrl = endpointValidation.url.toString();
 
     const startedAt = Date.now();
-    const checkedAt =
-      new Date().toISOString();
+    const checkedAt = new Date().toISOString();
 
-    let response: Response | null =
-      null;
-
+    let response: Response | null = null;
     let latencyMs = 0;
-    let verificationStatus =
-      "failed";
+    let verificationStatus = "failed";
 
-    let responseStatus:
-      | number
-      | null = null;
-
-    let errorCode:
-      | string
-      | null = null;
-
-    let errorMessage:
-      | string
-      | null = null;
+    let responseStatus: number | null = null;
+    let errorCode: string | null = null;
+    let errorMessage: string | null = null;
 
     /*
      * Perform outbound reachability verification.
      */
     try {
-      const controller =
-        new AbortController();
+      const controller = new AbortController();
 
       const timeout = setTimeout(
         () => controller.abort(),
@@ -567,105 +441,72 @@ export async function POST(request: Request) {
       );
 
       try {
-        response = await fetch(
-          targetUrl,
-          {
-            method: "GET",
-            redirect: "manual",
-            signal:
-              controller.signal,
-            headers: {
-              Accept:
-                "application/json, text/plain, */*",
-              "User-Agent":
-                "Arbyter-Connector-Verifier/1.0",
-            },
-            cache: "no-store",
+        response = await fetch(targetUrl, {
+          method: "GET",
+          redirect: "manual",
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json, text/plain, */*",
+            "User-Agent": "Arbyter-Connector-Verifier/1.0",
           },
-        );
+          cache: "no-store",
+        });
       } finally {
         clearTimeout(timeout);
       }
 
-      latencyMs =
-        Date.now() - startedAt;
-
-      responseStatus =
-        response.status;
+      latencyMs = Date.now() - startedAt;
+      responseStatus = response.status;
 
       if (
         response.status >= 200 &&
         response.status < 400
       ) {
-        verificationStatus =
-          "healthy";
+        verificationStatus = "healthy";
       } else {
-        verificationStatus =
-          "unhealthy";
-
-        errorCode =
-          "HTTP_ERROR";
-
+        verificationStatus = "unhealthy";
+        errorCode = "HTTP_ERROR";
         errorMessage =
           `Endpoint returned HTTP ${response.status}.`;
       }
     } catch (error) {
-      latencyMs =
-        Date.now() - startedAt;
+      latencyMs = Date.now() - startedAt;
 
       if (
         error instanceof Error &&
-        error.name ===
-          "AbortError"
+        error.name === "AbortError"
       ) {
         errorCode = "TIMEOUT";
-
         errorMessage =
           `Endpoint did not respond within ${VERIFY_TIMEOUT_MS}ms.`;
-      } else if (
-        error instanceof Error
-      ) {
-        errorCode =
-          "CONNECTION_FAILED";
-
-        errorMessage =
-          error.message;
+      } else if (error instanceof Error) {
+        errorCode = "CONNECTION_FAILED";
+        errorMessage = error.message;
       } else {
-        errorCode =
-          "CONNECTION_FAILED";
-
+        errorCode = "CONNECTION_FAILED";
         errorMessage =
           "The endpoint could not be reached.";
       }
 
-      verificationStatus =
-        "unhealthy";
+      verificationStatus = "unhealthy";
     }
 
-    const isHealthy =
-      verificationStatus ===
-      "healthy";
+    const isHealthy = verificationStatus === "healthy";
 
-    const nextConnectionStatus =
-      isHealthy
-        ? "connected"
-        : "error";
+    const nextConnectionStatus = isHealthy
+      ? "connected"
+      : "error";
 
-    const nextHealthStatus =
-      isHealthy
-        ? "healthy"
-        : "unhealthy";
+    const nextHealthStatus = isHealthy
+      ? "healthy"
+      : "unhealthy";
 
-    const nextFailures =
-      isHealthy
-        ? 0
-        : Number(
-            connection.consecutive_failures ||
-              0,
-          ) + 1;
+    const nextFailures = isHealthy
+      ? 0
+      : Number(connection.consecutive_failures || 0) + 1;
 
     /*
-     * Record the real health-check result.
+     * Record the health-check result.
      */
     const {
       data: healthCheck,
@@ -673,40 +514,25 @@ export async function POST(request: Request) {
     } = await supabase
       .from("agent_health_checks")
       .insert({
-        organization_id:
-          organizationId,
+        organization_id: organizationId,
         agent_id: agentId,
-        agent_connection_id:
-          connection.id,
-        status:
-          verificationStatus,
-        latency_ms:
-          latencyMs,
-        response_status:
-          responseStatus,
-        error_code:
-          errorCode,
-        error_message:
-          errorMessage,
+        agent_connection_id: connection.id,
+        status: verificationStatus,
+        latency_ms: latencyMs,
+        response_status: responseStatus,
+        error_code: errorCode,
+        error_message: errorMessage,
         details: {
-          verification_stage:
-            "endpoint_reachability",
-          provider:
-            connection.provider,
-          connection_type:
-            connection.connection_type,
-          environment:
-            connection.environment,
+          verification_stage: "endpoint_reachability",
+          provider: connection.provider,
+          connection_type: connection.connection_type,
+          environment: connection.environment,
           endpoint_host:
-            endpointValidation
-              .url.hostname,
-          checked_at:
-            checkedAt,
-          timeout_ms:
-            VERIFY_TIMEOUT_MS,
+            endpointValidation.url.hostname,
+          checked_at: checkedAt,
+          timeout_ms: VERIFY_TIMEOUT_MS,
         },
-        checked_at:
-          checkedAt,
+        checked_at: checkedAt,
       })
       .select()
       .single();
@@ -727,39 +553,25 @@ export async function POST(request: Request) {
      */
     const {
       data: updatedConnection,
-      error:
-        updateConnectionError,
+      error: updateConnectionError,
     } = await supabase
       .from("agent_connections")
       .update({
-        status:
-          nextConnectionStatus,
-        health_status:
-          nextHealthStatus,
-        last_health_check_at:
-          checkedAt,
+        status: nextConnectionStatus,
+        health_status: nextHealthStatus,
+        last_health_check_at: checkedAt,
         ...(isHealthy
           ? {
-              last_connected_at:
-                checkedAt,
-              last_seen_at:
-                checkedAt,
-              consecutive_failures:
-                0,
+              last_connected_at: checkedAt,
+              last_seen_at: checkedAt,
+              consecutive_failures: 0,
             }
           : {
-              consecutive_failures:
-                nextFailures,
+              consecutive_failures: nextFailures,
             }),
       })
-      .eq(
-        "id",
-        connection.id,
-      )
-      .eq(
-        "organization_id",
-        organizationId,
-      )
+      .eq("id", connection.id)
+      .eq("organization_id", organizationId)
       .select()
       .single();
 
@@ -778,36 +590,27 @@ export async function POST(request: Request) {
     /*
      * Record lifecycle event.
      */
-    const {
-      error: eventError,
-    } = await supabase
+    const { error: eventError } = await supabase
       .from("agent_connection_events")
       .insert({
-        organization_id:
-          organizationId,
+        organization_id: organizationId,
         agent_id: agentId,
-        agent_connection_id:
-          connection.id,
+        agent_connection_id: connection.id,
         event_type: isHealthy
           ? "verification_succeeded"
           : "verification_failed",
-        status:
-          verificationStatus,
+        status: verificationStatus,
         message: isHealthy
           ? "Endpoint responded successfully."
           : errorMessage ??
             "Endpoint verification failed.",
         metadata: {
-          http_status:
-            responseStatus,
-          latency_ms:
-            latencyMs,
+          http_status: responseStatus,
+          latency_ms: latencyMs,
           endpoint_host:
-            endpointValidation
-              .url.hostname,
+            endpointValidation.url.hostname,
         },
-        occurred_at:
-          checkedAt,
+        occurred_at: checkedAt,
       });
 
     if (eventError) {
@@ -817,8 +620,7 @@ export async function POST(request: Request) {
           message:
             `Verification completed, but the connection event could not be recorded: ${eventError.message}`,
           healthCheck,
-          connection:
-            updatedConnection,
+          connection: updatedConnection,
         },
         { status: 500 },
       );
@@ -832,19 +634,16 @@ export async function POST(request: Request) {
         name: agent.name,
       },
 
-      connection:
-        updatedConnection,
+      connection: updatedConnection,
 
       healthCheck,
 
       verification: {
-        status:
-          verificationStatus,
+        status: verificationStatus,
         latencyMs,
         responseStatus,
         endpointHost:
-          endpointValidation
-            .url.hostname,
+          endpointValidation.url.hostname,
       },
 
       message: isHealthy
@@ -853,10 +652,7 @@ export async function POST(request: Request) {
           "Endpoint verification failed.",
     });
   } catch (error) {
-    console.error(
-      "Agent verification error:",
-      error,
-    );
+    console.error("Agent verification error:", error);
 
     return NextResponse.json(
       {
@@ -869,3 +665,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+}
