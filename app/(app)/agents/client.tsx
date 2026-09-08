@@ -268,18 +268,20 @@ export default function AgentsClient({
     try {
       const supabase = createClient()
 
-      const { data: connectionData, error: connectionError } =
-        await supabase
-          .from('agent_connections')
-          .select(
-            'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
-          )
-          .eq('agent_id', agent.id)
-          .order('created_at', {
-            ascending: false,
-          })
-          .limit(1)
-          .maybeSingle()
+      const {
+        data: connectionData,
+        error: connectionError,
+      } = await supabase
+        .from('agent_connections')
+        .select(
+          'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
+        )
+        .eq('agent_id', agent.id)
+        .order('created_at', {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle()
 
       if (connectionError) {
         throw connectionError
@@ -301,16 +303,18 @@ export default function AgentsClient({
             'production',
         })
 
-        const { data: identity, error: identityError } =
-          await supabase
-            .from('agent_identities')
-            .select('verified')
-            .eq('agent_id', agent.id)
-            .order('created_at', {
-              ascending: false,
-            })
-            .limit(1)
-            .maybeSingle()
+        const {
+          data: identity,
+          error: identityError,
+        } = await supabase
+          .from('agent_identities')
+          .select('verified')
+          .eq('agent_id', agent.id)
+          .order('created_at', {
+            ascending: false,
+          })
+          .limit(1)
+          .maybeSingle()
 
         if (identityError) {
           throw identityError
@@ -548,7 +552,6 @@ export default function AgentsClient({
       setConnectionState('Connection Setup')
       setShowConnectionSetup(false)
       setIsEditingConnection(false)
-      resetConnectionForm()
     } catch (error) {
       console.error(
         'Failed to create agent connection:',
@@ -581,31 +584,69 @@ export default function AgentsClient({
     try {
       const supabase = createClient()
 
-      const { data: updatedConnection, error } =
-        await supabase
-          .from('agent_connections')
-          .update({
-            connection_type:
-              connectionForm.connectionType,
-            provider:
-              connectionForm.provider.trim(),
-            endpoint_url:
-              connectionForm.endpointUrl.trim(),
-            environment:
-              connectionForm.environment,
-            status: 'pending',
-            health_status: 'unknown',
-            last_connected_at: null,
-            last_seen_at: null,
-            last_health_check_at: null,
-            consecutive_failures: 0,
-          })
-          .eq('id', connection.id)
-          .eq('agent_id', selectedAgent.id)
-          .select(
-            'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
-          )
-          .single()
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        throw new Error(
+          'You must be signed in to update an agent connection.'
+        )
+      }
+
+      const {
+        data: userRecord,
+        error: userRecordError,
+      } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single()
+
+      if (
+        userRecordError ||
+        !userRecord?.organization_id
+      ) {
+        throw new Error(
+          'Could not determine your organization.'
+        )
+      }
+
+      const organizationId =
+        userRecord.organization_id
+
+      const {
+        data: updatedConnection,
+        error,
+      } = await supabase
+        .from('agent_connections')
+        .update({
+          connection_type:
+            connectionForm.connectionType,
+          provider:
+            connectionForm.provider.trim(),
+          endpoint_url:
+            connectionForm.endpointUrl.trim(),
+          environment:
+            connectionForm.environment,
+          status: 'pending',
+          health_status: 'unknown',
+          last_connected_at: null,
+          last_seen_at: null,
+          last_health_check_at: null,
+          consecutive_failures: 0,
+        })
+        .eq('id', connection.id)
+        .eq('agent_id', selectedAgent.id)
+        .eq(
+          'organization_id',
+          organizationId
+        )
+        .select(
+          'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
+        )
+        .single()
 
       if (error || !updatedConnection) {
         throw new Error(
@@ -614,11 +655,12 @@ export default function AgentsClient({
         )
       }
 
-      await supabase
+      const {
+        error: eventError,
+      } = await supabase
         .from('agent_connection_events')
         .insert({
-          organization_id:
-            connection.id,
+          organization_id: organizationId,
           agent_id: selectedAgent.id,
           agent_connection_id:
             connection.id,
@@ -635,14 +677,13 @@ export default function AgentsClient({
               connectionForm.environment,
           },
         })
-        .then(({ error: eventError }) => {
-          if (eventError) {
-            console.error(
-              'Connection update event could not be recorded:',
-              eventError
-            )
-          }
-        })
+
+      if (eventError) {
+        console.error(
+          'Connection update event could not be recorded:',
+          eventError
+        )
+      }
 
       setConnection(updatedConnection)
       setConnectionState('Connection Setup')
@@ -687,12 +728,48 @@ export default function AgentsClient({
     try {
       const supabase = createClient()
 
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        throw new Error(
+          'You must be signed in to delete a connection.'
+        )
+      }
+
+      const {
+        data: userRecord,
+        error: userRecordError,
+      } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single()
+
+      if (
+        userRecordError ||
+        !userRecord?.organization_id
+      ) {
+        throw new Error(
+          'Could not determine your organization.'
+        )
+      }
+
+      const organizationId =
+        userRecord.organization_id
+
       const { error } =
         await supabase
           .from('agent_connections')
           .delete()
           .eq('id', connection.id)
           .eq('agent_id', selectedAgent.id)
+          .eq(
+            'organization_id',
+            organizationId
+          )
 
       if (error) {
         throw new Error(
@@ -740,19 +817,73 @@ export default function AgentsClient({
 
     setIsDeletingAgent(true)
     setConnectionError(null)
+    setVerificationMessage(null)
 
     try {
       const supabase = createClient()
 
-      const { error } =
-        await supabase
-          .from('ai_agents')
-          .delete()
-          .eq('id', selectedAgent.id)
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        throw new Error(
+          'You must be signed in to delete an agent.'
+        )
+      }
+
+      const {
+        data: userRecord,
+        error: userRecordError,
+      } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single()
+
+      if (
+        userRecordError ||
+        !userRecord?.organization_id
+      ) {
+        throw new Error(
+          'Could not determine your organization.'
+        )
+      }
+
+      const organizationId =
+        userRecord.organization_id
+
+      const {
+        data: deletedAgent,
+        error,
+      } = await supabase
+        .from('ai_agents')
+        .delete()
+        .eq('id', selectedAgent.id)
+        .eq(
+          'organization_id',
+          organizationId
+        )
+        .select('id')
 
       if (error) {
         throw new Error(
-          `Could not delete this agent. The database may contain dependent records that must be handled first.\n\n${error.message}`
+          `Could not delete this agent: ${error.message}`
+        )
+      }
+
+      /*
+       * Supabase can return no error when RLS prevents a row
+       * from being affected. Verify that the row was actually
+       * deleted before changing the UI.
+       */
+      if (
+        !deletedAgent ||
+        deletedAgent.length === 0
+      ) {
+        throw new Error(
+          'The agent was not deleted from the database. Check the ai_agents DELETE policy.'
         )
       }
 
@@ -790,34 +921,142 @@ export default function AgentsClient({
     setVerificationMessage(null)
 
     try {
-      const response = await fetch(
+      const verifyUrl = new URL(
         '/api/agents/verify',
+        window.location.origin
+      ).toString()
+
+      const response = await fetch(
+        verifyUrl,
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Accept: 'application/json',
           },
+          credentials: 'same-origin',
+          cache: 'no-store',
           body: JSON.stringify({
             agentId: selectedAgent.id,
           }),
         }
       )
 
-      const data = await response.json()
+      const contentType =
+        response.headers.get(
+          'content-type'
+        ) || ''
 
-      if (!response.ok) {
+      let data: {
+        success?: boolean
+        message?: string
+        error?: string
+        connectionStatus?: string
+        healthStatus?: string
+      } = {}
+
+      if (
+        contentType.includes(
+          'application/json'
+        )
+      ) {
+        data = await response.json()
+      } else {
+        const text =
+          await response.text()
+
         throw new Error(
-          data?.error ||
-            'Connection verification failed.'
+          text ||
+            `Verification endpoint returned HTTP ${response.status}.`
         )
       }
 
-      setConnectionState('Connection Setup')
+      if (
+        !response.ok ||
+        data.success === false
+      ) {
+        throw new Error(
+          data.message ||
+            data.error ||
+            `Connection verification failed with HTTP ${response.status}.`
+        )
+      }
+
+      setConnectionState(
+        data.connectionStatus ===
+          'connected'
+          ? 'Connected'
+          : 'Connection Setup'
+      )
 
       setVerificationMessage(
-        data?.message ||
-          'Verification attempt recorded.'
+        data.message ||
+          'Connection verification completed successfully.'
       )
+
+      const supabase =
+        createClient()
+
+      const {
+        data: refreshedConnection,
+        error: refreshError,
+      } = await supabase
+        .from('agent_connections')
+        .select(
+          'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
+        )
+        .eq(
+          'agent_id',
+          selectedAgent.id
+        )
+        .order('created_at', {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle()
+
+      if (refreshError) {
+        console.error(
+          'Could not refresh connection after verification:',
+          refreshError
+        )
+      }
+
+      if (refreshedConnection) {
+        setConnection(
+          refreshedConnection
+        )
+
+        const {
+          data: identity,
+          error: identityError,
+        } = await supabase
+          .from('agent_identities')
+          .select('verified')
+          .eq(
+            'agent_id',
+            selectedAgent.id
+          )
+          .order('created_at', {
+            ascending: false,
+          })
+          .limit(1)
+          .maybeSingle()
+
+        if (identityError) {
+          console.error(
+            'Could not refresh agent identity:',
+            identityError
+          )
+        }
+
+        setConnectionState(
+          connectionStateFromData(
+            refreshedConnection,
+            identity?.verified === true
+          )
+        )
+      }
     } catch (error) {
       console.error(
         'Failed to verify agent connection:',
@@ -903,7 +1142,10 @@ export default function AgentsClient({
         )
         .single()
 
-      if (insertError || !newAgent) {
+      if (
+        insertError ||
+        !newAgent
+      ) {
         throw new Error(
           insertError?.message ||
             'Failed to create the agent.'
@@ -1161,9 +1403,21 @@ export default function AgentsClient({
           {filteredAgents.map((agent) => (
             <div
               key={agent.id}
-              className="flex flex-col gap-4 p-5 transition hover:bg-muted/20 lg:flex-row lg:items-center"
+              role="button"
+              tabIndex={0}
+              onClick={() => openAgent(agent)}
+              onKeyDown={(event) => {
+                if (
+                  event.key === 'Enter' ||
+                  event.key === ' '
+                ) {
+                  event.preventDefault()
+                  openAgent(agent)
+                }
+              }}
+              className="group flex cursor-pointer flex-col gap-4 p-5 transition hover:bg-muted/30 focus:outline-none focus-visible:bg-muted/30 lg:flex-row lg:items-center"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background transition group-hover:border-foreground/20">
                 <Bot className="h-4 w-4" />
               </div>
 
@@ -1209,14 +1463,9 @@ export default function AgentsClient({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => openAgent(agent)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                aria-label={`Open ${agent.name}`}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              <div className="flex shrink-0 items-center justify-end">
+                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
             </div>
           ))}
 
@@ -1230,7 +1479,21 @@ export default function AgentsClient({
 
       {/* Agent detail modal */}
       {selectedAgent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !isDeletingAgent &&
+              !isDeletingConnection &&
+              !isCreatingConnection &&
+              !isSavingConnection &&
+              !isVerifying
+            ) {
+              closeAgentModal()
+            }
+          }}
+        >
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-xl">
             <div className="flex items-start justify-between border-b p-6">
               <div>
@@ -1250,7 +1513,15 @@ export default function AgentsClient({
               <button
                 type="button"
                 onClick={closeAgentModal}
-                className="flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                disabled={
+                  isDeletingAgent ||
+                  isDeletingConnection ||
+                  isCreatingConnection ||
+                  isSavingConnection ||
+                  isVerifying
+                }
+                className="flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Close agent details"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1883,4 +2154,4 @@ export default function AgentsClient({
       )}
     </main>
   )
-} 
+}
