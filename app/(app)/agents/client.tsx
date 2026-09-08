@@ -2,13 +2,17 @@
 
 import * as React from 'react'
 import {
+  Activity,
+  AlertTriangle,
   Bot,
+  CheckCircle2,
+  ChevronRight,
+  CircleDot,
+  Link2,
   Plus,
   Search,
-  Activity,
   ShieldCheck,
-  AlertTriangle,
-  ChevronRight,
+  X,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -25,6 +29,21 @@ type Agent = {
 
 type AgentsClientProps = {
   initialAgents: Agent[]
+}
+
+type ConnectionState =
+  | 'Registered'
+  | 'Connection Setup'
+  | 'Connected'
+  | 'Verified'
+  | 'Healthy'
+  | 'Surveillance Active'
+
+type ConnectionForm = {
+  connectionType: string
+  provider: string
+  endpointUrl: string
+  environment: string
 }
 
 function statusClass(status: Agent['status']) {
@@ -51,22 +70,94 @@ function riskClass(risk: Agent['risk']) {
   }
 }
 
+function connectionStateFromData(
+  connection:
+    | {
+        status: string | null
+        health_status: string | null
+        last_connected_at: string | null
+      }
+    | null,
+  verified: boolean
+): ConnectionState {
+  if (!connection) {
+    return 'Registered'
+  }
+
+  if (
+    connection.health_status === 'healthy' &&
+    verified
+  ) {
+    return 'Healthy'
+  }
+
+  if (verified) {
+    return 'Verified'
+  }
+
+  if (
+    connection.status === 'connected' ||
+    connection.last_connected_at
+  ) {
+    return 'Connected'
+  }
+
+  return 'Connection Setup'
+}
+
 export default function AgentsClient({
   initialAgents,
 }: AgentsClientProps) {
-  const [agents, setAgents] = React.useState<Agent[]>(initialAgents)
+  const [agents, setAgents] =
+    React.useState<Agent[]>(initialAgents)
+
   const [search, setSearch] = React.useState('')
   const [status, setStatus] = React.useState('All')
   const [risk, setRisk] = React.useState('All')
-  const [showNewAgent, setShowNewAgent] = React.useState(false)
 
-  const [agentName, setAgentName] = React.useState('')
-  const [agentDescription, setAgentDescription] = React.useState('')
-  const [agentType, setAgentType] = React.useState('general')
-  const [isCreating, setIsCreating] = React.useState(false)
-  const [createError, setCreateError] = React.useState<string | null>(
-    null
-  )
+  const [showNewAgent, setShowNewAgent] =
+    React.useState(false)
+
+  const [selectedAgent, setSelectedAgent] =
+    React.useState<Agent | null>(null)
+
+  const [showConnectionSetup, setShowConnectionSetup] =
+    React.useState(false)
+
+  const [connectionState, setConnectionState] =
+    React.useState<ConnectionState>('Registered')
+
+  const [connectionForm, setConnectionForm] =
+    React.useState<ConnectionForm>({
+      connectionType: 'webhook',
+      provider: '',
+      endpointUrl: '',
+      environment: 'production',
+    })
+
+  const [isLoadingConnection, setIsLoadingConnection] =
+    React.useState(false)
+
+  const [isCreatingConnection, setIsCreatingConnection] =
+    React.useState(false)
+
+  const [connectionError, setConnectionError] =
+    React.useState<string | null>(null)
+
+  const [agentName, setAgentName] =
+    React.useState('')
+
+  const [agentDescription, setAgentDescription] =
+    React.useState('')
+
+  const [agentType, setAgentType] =
+    React.useState('general')
+
+  const [isCreating, setIsCreating] =
+    React.useState(false)
+
+  const [createError, setCreateError] =
+    React.useState<string | null>(null)
 
   const filteredAgents = agents.filter((agent) => {
     const query = search.toLowerCase()
@@ -109,6 +200,236 @@ export default function AgentsClient({
     setCreateError(null)
   }
 
+  function resetConnectionForm() {
+    setConnectionForm({
+      connectionType: 'webhook',
+      provider: '',
+      endpointUrl: '',
+      environment: 'production',
+    })
+    setConnectionError(null)
+  }
+
+  async function openAgent(agent: Agent) {
+    setSelectedAgent(agent)
+    setShowConnectionSetup(false)
+    setConnectionError(null)
+    setIsLoadingConnection(true)
+    setConnectionState('Registered')
+
+    try {
+      const supabase = createClient()
+
+      const { data: connection } =
+        await supabase
+          .from('agent_connections')
+          .select(
+            'status, health_status, last_connected_at'
+          )
+          .eq('agent_id', agent.id)
+          .order('created_at', {
+            ascending: false,
+          })
+          .limit(1)
+          .maybeSingle()
+
+      if (connection) {
+        const { data: identity } =
+          await supabase
+            .from('agent_identities')
+            .select('verified')
+            .eq('agent_id', agent.id)
+            .order('created_at', {
+              ascending: false,
+            })
+            .limit(1)
+            .maybeSingle()
+
+        setConnectionState(
+          connectionStateFromData(
+            connection,
+            identity?.verified === true
+          )
+        )
+      } else {
+        setConnectionState('Registered')
+      }
+    } catch (error) {
+      console.error(
+        'Failed to load agent connection:',
+        error
+      )
+
+      setConnectionError(
+        'Unable to load the connection state.'
+      )
+    } finally {
+      setIsLoadingConnection(false)
+    }
+  }
+
+  async function handleCreateConnection() {
+    if (!selectedAgent) {
+      return
+    }
+
+    if (!connectionForm.provider.trim()) {
+      setConnectionError(
+        'Please enter the agent provider.'
+      )
+      return
+    }
+
+    if (!connectionForm.endpointUrl.trim()) {
+      setConnectionError(
+        'Please enter the agent endpoint URL.'
+      )
+      return
+    }
+
+    setIsCreatingConnection(true)
+    setConnectionError(null)
+
+    try {
+      const supabase = createClient()
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        throw new Error(
+          'You must be signed in to connect an agent.'
+        )
+      }
+
+      const {
+        data: userRecord,
+        error: userRecordError,
+      } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single()
+
+      if (
+        userRecordError ||
+        !userRecord?.organization_id
+      ) {
+        throw new Error(
+          'Could not determine your organization.'
+        )
+      }
+
+      const {
+        data: existingConnection,
+        error: existingConnectionError,
+      } = await supabase
+        .from('agent_connections')
+        .select('id')
+        .eq('agent_id', selectedAgent.id)
+        .limit(1)
+        .maybeSingle()
+
+      if (existingConnectionError) {
+        throw existingConnectionError
+      }
+
+      if (existingConnection) {
+        throw new Error(
+          'This agent already has a connection.'
+        )
+      }
+
+      const {
+        data: newConnection,
+        error: connectionInsertError,
+      } = await supabase
+        .from('agent_connections')
+        .insert({
+          organization_id:
+            userRecord.organization_id,
+          agent_id: selectedAgent.id,
+          connection_type:
+            connectionForm.connectionType,
+          provider:
+            connectionForm.provider.trim(),
+          endpoint_url:
+            connectionForm.endpointUrl.trim(),
+          environment:
+            connectionForm.environment,
+          status: 'pending',
+          health_status: 'unknown',
+          capabilities: {},
+          configuration: {},
+          consecutive_failures: 0,
+        })
+        .select(
+          'id, status, health_status, last_connected_at'
+        )
+        .single()
+
+      if (
+        connectionInsertError ||
+        !newConnection
+      ) {
+        throw new Error(
+          connectionInsertError?.message ||
+            'Failed to create the connection.'
+        )
+      }
+
+      const {
+        error: eventError,
+      } = await supabase
+        .from('agent_connection_events')
+        .insert({
+          organization_id:
+            userRecord.organization_id,
+          agent_id: selectedAgent.id,
+          agent_connection_id:
+            newConnection.id,
+          event_type: 'connection_setup',
+          status: 'pending',
+          message:
+            'Agent connection configuration created.',
+          metadata: {
+            connection_type:
+              connectionForm.connectionType,
+            provider:
+              connectionForm.provider.trim(),
+            environment:
+              connectionForm.environment,
+          },
+        })
+
+      if (eventError) {
+        console.error(
+          'Connection event could not be recorded:',
+          eventError
+        )
+      }
+
+      setConnectionState('Connection Setup')
+      setShowConnectionSetup(false)
+      resetConnectionForm()
+    } catch (error) {
+      console.error(
+        'Failed to create agent connection:',
+        error
+      )
+
+      setConnectionError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to create the connection.'
+      )
+    } finally {
+      setIsCreatingConnection(false)
+    }
+  }
+
   async function handleCreateAgent() {
     if (!agentName.trim()) {
       setCreateError('Please enter an agent name.')
@@ -116,7 +437,9 @@ export default function AgentsClient({
     }
 
     if (!agentDescription.trim()) {
-      setCreateError('Please describe what this agent does.')
+      setCreateError(
+        'Please describe what this agent does.'
+      )
       return
     }
 
@@ -132,15 +455,19 @@ export default function AgentsClient({
       } = await supabase.auth.getUser()
 
       if (userError || !user) {
-        throw new Error('You must be signed in to create an agent.')
+        throw new Error(
+          'You must be signed in to create an agent.'
+        )
       }
 
-      const { data: userRecord, error: userRecordError } =
-        await supabase
-          .from('users')
-          .select('organization_id')
-          .eq('id', user.id)
-          .single()
+      const {
+        data: userRecord,
+        error: userRecordError,
+      } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single()
 
       if (
         userRecordError ||
@@ -151,20 +478,24 @@ export default function AgentsClient({
         )
       }
 
-      const { data: newAgent, error: insertError } =
-        await supabase
-          .from('ai_agents')
-          .insert({
-            organization_id: userRecord.organization_id,
-            name: agentName.trim(),
-            description: agentDescription.trim(),
-            agent_type: agentType,
-            status: 'active',
-          })
-          .select(
-            'id, name, description, agent_type, status, created_at'
-          )
-          .single()
+      const {
+        data: newAgent,
+        error: insertError,
+      } = await supabase
+        .from('ai_agents')
+        .insert({
+          organization_id:
+            userRecord.organization_id,
+          name: agentName.trim(),
+          description:
+            agentDescription.trim(),
+          agent_type: agentType,
+          status: 'active',
+        })
+        .select(
+          'id, name, description, agent_type, status, created_at'
+        )
+        .single()
 
       if (insertError || !newAgent) {
         throw new Error(
@@ -185,12 +516,14 @@ export default function AgentsClient({
         status:
           newAgent.status === 'paused'
             ? 'Paused'
-            : newAgent.status === 'needs_review'
+            : newAgent.status ===
+                'needs_review'
               ? 'Needs Review'
               : 'Active',
         risk: 'Medium',
         tasks: 0,
-        lastActivity: 'No activity recorded',
+        lastActivity:
+          'No activity recorded',
       }
 
       setAgents((current) => [
@@ -201,14 +534,12 @@ export default function AgentsClient({
       resetForm()
       setShowNewAgent(false)
 
-      /*
-       * Refresh the server-rendered Agents page as well.
-       * This ensures the database becomes the authoritative
-       * source after the optimistic UI update.
-       */
       window.location.reload()
     } catch (error) {
-      console.error('Failed to create agent:', error)
+      console.error(
+        'Failed to create agent:',
+        error
+      )
 
       setCreateError(
         error instanceof Error
@@ -234,8 +565,8 @@ export default function AgentsClient({
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Discover, monitor, and govern every AI agent operating
-            across your organization.
+            Discover, connect, monitor, and govern every AI
+            agent operating across your organization.
           </p>
         </div>
 
@@ -284,7 +615,7 @@ export default function AgentsClient({
           </p>
 
           <p className="mt-1 text-xs text-muted-foreground">
-            Currently operating
+            Currently registered as active
           </p>
         </div>
 
@@ -366,9 +697,15 @@ export default function AgentsClient({
               }
               className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
             >
-              <option value="All">All statuses</option>
-              <option value="Active">Active</option>
-              <option value="Paused">Paused</option>
+              <option value="All">
+                All statuses
+              </option>
+              <option value="Active">
+                Active
+              </option>
+              <option value="Paused">
+                Paused
+              </option>
               <option value="Needs Review">
                 Needs Review
               </option>
@@ -381,11 +718,21 @@ export default function AgentsClient({
               }
               className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
             >
-              <option value="All">All risk levels</option>
-              <option value="Critical">Critical</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
+              <option value="All">
+                All risk levels
+              </option>
+              <option value="Critical">
+                Critical
+              </option>
+              <option value="High">
+                High
+              </option>
+              <option value="Medium">
+                Medium
+              </option>
+              <option value="Low">
+                Low
+              </option>
             </select>
           </div>
         </div>
@@ -458,7 +805,9 @@ export default function AgentsClient({
 
               <button
                 type="button"
+                onClick={() => openAgent(agent)}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label={`Open ${agent.name}`}
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -472,6 +821,382 @@ export default function AgentsClient({
           )}
         </div>
       </section>
+
+      {/* Agent detail modal */}
+      {selectedAgent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-xl">
+            <div className="flex items-start justify-between border-b p-6">
+              <div>
+                <p className="text-sm text-muted-foreground">
+                  AI Agent
+                </p>
+
+                <h2 className="mt-1 text-2xl font-semibold tracking-tight">
+                  {selectedAgent.name}
+                </h2>
+
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {selectedAgent.purpose}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedAgent(null)
+                  setShowConnectionSetup(false)
+                  resetConnectionForm()
+                }}
+                className="flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-6 p-6">
+              {/* Lifecycle */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold">
+                      Connection lifecycle
+                    </h3>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Arbyter only activates surveillance after a
+                      real connection and verified signal source.
+                    </p>
+                  </div>
+
+                  <CircleDot className="h-5 w-5 text-muted-foreground" />
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {(
+                    [
+                      'Registered',
+                      'Connection Setup',
+                      'Connected',
+                      'Verified',
+                      'Healthy',
+                      'Surveillance Active',
+                    ] as ConnectionState[]
+                  ).map((state) => {
+                    const states: ConnectionState[] = [
+                      'Registered',
+                      'Connection Setup',
+                      'Connected',
+                      'Verified',
+                      'Healthy',
+                      'Surveillance Active',
+                    ]
+
+                    const currentIndex =
+                      states.indexOf(
+                        connectionState
+                      )
+
+                    const stateIndex =
+                      states.indexOf(state)
+
+                    const complete =
+                      stateIndex <= currentIndex
+
+                    const isCurrent =
+                      state === connectionState
+
+                    return (
+                      <div
+                        key={state}
+                        className={`rounded-xl border p-3 ${
+                          isCurrent
+                            ? 'border-foreground bg-muted/40'
+                            : complete
+                              ? 'bg-muted/20'
+                              : 'opacity-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {complete ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : (
+                            <CircleDot className="h-4 w-4" />
+                          )}
+
+                          <span className="text-xs font-medium">
+                            {state}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Current state */}
+              <div className="rounded-xl border bg-muted/20 p-4">
+                <div className="flex items-start gap-3">
+                  <Link2 className="mt-0.5 h-4 w-4 shrink-0" />
+
+                  <div>
+                    <p className="text-sm font-medium">
+                      Current connection state
+                    </p>
+
+                    <p className="mt-1 text-sm">
+                      {isLoadingConnection
+                        ? 'Loading...'
+                        : connectionState}
+                    </p>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Registration is not treated as a live
+                      surveillance connection.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {connectionError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  {connectionError}
+                </div>
+              )}
+
+              {/* Connection setup */}
+              {connectionState === 'Registered' &&
+                !showConnectionSetup && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConnectionError(null)
+                      setShowConnectionSetup(true)
+                    }}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Connect Agent
+                  </button>
+                )}
+
+              {connectionState !== 'Registered' && (
+                <div className="rounded-xl border p-4">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="mt-0.5 h-4 w-4" />
+
+                    <div>
+                      <p className="text-sm font-medium">
+                        Connection registered
+                      </p>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        The connection exists in Supabase. Verification,
+                        health checks, and surveillance will be implemented
+                        as the next connector layer.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showConnectionSetup && (
+                <div className="rounded-xl border p-5">
+                  <div>
+                    <h3 className="font-semibold">
+                      Connect AI Agent
+                    </h3>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Register the real connection details. Arbyter
+                      will not claim the agent is connected until the
+                      connection is actually verified.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium">
+                        Connection type
+                      </label>
+
+                      <select
+                        value={
+                          connectionForm.connectionType
+                        }
+                        onChange={(event) =>
+                          setConnectionForm(
+                            (current) => ({
+                              ...current,
+                              connectionType:
+                                event.target.value,
+                            })
+                          )
+                        }
+                        disabled={
+                          isCreatingConnection
+                        }
+                        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="webhook">
+                          Webhook
+                        </option>
+
+                        <option value="api">
+                          REST API
+                        </option>
+
+                        <option value="sdk">
+                          SDK
+                        </option>
+
+                        <option value="mcp">
+                          MCP
+                        </option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium">
+                        Provider
+                      </label>
+
+                      <input
+                        type="text"
+                        value={
+                          connectionForm.provider
+                        }
+                        onChange={(event) =>
+                          setConnectionForm(
+                            (current) => ({
+                              ...current,
+                              provider:
+                                event.target.value,
+                            })
+                          )
+                        }
+                        placeholder="e.g. OpenAI, Anthropic, Internal"
+                        disabled={
+                          isCreatingConnection
+                        }
+                        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium">
+                        Agent endpoint
+                      </label>
+
+                      <input
+                        type="url"
+                        value={
+                          connectionForm.endpointUrl
+                        }
+                        onChange={(event) =>
+                          setConnectionForm(
+                            (current) => ({
+                              ...current,
+                              endpointUrl:
+                                event.target.value,
+                            })
+                          )
+                        }
+                        placeholder="https://..."
+                        disabled={
+                          isCreatingConnection
+                        }
+                        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-medium">
+                        Environment
+                      </label>
+
+                      <select
+                        value={
+                          connectionForm.environment
+                        }
+                        onChange={(event) =>
+                          setConnectionForm(
+                            (current) => ({
+                              ...current,
+                              environment:
+                                event.target.value,
+                            })
+                          )
+                        }
+                        disabled={
+                          isCreatingConnection
+                        }
+                        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <option value="production">
+                          Production
+                        </option>
+
+                        <option value="staging">
+                          Staging
+                        </option>
+
+                        <option value="development">
+                          Development
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                      This step only registers the connection
+                      configuration. It does not execute requests
+                      against the agent and does not mark surveillance
+                      as active.
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            !isCreatingConnection
+                          ) {
+                            setShowConnectionSetup(
+                              false
+                            )
+                            resetConnectionForm()
+                          }
+                        }}
+                        disabled={
+                          isCreatingConnection
+                        }
+                        className="h-10 rounded-lg border px-4 text-sm font-medium disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={
+                          handleCreateConnection
+                        }
+                        disabled={
+                          isCreatingConnection
+                        }
+                        className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isCreatingConnection
+                          ? 'Registering...'
+                          : 'Register Connection'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Agent modal */}
       {showNewAgent && (
@@ -503,7 +1228,9 @@ export default function AgentsClient({
               <textarea
                 value={agentDescription}
                 onChange={(event) =>
-                  setAgentDescription(event.target.value)
+                  setAgentDescription(
+                    event.target.value
+                  )
                 }
                 placeholder="What does this agent do?"
                 rows={3}
@@ -519,20 +1246,29 @@ export default function AgentsClient({
                 disabled={isCreating}
                 className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="general">General AI Agent</option>
+                <option value="general">
+                  General AI Agent
+                </option>
                 <option value="risk">Risk</option>
-                <option value="compliance">Compliance</option>
-                <option value="policy">Policy</option>
+                <option value="compliance">
+                  Compliance
+                </option>
+                <option value="policy">
+                  Policy
+                </option>
                 <option value="investigation">
                   Investigation
                 </option>
-                <option value="evidence">Evidence</option>
+                <option value="evidence">
+                  Evidence
+                </option>
               </select>
 
               <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                New agents are registered as <strong>Active</strong>{' '}
-                and assigned a default Medium risk posture until
-                governance data is configured.
+                New agents are registered in Arbyter. They are
+                not considered connected or under active
+                surveillance until a real connection is
+                configured and verified.
               </div>
 
               {createError && (
@@ -563,7 +1299,9 @@ export default function AgentsClient({
                 disabled={isCreating}
                 className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isCreating ? 'Adding...' : 'Add Agent'}
+                {isCreating
+                  ? 'Adding...'
+                  : 'Add Agent'}
               </button>
             </div>
           </div>
