@@ -12,7 +12,10 @@ export default async function AgentsPage() {
     return null
   }
 
-  const { data: agents, error } = await supabase
+  const {
+    data: agents,
+    error: agentsError,
+  } = await supabase
     .from('ai_agents')
     .select(`
       id,
@@ -24,8 +27,8 @@ export default async function AgentsPage() {
     `)
     .order('created_at', { ascending: false })
 
-  if (error) {
-    console.error('Failed to load agents:', error)
+  if (agentsError) {
+    console.error('Failed to load agents:', agentsError)
 
     return (
       <main className="flex flex-col gap-4">
@@ -33,8 +36,8 @@ export default async function AgentsPage() {
           Agents
         </h1>
 
-        <div className="rounded-xl border bg-card p-6 text-sm text-muted-foreground">
-          Unable to load agents right now.
+        <div className="rounded-xl border bg-card p-6 text-sm text-destructive">
+          Failed to load agents: {agentsError.message}
         </div>
       </main>
     )
@@ -42,20 +45,64 @@ export default async function AgentsPage() {
 
   const agentIds = (agents ?? []).map((agent) => agent.id)
 
-  const { data: activities } = agentIds.length
+  const {
+    data: activities,
+    error: activitiesError,
+  } = agentIds.length
     ? await supabase
         .from('agent_activity')
         .select('agent_id, created_at')
         .in('agent_id', agentIds)
         .order('created_at', { ascending: false })
-    : { data: [] }
+    : { data: [], error: null }
 
-  const { data: agentTasks } = agentIds.length
+  if (activitiesError) {
+    console.error(
+      'Failed to load agent activity:',
+      activitiesError
+    )
+
+    return (
+      <main className="flex flex-col gap-4">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Agents
+        </h1>
+
+        <div className="rounded-xl border bg-card p-6 text-sm text-destructive">
+          Failed to load agent activity: {activitiesError.message}
+        </div>
+      </main>
+    )
+  }
+
+  const {
+    data: agentTasks,
+    error: agentTasksError,
+  } = agentIds.length
     ? await supabase
         .from('agent_tasks')
         .select('agent_id, assigned_at, completed_at')
         .in('agent_id', agentIds)
-    : { data: [] }
+    : { data: [], error: null }
+
+  if (agentTasksError) {
+    console.error(
+      'Failed to load agent tasks:',
+      agentTasksError
+    )
+
+    return (
+      <main className="flex flex-col gap-4">
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Agents
+        </h1>
+
+        <div className="rounded-xl border bg-card p-6 text-sm text-destructive">
+          Failed to load agent tasks: {agentTasksError.message}
+        </div>
+      </main>
+    )
+  }
 
   const lastActivityByAgent = new Map<string, string>()
 
