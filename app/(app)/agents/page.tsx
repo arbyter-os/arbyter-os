@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import AgentsClient from '@/components/agents/client'
+import AgentsClient from '@/apps/agents/client'
 
 export default async function AgentsPage() {
   const supabase = await createClient()
