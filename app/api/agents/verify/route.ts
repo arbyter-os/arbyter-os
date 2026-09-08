@@ -549,7 +549,7 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Update connection state based on actual evidence.
+     * Update connection state.
      */
     const {
       data: updatedConnection,
@@ -588,12 +588,76 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Record lifecycle event.
+     * Update agent identity verification.
      *
-     * IMPORTANT:
-     * agent_connection_events.status has a database CHECK constraint
-     * that accepts event-style statuses such as "success" and "failed".
-     * The health-check table separately uses "healthy"/"unhealthy".
+     * A successful endpoint verification means the identity is
+     * verified. A failed verification removes the current
+     * verification state.
+     */
+    const {
+      data: existingIdentity,
+      error: identityLookupError,
+    } = await supabase
+      .from("agent_identities")
+      .select("id")
+      .eq("agent_id", agentId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+
+    if (identityLookupError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            `Connection verification completed, but the agent identity could not be checked: ${identityLookupError.message}`,
+          healthCheck,
+          connection: updatedConnection,
+        },
+        { status: 500 },
+      );
+    }
+
+    let identityError = null;
+
+    if (existingIdentity) {
+      const { error } = await supabase
+        .from("agent_identities")
+        .update({
+          verified: isHealthy,
+          verified_at: isHealthy ? checkedAt : null,
+        })
+        .eq("id", existingIdentity.id)
+        .eq("organization_id", organizationId);
+
+      identityError = error;
+    } else {
+      const { error } = await supabase
+        .from("agent_identities")
+        .insert({
+          organization_id: organizationId,
+          agent_id: agentId,
+          verified: isHealthy,
+          verified_at: isHealthy ? checkedAt : null,
+        });
+
+      identityError = error;
+    }
+
+    if (identityError) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            `Connection verification completed, but agent verification could not be recorded: ${identityError.message}`,
+          healthCheck,
+          connection: updatedConnection,
+        },
+        { status: 500 },
+      );
+    }
+
+    /*
+     * Record lifecycle event.
      */
     const { error: eventError } = await supabase
       .from("agent_connection_events")
@@ -606,7 +670,7 @@ export async function POST(request: Request) {
           : "verification_failed",
         status: isHealthy ? "success" : "failed",
         message: isHealthy
-          ? "Endpoint responded successfully."
+          ? "Endpoint responded successfully. Agent identity verified."
           : errorMessage ??
             "Endpoint verification failed.",
         metadata: {
@@ -614,6 +678,7 @@ export async function POST(request: Request) {
           latency_ms: latencyMs,
           endpoint_host:
             endpointValidation.url.hostname,
+          identity_verified: isHealthy,
         },
         occurred_at: checkedAt,
       });
@@ -645,6 +710,8 @@ export async function POST(request: Request) {
 
       verification: {
         status: verificationStatus,
+        verified: isHealthy,
+        verifiedAt: isHealthy ? checkedAt : null,
         latencyMs,
         responseStatus,
         endpointHost:
@@ -652,7 +719,7 @@ export async function POST(request: Request) {
       },
 
       message: isHealthy
-        ? "Endpoint responded successfully. The API connection is now Connected and Healthy."
+        ? "Endpoint responded successfully. The agent is now Connected, Healthy, and Verified."
         : errorMessage ??
           "Endpoint verification failed.",
     });
