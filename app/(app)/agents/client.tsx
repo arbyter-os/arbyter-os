@@ -49,6 +49,11 @@ type ConnectionForm = {
   provider: string
   endpointUrl: string
   environment: string
+  authenticationMethod: string
+  credentialLabel: string
+  webhookSecretLabel: string
+  mcpTransport: string
+  sdkPackage: string
 }
 
 type ConnectionRecord = {
@@ -122,6 +127,32 @@ function getConnectionState(
   return 'Connection Setup'
 }
 
+function normalizeConnectionType(value: string) {
+  const normalized = value.toLowerCase().trim()
+
+  if (
+    normalized === 'rest' ||
+    normalized === 'rest_api' ||
+    normalized === 'api'
+  ) {
+    return 'api'
+  }
+
+  if (normalized === 'webhook') {
+    return 'webhook'
+  }
+
+  if (normalized === 'sdk') {
+    return 'sdk'
+  }
+
+  if (normalized === 'mcp') {
+    return 'mcp'
+  }
+
+  return normalized
+}
+
 export default function AgentsClient({
   initialAgents,
 }: AgentsClientProps) {
@@ -160,6 +191,11 @@ export default function AgentsClient({
       provider: '',
       endpointUrl: '',
       environment: 'production',
+      authenticationMethod: 'none',
+      credentialLabel: '',
+      webhookSecretLabel: '',
+      mcpTransport: 'http',
+      sdkPackage: '',
     })
 
   const [connectionError, setConnectionError] =
@@ -243,13 +279,6 @@ export default function AgentsClient({
     0,
   )
 
-  /*
-   * Open immediately.
-   *
-   * The old implementation waited for Supabase before the
-   * modal could feel ready. This version renders the modal
-   * first and loads connection information separately.
-   */
   function openAgent(agent: Agent) {
     setSelectedAgent(agent)
 
@@ -305,11 +334,18 @@ export default function AgentsClient({
 
       setConnectionForm({
         connectionType:
-          data.connection_type || 'webhook',
+          normalizeConnectionType(
+            data.connection_type || 'webhook',
+          ),
         provider: data.provider || '',
         endpointUrl: data.endpoint_url || '',
         environment:
           data.environment || 'production',
+        authenticationMethod: 'none',
+        credentialLabel: '',
+        webhookSecretLabel: '',
+        mcpTransport: 'http',
+        sdkPackage: '',
       })
 
       const { data: identity } = await supabase
@@ -345,13 +381,6 @@ export default function AgentsClient({
   }
 
   function closeAgent() {
-    if (
-      loadingConnection &&
-      !selectedAgent
-    ) {
-      return
-    }
-
     setSelectedAgent(null)
     setConnection(null)
     setConnectionError(null)
@@ -397,6 +426,11 @@ export default function AgentsClient({
       provider: '',
       endpointUrl: '',
       environment: 'production',
+      authenticationMethod: 'none',
+      credentialLabel: '',
+      webhookSecretLabel: '',
+      mcpTransport: 'http',
+      sdkPackage: '',
     })
 
     setConnectionError(null)
@@ -407,6 +441,7 @@ export default function AgentsClient({
     setConnectionError(null)
     setMessage(null)
     setEditingConnection(false)
+    resetConnectionForm()
     setShowConnectionForm(true)
   }
 
@@ -417,12 +452,19 @@ export default function AgentsClient({
 
     setConnectionForm({
       connectionType:
-        connection.connection_type || 'webhook',
+        normalizeConnectionType(
+          connection.connection_type || 'webhook',
+        ),
       provider: connection.provider || '',
       endpointUrl:
         connection.endpoint_url || '',
       environment:
         connection.environment || 'production',
+      authenticationMethod: 'none',
+      credentialLabel: '',
+      webhookSecretLabel: '',
+      mcpTransport: 'http',
+      sdkPackage: '',
     })
 
     setConnectionError(null)
@@ -432,6 +474,10 @@ export default function AgentsClient({
   }
 
   function validateConnection() {
+    const type = normalizeConnectionType(
+      connectionForm.connectionType,
+    )
+
     if (!connectionForm.provider.trim()) {
       setConnectionError(
         'Please enter the agent provider.',
@@ -439,32 +485,115 @@ export default function AgentsClient({
       return false
     }
 
-    if (!connectionForm.endpointUrl.trim()) {
-      setConnectionError(
-        'Please enter the agent endpoint URL.',
-      )
-      return false
-    }
-
-    try {
-      const url = new URL(
-        connectionForm.endpointUrl.trim(),
-      )
-
-      if (
-        url.protocol !== 'https:' &&
-        url.protocol !== 'http:'
-      ) {
+    /*
+     * REST API
+     *
+     * Requires an HTTPS endpoint.
+     * Authentication is configured separately.
+     */
+    if (type === 'api') {
+      if (!connectionForm.endpointUrl.trim()) {
         setConnectionError(
-          'The endpoint URL must use http:// or https://.',
+          'Please enter the REST API endpoint URL.',
         )
         return false
       }
-    } catch {
-      setConnectionError(
-        'Please enter a valid endpoint URL.',
-      )
-      return false
+
+      try {
+        const url = new URL(
+          connectionForm.endpointUrl.trim(),
+        )
+
+        if (url.protocol !== 'https:') {
+          setConnectionError(
+            'REST API connections must use HTTPS.',
+          )
+          return false
+        }
+      } catch {
+        setConnectionError(
+          'Please enter a valid REST API endpoint URL.',
+        )
+        return false
+      }
+
+      if (
+        connectionForm.authenticationMethod ===
+        'none'
+      ) {
+        setConnectionError(
+          'Please select an authentication method for the REST API.',
+        )
+        return false
+      }
+    }
+
+    /*
+     * Webhook
+     *
+     * No outbound agent endpoint is required.
+     * Arbyter will receive events through its webhook receiver.
+     */
+    if (type === 'webhook') {
+      return true
+    }
+
+    /*
+     * SDK
+     *
+     * SDK connections do not require an HTTP endpoint.
+     */
+    if (type === 'sdk') {
+      if (!connectionForm.sdkPackage.trim()) {
+        setConnectionError(
+          'Please enter the SDK/package identifier.',
+        )
+        return false
+      }
+
+      return true
+    }
+
+    /*
+     * MCP
+     *
+     * HTTP/SSE transports need an HTTPS endpoint.
+     * Local stdio does not.
+     */
+    if (type === 'mcp') {
+      if (
+        connectionForm.mcpTransport ===
+          'http' ||
+        connectionForm.mcpTransport ===
+          'sse'
+      ) {
+        if (!connectionForm.endpointUrl.trim()) {
+          setConnectionError(
+            'Please enter the MCP server endpoint.',
+          )
+          return false
+        }
+
+        try {
+          const url = new URL(
+            connectionForm.endpointUrl.trim(),
+          )
+
+          if (url.protocol !== 'https:') {
+            setConnectionError(
+              'MCP HTTP/SSE connections must use HTTPS.',
+            )
+            return false
+          }
+        } catch {
+          setConnectionError(
+            'Please enter a valid MCP endpoint URL.',
+          )
+          return false
+        }
+      }
+
+      return true
     }
 
     return true
@@ -517,13 +646,72 @@ export default function AgentsClient({
       const organizationId =
         await getOrganizationId()
 
+      const type = normalizeConnectionType(
+        connectionForm.connectionType,
+      )
+
+      /*
+       * Only store non-secret configuration here.
+       *
+       * API keys and webhook secrets must NOT be placed
+       * in this browser-side payload. Those will be handled
+       * by the secure server-side credential system later.
+       */
+      const configuration: Record<
+        string,
+        unknown
+      > = {}
+
+      if (type === 'api') {
+        configuration.authentication_method =
+          connectionForm.authenticationMethod
+
+        if (
+          connectionForm.credentialLabel.trim()
+        ) {
+          configuration.credential_label =
+            connectionForm.credentialLabel.trim()
+        }
+      }
+
+      if (type === 'webhook') {
+        configuration.direction = 'inbound'
+
+        if (
+          connectionForm.webhookSecretLabel.trim()
+        ) {
+          configuration.secret_label =
+            connectionForm.webhookSecretLabel.trim()
+        }
+      }
+
+      if (type === 'sdk') {
+        configuration.package =
+          connectionForm.sdkPackage.trim()
+      }
+
+      if (type === 'mcp') {
+        configuration.transport =
+          connectionForm.mcpTransport
+      }
+
       const payload = {
-        connection_type:
-          connectionForm.connectionType,
+        connection_type: type,
         provider:
           connectionForm.provider.trim(),
         endpoint_url:
-          connectionForm.endpointUrl.trim(),
+          type === 'api' ||
+          (
+            type === 'mcp' &&
+            (
+              connectionForm.mcpTransport ===
+                'http' ||
+              connectionForm.mcpTransport ===
+                'sse'
+            )
+          )
+            ? connectionForm.endpointUrl.trim()
+            : null,
         environment:
           connectionForm.environment,
         status: 'pending',
@@ -532,6 +720,7 @@ export default function AgentsClient({
         last_seen_at: null,
         last_health_check_at: null,
         consecutive_failures: 0,
+        configuration,
       }
 
       if (editingConnection && connection) {
@@ -581,8 +770,7 @@ export default function AgentsClient({
             message:
               'Agent connection configuration updated.',
             metadata: {
-              connection_type:
-                connectionForm.connectionType,
+              connection_type: type,
               provider:
                 connectionForm.provider.trim(),
               environment:
@@ -628,7 +816,6 @@ export default function AgentsClient({
                 selectedAgent.id,
               ...payload,
               capabilities: {},
-              configuration: {},
             })
             .select(
               `
@@ -664,8 +851,7 @@ export default function AgentsClient({
             message:
               'Agent connection configuration created.',
             metadata: {
-              connection_type:
-                connectionForm.connectionType,
+              connection_type: type,
               provider:
                 connectionForm.provider.trim(),
               environment:
@@ -1025,6 +1211,11 @@ export default function AgentsClient({
       setCreatingAgent(false)
     }
   }
+
+  const connectionType =
+    normalizeConnectionType(
+      connectionForm.connectionType,
+    )
 
   return (
     <main className="flex flex-col gap-6">
@@ -1492,7 +1683,7 @@ export default function AgentsClient({
                             <p className="break-all">
                               Endpoint:{' '}
                               {connection.endpoint_url ||
-                                'Not configured'}
+                                'Not required'}
                             </p>
 
                             <p>
@@ -1572,27 +1763,39 @@ export default function AgentsClient({
                     </h3>
 
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Configure the real connection details.
-                      Arbyter will not claim the agent is connected
-                      until verification succeeds.
+                      Configure how Arbyter communicates with or
+                      receives signals from this agent.
                     </p>
                   </div>
 
                   <div className="mt-5 space-y-4">
+                    {/* Connection type */}
                     <FormField label="Connection type">
                       <select
                         value={
                           connectionForm.connectionType
                         }
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const nextType =
+                            normalizeConnectionType(
+                              event.target.value,
+                            )
+
+                          setConnectionError(null)
+
                           setConnectionForm(
                             (current) => ({
                               ...current,
                               connectionType:
-                                event.target.value,
+                                nextType,
+                              endpointUrl:
+                                nextType ===
+                                'webhook'
+                                  ? ''
+                                  : current.endpointUrl,
                             }),
                           )
-                        }
+                        }}
                         disabled={
                           savingConnection
                         }
@@ -1616,6 +1819,7 @@ export default function AgentsClient({
                       </select>
                     </FormField>
 
+                    {/* Provider */}
                     <FormField label="Provider">
                       <input
                         value={
@@ -1638,29 +1842,289 @@ export default function AgentsClient({
                       />
                     </FormField>
 
-                    <FormField label="Agent endpoint">
-                      <input
-                        type="url"
-                        value={
-                          connectionForm.endpointUrl
-                        }
-                        onChange={(event) =>
-                          setConnectionForm(
-                            (current) => ({
-                              ...current,
-                              endpointUrl:
-                                event.target.value,
-                            }),
-                          )
-                        }
-                        placeholder="https://..."
-                        disabled={
-                          savingConnection
-                        }
-                        className="form-input"
-                      />
-                    </FormField>
+                    {/* REST API */}
+                    {connectionType === 'api' && (
+                      <>
+                        <FormField label="API endpoint">
+                          <input
+                            type="url"
+                            value={
+                              connectionForm.endpointUrl
+                            }
+                            onChange={(event) =>
+                              setConnectionForm(
+                                (current) => ({
+                                  ...current,
+                                  endpointUrl:
+                                    event.target.value,
+                                }),
+                              )
+                            }
+                            placeholder="https://api.example.com/v1/agent"
+                            disabled={
+                              savingConnection
+                            }
+                            className="form-input"
+                          />
+                        </FormField>
 
+                        <FormField label="Authentication">
+                          <select
+                            value={
+                              connectionForm.authenticationMethod
+                            }
+                            onChange={(event) =>
+                              setConnectionForm(
+                                (current) => ({
+                                  ...current,
+                                  authenticationMethod:
+                                    event.target.value,
+                                }),
+                              )
+                            }
+                            disabled={
+                              savingConnection
+                            }
+                            className="form-input"
+                          >
+                            <option value="none">
+                              Select authentication
+                            </option>
+
+                            <option value="api_key">
+                              API Key
+                            </option>
+
+                            <option value="bearer">
+                              Bearer Token
+                            </option>
+
+                            <option value="oauth2">
+                              OAuth 2.0
+                            </option>
+                          </select>
+                        </FormField>
+
+                        {connectionForm.authenticationMethod !==
+                          'none' && (
+                          <FormField label="Credential label">
+                            <input
+                              value={
+                                connectionForm.credentialLabel
+                              }
+                              onChange={(event) =>
+                                setConnectionForm(
+                                  (current) => ({
+                                    ...current,
+                                    credentialLabel:
+                                      event.target.value,
+                                  }),
+                                )
+                              }
+                              placeholder="e.g. Production API credential"
+                              disabled={
+                                savingConnection
+                              }
+                              className="form-input"
+                            />
+
+                            <p className="mt-1.5 text-xs text-muted-foreground">
+                              The secret itself will be added
+                              through Arbyter&apos;s secure credential
+                              system. Do not paste an API key here.
+                            </p>
+                          </FormField>
+                        )}
+                      </>
+                    )}
+
+                    {/* Webhook */}
+                    {connectionType ===
+                      'webhook' && (
+                      <section className="rounded-xl border bg-muted/20 p-4">
+                        <div className="flex items-start gap-3">
+                          <Link2 className="mt-0.5 h-4 w-4 shrink-0" />
+
+                          <div>
+                            <p className="text-sm font-medium">
+                              Inbound webhook
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              The external agent or service sends
+                              events to Arbyter. Arbyter does not
+                              perform a GET request against the
+                              agent.
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 rounded-lg border bg-background p-3">
+                          <p className="text-xs font-medium">
+                            Arbyter receiver
+                          </p>
+
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            The secure Arbyter webhook receiver will
+                            be generated when webhook infrastructure
+                            is enabled.
+                          </p>
+                        </div>
+
+                        <div className="mt-4">
+                          <FormField label="Webhook secret label">
+                            <input
+                              value={
+                                connectionForm.webhookSecretLabel
+                              }
+                              onChange={(event) =>
+                                setConnectionForm(
+                                  (current) => ({
+                                    ...current,
+                                    webhookSecretLabel:
+                                      event.target.value,
+                                  }),
+                                )
+                              }
+                              placeholder="e.g. AgentMail signing secret"
+                              disabled={
+                                savingConnection
+                              }
+                              className="form-input"
+                            />
+
+                            <p className="mt-1.5 text-xs text-muted-foreground">
+                              Do not paste the webhook secret here.
+                              We will store it securely server-side.
+                            </p>
+                          </FormField>
+                        </div>
+                      </section>
+                    )}
+
+                    {/* SDK */}
+                    {connectionType === 'sdk' && (
+                      <section className="space-y-4">
+                        <div className="rounded-xl border bg-muted/20 p-4">
+                          <p className="text-sm font-medium">
+                            SDK integration
+                          </p>
+
+                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                            SDK agents communicate with Arbyter
+                            through an installed runtime package.
+                            An HTTP endpoint is not required.
+                          </p>
+                        </div>
+
+                        <FormField label="SDK / package identifier">
+                          <input
+                            value={
+                              connectionForm.sdkPackage
+                            }
+                            onChange={(event) =>
+                              setConnectionForm(
+                                (current) => ({
+                                  ...current,
+                                  sdkPackage:
+                                    event.target.value,
+                                }),
+                              )
+                            }
+                            placeholder="e.g. @arbyter/agent-sdk"
+                            disabled={
+                              savingConnection
+                            }
+                            className="form-input"
+                          />
+                        </FormField>
+                      </section>
+                    )}
+
+                    {/* MCP */}
+                    {connectionType === 'mcp' && (
+                      <>
+                        <FormField label="MCP transport">
+                          <select
+                            value={
+                              connectionForm.mcpTransport
+                            }
+                            onChange={(event) =>
+                              setConnectionForm(
+                                (current) => ({
+                                  ...current,
+                                  mcpTransport:
+                                    event.target.value,
+                                }),
+                              )
+                            }
+                            disabled={
+                              savingConnection
+                            }
+                            className="form-input"
+                          >
+                            <option value="http">
+                              HTTP
+                            </option>
+
+                            <option value="sse">
+                              Server-Sent Events
+                            </option>
+
+                            <option value="stdio">
+                              Local stdio
+                            </option>
+                          </select>
+                        </FormField>
+
+                        {(
+                          connectionForm.mcpTransport ===
+                            'http' ||
+                          connectionForm.mcpTransport ===
+                            'sse'
+                        ) && (
+                          <FormField label="MCP server endpoint">
+                            <input
+                              type="url"
+                              value={
+                                connectionForm.endpointUrl
+                              }
+                              onChange={(event) =>
+                                setConnectionForm(
+                                  (current) => ({
+                                    ...current,
+                                    endpointUrl:
+                                      event.target.value,
+                                  }),
+                                )
+                              }
+                              placeholder="https://mcp.example.com"
+                              disabled={
+                                savingConnection
+                              }
+                              className="form-input"
+                            />
+                          </FormField>
+                        )}
+
+                        {connectionForm.mcpTransport ===
+                          'stdio' && (
+                          <div className="rounded-xl border bg-muted/20 p-4">
+                            <p className="text-sm font-medium">
+                              Local MCP server
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              No URL is required for a local stdio
+                              transport. Runtime configuration will
+                              be handled by the Arbyter connector.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Environment */}
                     <FormField label="Environment">
                       <select
                         value={
@@ -1695,8 +2159,9 @@ export default function AgentsClient({
                     </FormField>
 
                     <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      Saving this form only stores the connection
-                      configuration. It does not execute a request.
+                      Saving this form only registers the connection
+                      configuration. It does not execute a request or
+                      claim that the agent is connected.
                     </div>
 
                     <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
