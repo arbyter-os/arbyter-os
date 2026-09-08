@@ -18,13 +18,16 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
+type AgentStatus = 'Active' | 'Paused' | 'Needs Review'
+type RiskLevel = 'Low' | 'Medium' | 'High' | 'Critical'
+
 type Agent = {
   id: string
   name: string
   purpose: string
   team: string
-  status: 'Active' | 'Paused' | 'Needs Review'
-  risk: 'Low' | 'Medium' | 'High' | 'Critical'
+  status: AgentStatus
+  risk: RiskLevel
   tasks: number
   lastActivity: string
 }
@@ -59,18 +62,28 @@ type ConnectionRecord = {
   environment: string | null
 }
 
-function statusClass(status: Agent['status']) {
-  switch (status) {
-    case 'Active':
-      return 'bg-green-50 text-green-700'
-    case 'Needs Review':
-      return 'bg-yellow-50 text-yellow-700'
-    default:
-      return 'bg-gray-100 text-gray-600'
+const LIFECYCLE_STATES: ConnectionState[] = [
+  'Registered',
+  'Connection Setup',
+  'Connected',
+  'Verified',
+  'Healthy',
+  'Surveillance Active',
+]
+
+function getStatusClass(status: AgentStatus) {
+  if (status === 'Active') {
+    return 'bg-green-50 text-green-700'
   }
+
+  if (status === 'Needs Review') {
+    return 'bg-yellow-50 text-yellow-700'
+  }
+
+  return 'bg-gray-100 text-gray-600'
 }
 
-function riskClass(risk: Agent['risk']) {
+function getRiskClass(risk: RiskLevel) {
   switch (risk) {
     case 'Critical':
       return 'border-red-200 bg-red-50 text-red-700'
@@ -83,24 +96,15 @@ function riskClass(risk: Agent['risk']) {
   }
 }
 
-function connectionStateFromData(
-  connection:
-    | {
-        status: string | null
-        health_status: string | null
-        last_connected_at: string | null
-      }
-    | null,
-  verified: boolean
+function getConnectionState(
+  connection: ConnectionRecord | null,
+  verified: boolean,
 ): ConnectionState {
   if (!connection) {
     return 'Registered'
   }
 
-  if (
-    connection.health_status === 'healthy' &&
-    verified
-  ) {
+  if (connection.health_status === 'healthy' && verified) {
     return 'Healthy'
   }
 
@@ -121,12 +125,13 @@ function connectionStateFromData(
 export default function AgentsClient({
   initialAgents,
 }: AgentsClientProps) {
-  const [agents, setAgents] =
-    React.useState<Agent[]>(initialAgents)
+  const [agents, setAgents] = React.useState<Agent[]>(
+    initialAgents,
+  )
 
   const [search, setSearch] = React.useState('')
-  const [status, setStatus] = React.useState('All')
-  const [risk, setRisk] = React.useState('All')
+  const [statusFilter, setStatusFilter] = React.useState('All')
+  const [riskFilter, setRiskFilter] = React.useState('All')
 
   const [showNewAgent, setShowNewAgent] =
     React.useState(false)
@@ -134,17 +139,20 @@ export default function AgentsClient({
   const [selectedAgent, setSelectedAgent] =
     React.useState<Agent | null>(null)
 
-  const [showConnectionSetup, setShowConnectionSetup] =
-    React.useState(false)
-
-  const [isEditingConnection, setIsEditingConnection] =
-    React.useState(false)
-
   const [connection, setConnection] =
     React.useState<ConnectionRecord | null>(null)
 
   const [connectionState, setConnectionState] =
     React.useState<ConnectionState>('Registered')
+
+  const [loadingConnection, setLoadingConnection] =
+    React.useState(false)
+
+  const [showConnectionForm, setShowConnectionForm] =
+    React.useState(false)
+
+  const [editingConnection, setEditingConnection] =
+    React.useState(false)
 
   const [connectionForm, setConnectionForm] =
     React.useState<ConnectionForm>({
@@ -154,29 +162,23 @@ export default function AgentsClient({
       environment: 'production',
     })
 
-  const [isLoadingConnection, setIsLoadingConnection] =
-    React.useState(false)
-
-  const [isCreatingConnection, setIsCreatingConnection] =
-    React.useState(false)
-
-  const [isSavingConnection, setIsSavingConnection] =
-    React.useState(false)
-
-  const [isDeletingConnection, setIsDeletingConnection] =
-    React.useState(false)
-
-  const [isDeletingAgent, setIsDeletingAgent] =
-    React.useState(false)
-
-  const [isVerifying, setIsVerifying] =
-    React.useState(false)
-
   const [connectionError, setConnectionError] =
     React.useState<string | null>(null)
 
-  const [verificationMessage, setVerificationMessage] =
+  const [message, setMessage] =
     React.useState<string | null>(null)
+
+  const [savingConnection, setSavingConnection] =
+    React.useState(false)
+
+  const [deletingConnection, setDeletingConnection] =
+    React.useState(false)
+
+  const [verifying, setVerifying] =
+    React.useState(false)
+
+  const [deletingAgent, setDeletingAgent] =
+    React.useState(false)
 
   const [agentName, setAgentName] =
     React.useState('')
@@ -187,47 +189,202 @@ export default function AgentsClient({
   const [agentType, setAgentType] =
     React.useState('general')
 
-  const [isCreating, setIsCreating] =
+  const [creatingAgent, setCreatingAgent] =
     React.useState(false)
 
   const [createError, setCreateError] =
     React.useState<string | null>(null)
 
-  const filteredAgents = agents.filter((agent) => {
-    const query = search.toLowerCase()
+  const filteredAgents = React.useMemo(() => {
+    const query = search.trim().toLowerCase()
 
-    const matchesSearch =
-      agent.name.toLowerCase().includes(query) ||
-      agent.purpose.toLowerCase().includes(query) ||
-      agent.team.toLowerCase().includes(query)
+    return agents.filter((agent) => {
+      const matchesSearch =
+        !query ||
+        agent.name.toLowerCase().includes(query) ||
+        agent.purpose.toLowerCase().includes(query) ||
+        agent.team.toLowerCase().includes(query)
 
-    const matchesStatus =
-      status === 'All' || agent.status === status
+      const matchesStatus =
+        statusFilter === 'All' ||
+        agent.status === statusFilter
 
-    const matchesRisk =
-      risk === 'All' || agent.risk === risk
+      const matchesRisk =
+        riskFilter === 'All' ||
+        agent.risk === riskFilter
 
-    return matchesSearch && matchesStatus && matchesRisk
-  })
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesRisk
+      )
+    })
+  }, [
+    agents,
+    search,
+    statusFilter,
+    riskFilter,
+  ])
 
-  const active = agents.filter(
-    (agent) => agent.status === 'Active'
+  const activeAgents = agents.filter(
+    (agent) => agent.status === 'Active',
   ).length
 
-  const needsReview = agents.filter(
-    (agent) => agent.status === 'Needs Review'
+  const reviewAgents = agents.filter(
+    (agent) => agent.status === 'Needs Review',
   ).length
 
-  const critical = agents.filter(
-    (agent) => agent.risk === 'Critical'
+  const criticalAgents = agents.filter(
+    (agent) => agent.risk === 'Critical',
   ).length
 
   const totalTasks = agents.reduce(
-    (sum, agent) => sum + agent.tasks,
-    0
+    (total, agent) => total + agent.tasks,
+    0,
   )
 
-  function resetForm() {
+  /*
+   * Open immediately.
+   *
+   * The old implementation waited for Supabase before the
+   * modal could feel ready. This version renders the modal
+   * first and loads connection information separately.
+   */
+  function openAgent(agent: Agent) {
+    setSelectedAgent(agent)
+
+    setConnection(null)
+    setConnectionState('Registered')
+    setLoadingConnection(true)
+
+    setShowConnectionForm(false)
+    setEditingConnection(false)
+
+    setConnectionError(null)
+    setMessage(null)
+
+    loadConnection(agent.id)
+  }
+
+  async function loadConnection(agentId: string) {
+    try {
+      const supabase = createClient()
+
+      const { data, error } = await supabase
+        .from('agent_connections')
+        .select(
+          `
+            id,
+            status,
+            health_status,
+            last_connected_at,
+            connection_type,
+            provider,
+            endpoint_url,
+            environment
+          `,
+        )
+        .eq('agent_id', agentId)
+        .order('created_at', {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        throw error
+      }
+
+      if (!data) {
+        setConnection(null)
+        setConnectionState('Registered')
+        return
+      }
+
+      setConnection(data)
+
+      setConnectionForm({
+        connectionType:
+          data.connection_type || 'webhook',
+        provider: data.provider || '',
+        endpointUrl: data.endpoint_url || '',
+        environment:
+          data.environment || 'production',
+      })
+
+      const { data: identity } = await supabase
+        .from('agent_identities')
+        .select('verified')
+        .eq('agent_id', agentId)
+        .order('created_at', {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle()
+
+      setConnectionState(
+        getConnectionState(
+          data,
+          identity?.verified === true,
+        ),
+      )
+    } catch (error) {
+      console.error(
+        'Failed to load agent connection:',
+        error,
+      )
+
+      setConnectionError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to load connection information.',
+      )
+    } finally {
+      setLoadingConnection(false)
+    }
+  }
+
+  function closeAgent() {
+    if (
+      loadingConnection &&
+      !selectedAgent
+    ) {
+      return
+    }
+
+    setSelectedAgent(null)
+    setConnection(null)
+    setConnectionError(null)
+    setMessage(null)
+    setShowConnectionForm(false)
+    setEditingConnection(false)
+  }
+
+  React.useEffect(() => {
+    if (!selectedAgent) {
+      return
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        closeAgent()
+      }
+    }
+
+    document.addEventListener(
+      'keydown',
+      handleEscape,
+    )
+
+    return () => {
+      document.removeEventListener(
+        'keydown',
+        handleEscape,
+      )
+    }
+  }, [selectedAgent])
+
+  function resetAgentForm() {
     setAgentName('')
     setAgentDescription('')
     setAgentType('general')
@@ -243,171 +400,69 @@ export default function AgentsClient({
     })
 
     setConnectionError(null)
-    setVerificationMessage(null)
-    setIsEditingConnection(false)
+    setEditingConnection(false)
   }
 
-  function closeAgentModal() {
-    setSelectedAgent(null)
-    setConnection(null)
-    setShowConnectionSetup(false)
-    setIsEditingConnection(false)
-    resetConnectionForm()
-  }
-
-  async function openAgent(agent: Agent) {
-    setSelectedAgent(agent)
-    setShowConnectionSetup(false)
-    setIsEditingConnection(false)
+  function startConnectionSetup() {
     setConnectionError(null)
-    setVerificationMessage(null)
-    setIsLoadingConnection(true)
-    setConnectionState('Registered')
-    setConnection(null)
-
-    try {
-      const supabase = createClient()
-
-      const {
-        data: connectionData,
-        error: connectionError,
-      } = await supabase
-        .from('agent_connections')
-        .select(
-          'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
-        )
-        .eq('agent_id', agent.id)
-        .order('created_at', {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle()
-
-      if (connectionError) {
-        throw connectionError
-      }
-
-      if (connectionData) {
-        setConnection(connectionData)
-
-        setConnectionForm({
-          connectionType:
-            connectionData.connection_type ||
-            'webhook',
-          provider:
-            connectionData.provider || '',
-          endpointUrl:
-            connectionData.endpoint_url || '',
-          environment:
-            connectionData.environment ||
-            'production',
-        })
-
-        const {
-          data: identity,
-          error: identityError,
-        } = await supabase
-          .from('agent_identities')
-          .select('verified')
-          .eq('agent_id', agent.id)
-          .order('created_at', {
-            ascending: false,
-          })
-          .limit(1)
-          .maybeSingle()
-
-        if (identityError) {
-          throw identityError
-        }
-
-        setConnectionState(
-          connectionStateFromData(
-            connectionData,
-            identity?.verified === true
-          )
-        )
-      } else {
-        setConnectionState('Registered')
-      }
-    } catch (error) {
-      console.error(
-        'Failed to load agent connection:',
-        error
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Unable to load the connection state.'
-      )
-    } finally {
-      setIsLoadingConnection(false)
-    }
+    setMessage(null)
+    setEditingConnection(false)
+    setShowConnectionForm(true)
   }
 
-  function beginConnectionSetup() {
-    setConnectionError(null)
-    setVerificationMessage(null)
-    setIsEditingConnection(false)
-    setShowConnectionSetup(true)
-  }
-
-  function beginEditConnection() {
+  function startConnectionEdit() {
     if (!connection) {
       return
     }
 
     setConnectionForm({
       connectionType:
-        connection.connection_type ||
-        'webhook',
-      provider:
-        connection.provider || '',
+        connection.connection_type || 'webhook',
+      provider: connection.provider || '',
       endpointUrl:
         connection.endpoint_url || '',
       environment:
-        connection.environment ||
-        'production',
+        connection.environment || 'production',
     })
 
     setConnectionError(null)
-    setVerificationMessage(null)
-    setIsEditingConnection(true)
-    setShowConnectionSetup(true)
+    setMessage(null)
+    setEditingConnection(true)
+    setShowConnectionForm(true)
   }
 
-  function validateConnectionForm() {
+  function validateConnection() {
     if (!connectionForm.provider.trim()) {
       setConnectionError(
-        'Please enter the agent provider.'
+        'Please enter the agent provider.',
       )
       return false
     }
 
     if (!connectionForm.endpointUrl.trim()) {
       setConnectionError(
-        'Please enter the agent endpoint URL.'
+        'Please enter the agent endpoint URL.',
       )
       return false
     }
 
     try {
-      const parsedUrl = new URL(
-        connectionForm.endpointUrl.trim()
+      const url = new URL(
+        connectionForm.endpointUrl.trim(),
       )
 
       if (
-        parsedUrl.protocol !== 'http:' &&
-        parsedUrl.protocol !== 'https:'
+        url.protocol !== 'https:' &&
+        url.protocol !== 'http:'
       ) {
         setConnectionError(
-          'The endpoint URL must use http:// or https://.'
+          'The endpoint URL must use http:// or https://.',
         )
         return false
       }
     } catch {
       setConnectionError(
-        'Please enter a valid endpoint URL, such as https://example.com/.'
+        'Please enter a valid endpoint URL.',
       )
       return false
     }
@@ -415,119 +470,196 @@ export default function AgentsClient({
     return true
   }
 
-  async function handleCreateConnection() {
+  async function getOrganizationId() {
+    const supabase = createClient()
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      throw new Error(
+        'You must be signed in.',
+      )
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('organization_id')
+      .eq('id', user.id)
+      .single()
+
+    if (error || !data?.organization_id) {
+      throw new Error(
+        'Could not determine your organization.',
+      )
+    }
+
+    return data.organization_id
+  }
+
+  async function saveConnection() {
     if (!selectedAgent) {
       return
     }
 
-    if (!validateConnectionForm()) {
+    if (!validateConnection()) {
       return
     }
 
-    setIsCreatingConnection(true)
+    setSavingConnection(true)
     setConnectionError(null)
-    setVerificationMessage(null)
+    setMessage(null)
 
     try {
       const supabase = createClient()
+      const organizationId =
+        await getOrganizationId()
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        throw new Error(
-          'You must be signed in to connect an agent.'
-        )
+      const payload = {
+        connection_type:
+          connectionForm.connectionType,
+        provider:
+          connectionForm.provider.trim(),
+        endpoint_url:
+          connectionForm.endpointUrl.trim(),
+        environment:
+          connectionForm.environment,
+        status: 'pending',
+        health_status: 'unknown',
+        last_connected_at: null,
+        last_seen_at: null,
+        last_health_check_at: null,
+        consecutive_failures: 0,
       }
 
-      const {
-        data: userRecord,
-        error: userRecordError,
-      } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single()
+      if (editingConnection && connection) {
+        const { data, error } = await supabase
+          .from('agent_connections')
+          .update(payload)
+          .eq('id', connection.id)
+          .eq(
+            'agent_id',
+            selectedAgent.id,
+          )
+          .eq(
+            'organization_id',
+            organizationId,
+          )
+          .select(
+            `
+              id,
+              status,
+              health_status,
+              last_connected_at,
+              connection_type,
+              provider,
+              endpoint_url,
+              environment
+            `,
+          )
+          .single()
 
-      if (
-        userRecordError ||
-        !userRecord?.organization_id
-      ) {
-        throw new Error(
-          'Could not determine your organization.'
-        )
-      }
+        if (error || !data) {
+          throw new Error(
+            error?.message ||
+              'Failed to update the connection.',
+          )
+        }
 
-      const {
-        data: existingConnection,
-        error: existingConnectionError,
-      } = await supabase
-        .from('agent_connections')
-        .select('id')
-        .eq('agent_id', selectedAgent.id)
-        .limit(1)
-        .maybeSingle()
-
-      if (existingConnectionError) {
-        throw existingConnectionError
-      }
-
-      if (existingConnection) {
-        throw new Error(
-          'This agent already has a connection. Use Edit Connection instead.'
-        )
-      }
-
-      const {
-        data: newConnection,
-        error: connectionInsertError,
-      } = await supabase
-        .from('agent_connections')
-        .insert({
-          organization_id:
-            userRecord.organization_id,
-          agent_id: selectedAgent.id,
-          connection_type:
-            connectionForm.connectionType,
-          provider:
-            connectionForm.provider.trim(),
-          endpoint_url:
-            connectionForm.endpointUrl.trim(),
-          environment:
-            connectionForm.environment,
-          status: 'pending',
-          health_status: 'unknown',
-          capabilities: {},
-          configuration: {},
-          consecutive_failures: 0,
-        })
-        .select(
-          'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
-        )
-        .single()
-
-      if (
-        connectionInsertError ||
-        !newConnection
-      ) {
-        throw new Error(
-          connectionInsertError?.message ||
-            'Failed to create the connection.'
-        )
-      }
-
-      const { error: eventError } =
         await supabase
           .from('agent_connection_events')
           .insert({
             organization_id:
-              userRecord.organization_id,
+              organizationId,
             agent_id: selectedAgent.id,
-            agent_connection_id:
-              newConnection.id,
-            event_type: 'connection_setup',
+            agent_connection_id: connection.id,
+            event_type:
+              'connection_updated',
+            status: 'pending',
+            message:
+              'Agent connection configuration updated.',
+            metadata: {
+              connection_type:
+                connectionForm.connectionType,
+              provider:
+                connectionForm.provider.trim(),
+              environment:
+                connectionForm.environment,
+            },
+          })
+
+        setConnection(data)
+        setConnectionState(
+          'Connection Setup',
+        )
+        setShowConnectionForm(false)
+        setEditingConnection(false)
+
+        setMessage(
+          'Connection updated. Verify it before treating the agent as connected.',
+        )
+      } else {
+        const { data: existing } =
+          await supabase
+            .from('agent_connections')
+            .select('id')
+            .eq(
+              'agent_id',
+              selectedAgent.id,
+            )
+            .limit(1)
+            .maybeSingle()
+
+        if (existing) {
+          throw new Error(
+            'This agent already has a connection. Use Edit Connection instead.',
+          )
+        }
+
+        const { data, error } =
+          await supabase
+            .from('agent_connections')
+            .insert({
+              organization_id:
+                organizationId,
+              agent_id:
+                selectedAgent.id,
+              ...payload,
+              capabilities: {},
+              configuration: {},
+            })
+            .select(
+              `
+                id,
+                status,
+                health_status,
+                last_connected_at,
+                connection_type,
+                provider,
+                endpoint_url,
+                environment
+              `,
+            )
+            .single()
+
+        if (error || !data) {
+          throw new Error(
+            error?.message ||
+              'Failed to create the connection.',
+          )
+        }
+
+        await supabase
+          .from('agent_connection_events')
+          .insert({
+            organization_id:
+              organizationId,
+            agent_id: selectedAgent.id,
+            agent_connection_id: data.id,
+            event_type:
+              'connection_setup',
             status: 'pending',
             message:
               'Agent connection configuration created.',
@@ -541,423 +673,140 @@ export default function AgentsClient({
             },
           })
 
-      if (eventError) {
-        console.error(
-          'Connection event could not be recorded:',
-          eventError
+        setConnection(data)
+        setConnectionState(
+          'Connection Setup',
+        )
+        setShowConnectionForm(false)
+
+        setMessage(
+          'Connection registered. Verify it before treating the agent as connected.',
         )
       }
-
-      setConnection(newConnection)
-      setConnectionState('Connection Setup')
-      setShowConnectionSetup(false)
-      setIsEditingConnection(false)
     } catch (error) {
       console.error(
-        'Failed to create agent connection:',
-        error
+        'Failed to save connection:',
+        error,
       )
 
       setConnectionError(
         error instanceof Error
           ? error.message
-          : 'Failed to create the connection.'
+          : 'Failed to save the connection.',
       )
     } finally {
-      setIsCreatingConnection(false)
+      setSavingConnection(false)
     }
   }
 
-  async function handleUpdateConnection() {
+  async function deleteConnection() {
     if (!selectedAgent || !connection) {
       return
     }
 
-    if (!validateConnectionForm()) {
+    if (
+      !window.confirm(
+        `Delete the connection configuration for "${selectedAgent.name}"?`,
+      )
+    ) {
       return
     }
 
-    setIsSavingConnection(true)
+    setDeletingConnection(true)
     setConnectionError(null)
-    setVerificationMessage(null)
+    setMessage(null)
 
     try {
       const supabase = createClient()
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        throw new Error(
-          'You must be signed in to update an agent connection.'
-        )
-      }
-
-      const {
-        data: userRecord,
-        error: userRecordError,
-      } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single()
-
-      if (
-        userRecordError ||
-        !userRecord?.organization_id
-      ) {
-        throw new Error(
-          'Could not determine your organization.'
-        )
-      }
-
       const organizationId =
-        userRecord.organization_id
+        await getOrganizationId()
 
-      const {
-        data: updatedConnection,
-        error,
-      } = await supabase
+      const { error } = await supabase
         .from('agent_connections')
-        .update({
-          connection_type:
-            connectionForm.connectionType,
-          provider:
-            connectionForm.provider.trim(),
-          endpoint_url:
-            connectionForm.endpointUrl.trim(),
-          environment:
-            connectionForm.environment,
-          status: 'pending',
-          health_status: 'unknown',
-          last_connected_at: null,
-          last_seen_at: null,
-          last_health_check_at: null,
-          consecutive_failures: 0,
-        })
+        .delete()
         .eq('id', connection.id)
-        .eq('agent_id', selectedAgent.id)
+        .eq(
+          'agent_id',
+          selectedAgent.id,
+        )
         .eq(
           'organization_id',
-          organizationId
+          organizationId,
         )
-        .select(
-          'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
-        )
-        .single()
-
-      if (error || !updatedConnection) {
-        throw new Error(
-          error?.message ||
-            'Failed to update the connection.'
-        )
-      }
-
-      const {
-        error: eventError,
-      } = await supabase
-        .from('agent_connection_events')
-        .insert({
-          organization_id: organizationId,
-          agent_id: selectedAgent.id,
-          agent_connection_id:
-            connection.id,
-          event_type: 'connection_updated',
-          status: 'pending',
-          message:
-            'Agent connection configuration updated.',
-          metadata: {
-            connection_type:
-              connectionForm.connectionType,
-            provider:
-              connectionForm.provider.trim(),
-            environment:
-              connectionForm.environment,
-          },
-        })
-
-      if (eventError) {
-        console.error(
-          'Connection update event could not be recorded:',
-          eventError
-        )
-      }
-
-      setConnection(updatedConnection)
-      setConnectionState('Connection Setup')
-      setShowConnectionSetup(false)
-      setIsEditingConnection(false)
-      setVerificationMessage(
-        'Connection configuration updated. Verify the connection before treating it as connected.'
-      )
-    } catch (error) {
-      console.error(
-        'Failed to update agent connection:',
-        error
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to update the connection.'
-      )
-    } finally {
-      setIsSavingConnection(false)
-    }
-  }
-
-  async function handleDeleteConnection() {
-    if (!selectedAgent || !connection) {
-      return
-    }
-
-    const confirmed = window.confirm(
-      `Delete the connection configuration for "${selectedAgent.name}"?\n\nThis removes the connection record. The AI agent itself will remain registered.`
-    )
-
-    if (!confirmed) {
-      return
-    }
-
-    setIsDeletingConnection(true)
-    setConnectionError(null)
-    setVerificationMessage(null)
-
-    try {
-      const supabase = createClient()
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        throw new Error(
-          'You must be signed in to delete a connection.'
-        )
-      }
-
-      const {
-        data: userRecord,
-        error: userRecordError,
-      } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single()
-
-      if (
-        userRecordError ||
-        !userRecord?.organization_id
-      ) {
-        throw new Error(
-          'Could not determine your organization.'
-        )
-      }
-
-      const organizationId =
-        userRecord.organization_id
-
-      const { error } =
-        await supabase
-          .from('agent_connections')
-          .delete()
-          .eq('id', connection.id)
-          .eq('agent_id', selectedAgent.id)
-          .eq(
-            'organization_id',
-            organizationId
-          )
 
       if (error) {
-        throw new Error(
-          `Could not delete the connection: ${error.message}`
-        )
+        throw new Error(error.message)
       }
 
       setConnection(null)
       setConnectionState('Registered')
-      setShowConnectionSetup(false)
-      setIsEditingConnection(false)
+      setShowConnectionForm(false)
+      setEditingConnection(false)
+
       resetConnectionForm()
 
-      setVerificationMessage(
-        'Connection deleted. The agent remains registered in Arbyter.'
+      setMessage(
+        'Connection deleted. The agent remains registered.',
       )
     } catch (error) {
       console.error(
-        'Failed to delete agent connection:',
-        error
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete the connection.'
-      )
-    } finally {
-      setIsDeletingConnection(false)
-    }
-  }
-
-  async function handleDeleteAgent() {
-    if (!selectedAgent) {
-      return
-    }
-
-    const confirmed = window.confirm(
-      `Delete "${selectedAgent.name}" permanently?\n\nThis removes the agent registration. This action cannot be undone.`
-    )
-
-    if (!confirmed) {
-      return
-    }
-
-    setIsDeletingAgent(true)
-    setConnectionError(null)
-    setVerificationMessage(null)
-
-    try {
-      const supabase = createClient()
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        throw new Error(
-          'You must be signed in to delete an agent.'
-        )
-      }
-
-      const {
-        data: userRecord,
-        error: userRecordError,
-      } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single()
-
-      if (
-        userRecordError ||
-        !userRecord?.organization_id
-      ) {
-        throw new Error(
-          'Could not determine your organization.'
-        )
-      }
-
-      const organizationId =
-        userRecord.organization_id
-
-      const {
-        data: deletedAgent,
+        'Failed to delete connection:',
         error,
-      } = await supabase
-        .from('ai_agents')
-        .delete()
-        .eq('id', selectedAgent.id)
-        .eq(
-          'organization_id',
-          organizationId
-        )
-        .select('id')
-
-      if (error) {
-        throw new Error(
-          `Could not delete this agent: ${error.message}`
-        )
-      }
-
-      /*
-       * Supabase can return no error when RLS prevents a row
-       * from being affected. Verify that the row was actually
-       * deleted before changing the UI.
-       */
-      if (
-        !deletedAgent ||
-        deletedAgent.length === 0
-      ) {
-        throw new Error(
-          'The agent was not deleted from the database. Check the ai_agents DELETE policy.'
-        )
-      }
-
-      setAgents((current) =>
-        current.filter(
-          (agent) =>
-            agent.id !== selectedAgent.id
-        )
-      )
-
-      closeAgentModal()
-    } catch (error) {
-      console.error(
-        'Failed to delete agent:',
-        error
       )
 
       setConnectionError(
         error instanceof Error
           ? error.message
-          : 'Failed to delete the agent.'
+          : 'Failed to delete the connection.',
       )
     } finally {
-      setIsDeletingAgent(false)
+      setDeletingConnection(false)
     }
   }
 
-  async function handleVerifyConnection() {
+  async function verifyConnection() {
     if (!selectedAgent) {
       return
     }
 
-    setIsVerifying(true)
+    setVerifying(true)
     setConnectionError(null)
-    setVerificationMessage(null)
+    setMessage(null)
 
     try {
-      const verifyUrl = new URL(
-        '/api/agents/verify',
-        window.location.origin
-      ).toString()
-
       const response = await fetch(
-        verifyUrl,
+        '/api/agents/verify',
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
+            'Content-Type':
+              'application/json',
+            Accept:
+              'application/json',
           },
           credentials: 'same-origin',
           cache: 'no-store',
           body: JSON.stringify({
-            agentId: selectedAgent.id,
+            agentId:
+              selectedAgent.id,
           }),
-        }
+        },
       )
 
       const contentType =
         response.headers.get(
-          'content-type'
+          'content-type',
         ) || ''
 
       let data: {
         success?: boolean
         message?: string
         error?: string
-        connectionStatus?: string
-        healthStatus?: string
       } = {}
 
       if (
         contentType.includes(
-          'application/json'
+          'application/json',
         )
       ) {
         data = await response.json()
@@ -967,7 +816,7 @@ export default function AgentsClient({
 
         throw new Error(
           text ||
-            `Verification endpoint returned HTTP ${response.status}.`
+            `Verification failed with HTTP ${response.status}.`,
         )
       }
 
@@ -978,193 +827,173 @@ export default function AgentsClient({
         throw new Error(
           data.message ||
             data.error ||
-            `Connection verification failed with HTTP ${response.status}.`
+            'Connection verification failed.',
         )
       }
 
-      setConnectionState(
-        data.connectionStatus ===
-          'connected'
-          ? 'Connected'
-          : 'Connection Setup'
-      )
-
-      setVerificationMessage(
+      setMessage(
         data.message ||
-          'Connection verification completed successfully.'
+          'Connection verification completed.',
       )
 
-      const supabase =
-        createClient()
-
-      const {
-        data: refreshedConnection,
-        error: refreshError,
-      } = await supabase
-        .from('agent_connections')
-        .select(
-          'id, status, health_status, last_connected_at, connection_type, provider, endpoint_url, environment'
-        )
-        .eq(
-          'agent_id',
-          selectedAgent.id
-        )
-        .order('created_at', {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle()
-
-      if (refreshError) {
-        console.error(
-          'Could not refresh connection after verification:',
-          refreshError
-        )
-      }
-
-      if (refreshedConnection) {
-        setConnection(
-          refreshedConnection
-        )
-
-        const {
-          data: identity,
-          error: identityError,
-        } = await supabase
-          .from('agent_identities')
-          .select('verified')
-          .eq(
-            'agent_id',
-            selectedAgent.id
-          )
-          .order('created_at', {
-            ascending: false,
-          })
-          .limit(1)
-          .maybeSingle()
-
-        if (identityError) {
-          console.error(
-            'Could not refresh agent identity:',
-            identityError
-          )
-        }
-
-        setConnectionState(
-          connectionStateFromData(
-            refreshedConnection,
-            identity?.verified === true
-          )
-        )
-      }
+      await loadConnection(
+        selectedAgent.id,
+      )
     } catch (error) {
       console.error(
-        'Failed to verify agent connection:',
-        error
+        'Failed to verify connection:',
+        error,
       )
 
       setConnectionError(
         error instanceof Error
           ? error.message
-          : 'Connection verification failed.'
+          : 'Connection verification failed.',
       )
     } finally {
-      setIsVerifying(false)
+      setVerifying(false)
     }
   }
 
-  async function handleCreateAgent() {
+  async function deleteAgent() {
+    if (!selectedAgent) {
+      return
+    }
+
+    if (
+      !window.confirm(
+        `Delete "${selectedAgent.name}" permanently?\n\nThis removes the agent registration.`,
+      )
+    ) {
+      return
+    }
+
+    setDeletingAgent(true)
+    setConnectionError(null)
+    setMessage(null)
+
+    try {
+      const supabase = createClient()
+      const organizationId =
+        await getOrganizationId()
+
+      const { data, error } =
+        await supabase
+          .from('ai_agents')
+          .delete()
+          .eq(
+            'id',
+            selectedAgent.id,
+          )
+          .eq(
+            'organization_id',
+            organizationId,
+          )
+          .select('id')
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error(
+          'The agent was not deleted. Check the ai_agents DELETE policy.',
+        )
+      }
+
+      setAgents((current) =>
+        current.filter(
+          (agent) =>
+            agent.id !==
+            selectedAgent.id,
+        ),
+      )
+
+      closeAgent()
+    } catch (error) {
+      console.error(
+        'Failed to delete agent:',
+        error,
+      )
+
+      setConnectionError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete the agent.',
+      )
+    } finally {
+      setDeletingAgent(false)
+    }
+  }
+
+  async function createAgent() {
     if (!agentName.trim()) {
       setCreateError(
-        'Please enter an agent name.'
+        'Please enter an agent name.',
       )
       return
     }
 
     if (!agentDescription.trim()) {
       setCreateError(
-        'Please describe what this agent does.'
+        'Please describe what this agent does.',
       )
       return
     }
 
-    setIsCreating(true)
+    setCreatingAgent(true)
     setCreateError(null)
 
     try {
       const supabase = createClient()
+      const organizationId =
+        await getOrganizationId()
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+      const { data, error } =
+        await supabase
+          .from('ai_agents')
+          .insert({
+            organization_id:
+              organizationId,
+            name:
+              agentName.trim(),
+            description:
+              agentDescription.trim(),
+            agent_type:
+              agentType,
+            status: 'active',
+          })
+          .select(
+            `
+              id,
+              name,
+              description,
+              agent_type,
+              status
+            `,
+          )
+          .single()
 
-      if (userError || !user) {
+      if (error || !data) {
         throw new Error(
-          'You must be signed in to create an agent.'
+          error?.message ||
+            'Failed to create the agent.',
         )
       }
 
-      const {
-        data: userRecord,
-        error: userRecordError,
-      } = await supabase
-        .from('users')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single()
-
-      if (
-        userRecordError ||
-        !userRecord?.organization_id
-      ) {
-        throw new Error(
-          'Could not determine your organization.'
-        )
-      }
-
-      const {
-        data: newAgent,
-        error: insertError,
-      } = await supabase
-        .from('ai_agents')
-        .insert({
-          organization_id:
-            userRecord.organization_id,
-          name: agentName.trim(),
-          description:
-            agentDescription.trim(),
-          agent_type: agentType,
-          status: 'active',
-        })
-        .select(
-          'id, name, description, agent_type, status, created_at'
-        )
-        .single()
-
-      if (
-        insertError ||
-        !newAgent
-      ) {
-        throw new Error(
-          insertError?.message ||
-            'Failed to create the agent.'
-        )
-      }
-
-      const normalizedAgent: Agent = {
-        id: newAgent.id,
-        name: newAgent.name,
+      const newAgent: Agent = {
+        id: data.id,
+        name: data.name,
         purpose:
-          newAgent.description ||
+          data.description ||
           'AI agent registered in the Arbyter governance environment.',
         team:
-          newAgent.agent_type ||
+          data.agent_type ||
           'AI Operations',
         status:
-          newAgent.status === 'paused'
+          data.status === 'paused'
             ? 'Paused'
-            : newAgent.status ===
+            : data.status ===
                 'needs_review'
               ? 'Needs Review'
               : 'Active',
@@ -1175,27 +1004,25 @@ export default function AgentsClient({
       }
 
       setAgents((current) => [
-        normalizedAgent,
+        newAgent,
         ...current,
       ])
 
-      resetForm()
+      resetAgentForm()
       setShowNewAgent(false)
-
-      window.location.reload()
     } catch (error) {
       console.error(
         'Failed to create agent:',
-        error
+        error,
       )
 
       setCreateError(
         error instanceof Error
           ? error.message
-          : 'Failed to create the agent.'
+          : 'Failed to create the agent.',
       )
     } finally {
-      setIsCreating(false)
+      setCreatingAgent(false)
     }
   }
 
@@ -1221,7 +1048,7 @@ export default function AgentsClient({
         <button
           type="button"
           onClick={() => {
-            resetForm()
+            resetAgentForm()
             setShowNewAgent(true)
           }}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
@@ -1233,88 +1060,56 @@ export default function AgentsClient({
 
       {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Total Agents
-            </p>
-            <Bot className="h-4 w-4 text-muted-foreground" />
-          </div>
+        <SummaryCard
+          label="Total Agents"
+          value={agents.length}
+          description="Registered in Arbyter"
+          icon={<Bot className="h-4 w-4" />}
+        />
 
-          <p className="mt-2 text-2xl font-semibold">
-            {agents.length}
-          </p>
+        <SummaryCard
+          label="Active"
+          value={activeAgents}
+          description="Currently registered as active"
+          icon={<Activity className="h-4 w-4" />}
+        />
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Registered in Arbyter
-          </p>
-        </div>
+        <SummaryCard
+          label="Needs Review"
+          value={reviewAgents}
+          description="Governance attention required"
+          icon={
+            <AlertTriangle className="h-4 w-4" />
+          }
+        />
 
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Active
-            </p>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {active}
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            Currently registered as active
-          </p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Needs Review
-            </p>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {needsReview}
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            Governance attention required
-          </p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Tasks Executed
-            </p>
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {totalTasks.toLocaleString()}
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            Across registered agents
-          </p>
-        </div>
+        <SummaryCard
+          label="Tasks Executed"
+          value={totalTasks.toLocaleString()}
+          description="Across registered agents"
+          icon={
+            <ShieldCheck className="h-4 w-4" />
+          }
+        />
       </section>
 
       {/* Critical notice */}
-      {critical > 0 && (
+      {criticalAgents > 0 && (
         <section className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50/50 p-4">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
 
           <div>
             <p className="text-sm font-medium">
-              {critical} agent requires immediate review
+              {criticalAgents}{' '}
+              {criticalAgents === 1
+                ? 'agent requires'
+                : 'agents require'}{' '}
+              immediate review
             </p>
 
             <p className="mt-1 text-xs text-muted-foreground">
               Critical-risk agents should be reviewed before
-              continuing unrestricted operation.
+              unrestricted operation.
             </p>
           </div>
         </section>
@@ -1327,7 +1122,6 @@ export default function AgentsClient({
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
             <input
-              type="text"
               value={search}
               onChange={(event) =>
                 setSearch(event.target.value)
@@ -1339,9 +1133,11 @@ export default function AgentsClient({
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <select
-              value={status}
+              value={statusFilter}
               onChange={(event) =>
-                setStatus(event.target.value)
+                setStatusFilter(
+                  event.target.value,
+                )
               }
               className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
             >
@@ -1360,9 +1156,11 @@ export default function AgentsClient({
             </select>
 
             <select
-              value={risk}
+              value={riskFilter}
               onChange={(event) =>
-                setRisk(event.target.value)
+                setRiskFilter(
+                  event.target.value,
+                )
               }
               className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
             >
@@ -1386,7 +1184,7 @@ export default function AgentsClient({
         </div>
       </section>
 
-      {/* Agent list */}
+      {/* Agent inventory */}
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="border-b p-5">
           <h2 className="font-semibold">
@@ -1401,21 +1199,11 @@ export default function AgentsClient({
 
         <div className="divide-y">
           {filteredAgents.map((agent) => (
-            <div
+            <button
               key={agent.id}
-              role="button"
-              tabIndex={0}
+              type="button"
               onClick={() => openAgent(agent)}
-              onKeyDown={(event) => {
-                if (
-                  event.key === 'Enter' ||
-                  event.key === ' '
-                ) {
-                  event.preventDefault()
-                  openAgent(agent)
-                }
-              }}
-              className="group flex cursor-pointer flex-col gap-4 p-5 transition hover:bg-muted/30 focus:outline-none focus-visible:bg-muted/30 lg:flex-row lg:items-center"
+              className="group flex w-full cursor-pointer flex-col gap-4 p-5 text-left transition hover:bg-muted/30 focus:outline-none focus-visible:bg-muted/30 lg:flex-row lg:items-center"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background transition group-hover:border-foreground/20">
                 <Bot className="h-4 w-4" />
@@ -1428,16 +1216,16 @@ export default function AgentsClient({
                   </h3>
 
                   <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(
-                      agent.status
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusClass(
+                      agent.status,
                     )}`}
                   >
                     {agent.status}
                   </span>
 
                   <span
-                    className={`rounded-full border px-2.5 py-1 text-xs font-medium ${riskClass(
-                      agent.risk
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium ${getRiskClass(
+                      agent.risk,
                     )}`}
                   >
                     {agent.risk} risk
@@ -1458,7 +1246,8 @@ export default function AgentsClient({
                   </span>
 
                   <span>
-                    Last activity: {agent.lastActivity}
+                    Last activity:{' '}
+                    {agent.lastActivity}
                   </span>
                 </div>
               </div>
@@ -1466,7 +1255,7 @@ export default function AgentsClient({
               <div className="flex shrink-0 items-center justify-end">
                 <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
-            </div>
+            </button>
           ))}
 
           {filteredAgents.length === 0 && (
@@ -1480,23 +1269,24 @@ export default function AgentsClient({
       {/* Agent detail modal */}
       {selectedAgent && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 animate-in fade-in duration-150"
           onMouseDown={(event) => {
             if (
-              event.target === event.currentTarget &&
-              !isDeletingAgent &&
-              !isDeletingConnection &&
-              !isCreatingConnection &&
-              !isSavingConnection &&
-              !isVerifying
+              event.target ===
+                event.currentTarget &&
+              !deletingAgent &&
+              !deletingConnection &&
+              !savingConnection &&
+              !verifying
             ) {
-              closeAgentModal()
+              closeAgent()
             }
           }}
         >
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-2xl animate-in zoom-in-95 duration-150">
+            {/* Modal header */}
             <div className="flex items-start justify-between border-b p-6">
-              <div>
+              <div className="min-w-0 pr-4">
                 <p className="text-sm text-muted-foreground">
                   AI Agent
                 </p>
@@ -1512,15 +1302,14 @@ export default function AgentsClient({
 
               <button
                 type="button"
-                onClick={closeAgentModal}
+                onClick={closeAgent}
                 disabled={
-                  isDeletingAgent ||
-                  isDeletingConnection ||
-                  isCreatingConnection ||
-                  isSavingConnection ||
-                  isVerifying
+                  deletingAgent ||
+                  deletingConnection ||
+                  savingConnection ||
+                  verifying
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
                 aria-label="Close agent details"
               >
                 <X className="h-4 w-4" />
@@ -1529,8 +1318,8 @@ export default function AgentsClient({
 
             <div className="space-y-6 p-6">
               {/* Lifecycle */}
-              <div>
-                <div className="flex items-center justify-between">
+              <section>
+                <div className="flex items-start justify-between">
                   <div>
                     <h3 className="font-semibold">
                       Connection lifecycle
@@ -1546,69 +1335,51 @@ export default function AgentsClient({
                 </div>
 
                 <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {(
-                    [
-                      'Registered',
-                      'Connection Setup',
-                      'Connected',
-                      'Verified',
-                      'Healthy',
-                      'Surveillance Active',
-                    ] as ConnectionState[]
-                  ).map((state) => {
-                    const states: ConnectionState[] = [
-                      'Registered',
-                      'Connection Setup',
-                      'Connected',
-                      'Verified',
-                      'Healthy',
-                      'Surveillance Active',
-                    ]
+                  {LIFECYCLE_STATES.map(
+                    (state, index) => {
+                      const currentIndex =
+                        LIFECYCLE_STATES.indexOf(
+                          connectionState,
+                        )
 
-                    const currentIndex =
-                      states.indexOf(
+                      const complete =
+                        index <= currentIndex
+
+                      const current =
+                        state ===
                         connectionState
-                      )
 
-                    const stateIndex =
-                      states.indexOf(state)
+                      return (
+                        <div
+                          key={state}
+                          className={`rounded-xl border p-3 transition ${
+                            current
+                              ? 'border-foreground bg-muted/40'
+                              : complete
+                                ? 'bg-muted/20'
+                                : 'opacity-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {complete ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              <CircleDot className="h-4 w-4" />
+                            )}
 
-                    const complete =
-                      stateIndex <= currentIndex
-
-                    const isCurrent =
-                      state === connectionState
-
-                    return (
-                      <div
-                        key={state}
-                        className={`rounded-xl border p-3 ${
-                          isCurrent
-                            ? 'border-foreground bg-muted/40'
-                            : complete
-                              ? 'bg-muted/20'
-                              : 'opacity-50'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {complete ? (
-                            <CheckCircle2 className="h-4 w-4" />
-                          ) : (
-                            <CircleDot className="h-4 w-4" />
-                          )}
-
-                          <span className="text-xs font-medium">
-                            {state}
-                          </span>
+                            <span className="text-xs font-medium">
+                              {state}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    },
+                  )}
                 </div>
-              </div>
+              </section>
 
               {/* Current state */}
-              <div className="rounded-xl border bg-muted/20 p-4">
+              <section className="rounded-xl border bg-muted/20 p-4">
                 <div className="flex items-start gap-3">
                   <Link2 className="mt-0.5 h-4 w-4 shrink-0" />
 
@@ -1618,104 +1389,132 @@ export default function AgentsClient({
                     </p>
 
                     <p className="mt-1 text-sm">
-                      {isLoadingConnection
-                        ? 'Loading...'
+                      {loadingConnection
+                        ? 'Loading connection...'
                         : connectionState}
                     </p>
 
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Registration is not treated as a live
-                      surveillance connection.
+                      Registration alone is never treated as a
+                      live surveillance connection.
                     </p>
                   </div>
                 </div>
-              </div>
+              </section>
 
+              {/* Errors */}
               {connectionError && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm whitespace-pre-line text-red-700">
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   {connectionError}
                 </div>
               )}
 
-              {verificationMessage && (
+              {message && (
                 <div className="rounded-xl border bg-muted/20 p-4 text-sm">
-                  {verificationMessage}
+                  {message}
                 </div>
               )}
 
-              {/* Registered state */}
-              {connectionState === 'Registered' &&
-                !showConnectionSetup && (
-                  <div className="flex flex-wrap gap-2">
+              {/* Loading */}
+              {loadingConnection && (
+                <div className="rounded-xl border bg-muted/20 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
+
+                    <p className="text-sm text-muted-foreground">
+                      Loading connection details...
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* No connection */}
+              {!loadingConnection &&
+                !connection &&
+                !showConnectionForm && (
+                  <section className="rounded-xl border p-5">
+                    <div className="flex items-start gap-3">
+                      <Link2 className="mt-0.5 h-4 w-4" />
+
+                      <div>
+                        <p className="text-sm font-medium">
+                          No connection configured
+                        </p>
+
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          This agent is registered but has not yet
+                          been connected to an external signal
+                          source.
+                        </p>
+                      </div>
+                    </div>
+
                     <button
                       type="button"
-                      onClick={beginConnectionSetup}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
+                      onClick={
+                        startConnectionSetup
+                      }
+                      className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
                     >
                       <Link2 className="h-4 w-4" />
                       Connect Agent
                     </button>
-                  </div>
+                  </section>
                 )}
 
               {/* Existing connection */}
-              {connectionState !== 'Registered' &&
-                !showConnectionSetup && (
-                  <div className="rounded-xl border p-5">
+              {!loadingConnection &&
+                connection &&
+                !showConnectionForm && (
+                  <section className="rounded-xl border p-5">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex items-start gap-3">
                         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
 
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-sm font-medium">
-                            Connection configuration found
+                            Connection configuration
                           </p>
 
-                          {connection && (
-                            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                              <p>
-                                Type:{' '}
-                                {connection.connection_type ||
-                                  'Unknown'}
-                              </p>
+                          <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+                            <p>
+                              Type:{' '}
+                              {connection.connection_type ||
+                                'Unknown'}
+                            </p>
 
-                              <p>
-                                Provider:{' '}
-                                {connection.provider ||
-                                  'Unknown'}
-                              </p>
+                            <p>
+                              Provider:{' '}
+                              {connection.provider ||
+                                'Unknown'}
+                            </p>
 
-                              <p className="break-all">
-                                Endpoint:{' '}
-                                {connection.endpoint_url ||
-                                  'Not configured'}
-                              </p>
+                            <p className="break-all">
+                              Endpoint:{' '}
+                              {connection.endpoint_url ||
+                                'Not configured'}
+                            </p>
 
-                              <p>
-                                Environment:{' '}
-                                {connection.environment ||
-                                  'Unknown'}
-                              </p>
-                            </div>
-                          )}
-
-                          <p className="mt-3 text-xs text-muted-foreground">
-                            The connection exists in Supabase. Run
-                            verification before treating the agent
-                            as connected.
-                          </p>
+                            <p>
+                              Environment:{' '}
+                              {connection.environment ||
+                                'Unknown'}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <div className="flex shrink-0 flex-wrap gap-2">
                         <button
                           type="button"
-                          onClick={beginEditConnection}
-                          disabled={
-                            isDeletingConnection ||
-                            isVerifying
+                          onClick={
+                            startConnectionEdit
                           }
-                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={
+                            deletingConnection ||
+                            verifying
+                          }
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition hover:bg-muted disabled:opacity-50"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                           Edit
@@ -1724,19 +1523,18 @@ export default function AgentsClient({
                         <button
                           type="button"
                           onClick={
-                            handleVerifyConnection
+                            verifyConnection
                           }
                           disabled={
-                            isVerifying ||
-                            isLoadingConnection ||
-                            isDeletingConnection
+                            verifying ||
+                            deletingConnection
                           }
-                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-foreground px-3 text-xs font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-foreground px-3 text-xs font-medium text-background transition hover:opacity-90 disabled:opacity-50"
                         >
                           <ShieldCheck className="h-3.5 w-3.5" />
-                          {isVerifying
+                          {verifying
                             ? 'Verifying...'
-                            : 'Verify Connection'}
+                            : 'Verify'}
                         </button>
                       </div>
                     </div>
@@ -1745,46 +1543,43 @@ export default function AgentsClient({
                       <button
                         type="button"
                         onClick={
-                          handleDeleteConnection
+                          deleteConnection
                         }
                         disabled={
-                          isDeletingConnection ||
-                          isVerifying
+                          deletingConnection ||
+                          verifying
                         }
-                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        {isDeletingConnection
+
+                        {deletingConnection
                           ? 'Deleting...'
                           : 'Delete Connection'}
                       </button>
                     </div>
-                  </div>
+                  </section>
                 )}
 
-              {/* Connection setup / edit */}
-              {showConnectionSetup && (
-                <div className="rounded-xl border p-5">
+              {/* Connection form */}
+              {showConnectionForm && (
+                <section className="rounded-xl border p-5">
                   <div>
                     <h3 className="font-semibold">
-                      {isEditingConnection
+                      {editingConnection
                         ? 'Edit Agent Connection'
                         : 'Connect AI Agent'}
                     </h3>
 
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {isEditingConnection
-                        ? 'Update the connection configuration. The connection returns to setup state until it is verified again.'
-                        : 'Register the real connection details. Arbyter will not claim the agent is connected until the connection is actually verified.'}
+                      Configure the real connection details.
+                      Arbyter will not claim the agent is connected
+                      until verification succeeds.
                     </p>
                   </div>
 
                   <div className="mt-5 space-y-4">
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium">
-                        Connection type
-                      </label>
-
+                    <FormField label="Connection type">
                       <select
                         value={
                           connectionForm.connectionType
@@ -1795,14 +1590,13 @@ export default function AgentsClient({
                               ...current,
                               connectionType:
                                 event.target.value,
-                            })
+                            }),
                           )
                         }
                         disabled={
-                          isCreatingConnection ||
-                          isSavingConnection
+                          savingConnection
                         }
-                        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        className="form-input"
                       >
                         <option value="webhook">
                           Webhook
@@ -1820,15 +1614,10 @@ export default function AgentsClient({
                           MCP
                         </option>
                       </select>
-                    </div>
+                    </FormField>
 
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium">
-                        Provider
-                      </label>
-
+                    <FormField label="Provider">
                       <input
-                        type="text"
                         value={
                           connectionForm.provider
                         }
@@ -1838,23 +1627,18 @@ export default function AgentsClient({
                               ...current,
                               provider:
                                 event.target.value,
-                            })
+                            }),
                           )
                         }
                         placeholder="e.g. OpenAI, Anthropic, Internal"
                         disabled={
-                          isCreatingConnection ||
-                          isSavingConnection
+                          savingConnection
                         }
-                        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        className="form-input"
                       />
-                    </div>
+                    </FormField>
 
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium">
-                        Agent endpoint
-                      </label>
-
+                    <FormField label="Agent endpoint">
                       <input
                         type="url"
                         value={
@@ -1866,23 +1650,18 @@ export default function AgentsClient({
                               ...current,
                               endpointUrl:
                                 event.target.value,
-                            })
+                            }),
                           )
                         }
                         placeholder="https://..."
                         disabled={
-                          isCreatingConnection ||
-                          isSavingConnection
+                          savingConnection
                         }
-                        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        className="form-input"
                       />
-                    </div>
+                    </FormField>
 
-                    <div>
-                      <label className="mb-1.5 block text-xs font-medium">
-                        Environment
-                      </label>
-
+                    <FormField label="Environment">
                       <select
                         value={
                           connectionForm.environment
@@ -1893,14 +1672,13 @@ export default function AgentsClient({
                               ...current,
                               environment:
                                 event.target.value,
-                            })
+                            }),
                           )
                         }
                         disabled={
-                          isCreatingConnection ||
-                          isSavingConnection
+                          savingConnection
                         }
-                        className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        className="form-input"
                       >
                         <option value="production">
                           Production
@@ -1914,55 +1692,29 @@ export default function AgentsClient({
                           Development
                         </option>
                       </select>
-                    </div>
+                    </FormField>
 
                     <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      This configuration step does not execute
-                      requests against the endpoint. Actual
-                      connector verification remains a server-side
-                      operation.
+                      Saving this form only stores the connection
+                      configuration. It does not execute a request.
                     </div>
 
                     <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
                       <button
                         type="button"
                         onClick={() => {
-                          if (
-                            !isCreatingConnection &&
-                            !isSavingConnection
-                          ) {
-                            setShowConnectionSetup(
-                              false
-                            )
-                            setIsEditingConnection(
-                              false
-                            )
-
-                            if (connection) {
-                              setConnectionForm({
-                                connectionType:
-                                  connection.connection_type ||
-                                  'webhook',
-                                provider:
-                                  connection.provider ||
-                                  '',
-                                endpointUrl:
-                                  connection.endpoint_url ||
-                                  '',
-                                environment:
-                                  connection.environment ||
-                                  'production',
-                              })
-                            } else {
-                              resetConnectionForm()
-                            }
-
-                            setConnectionError(null)
-                          }
+                          setShowConnectionForm(
+                            false,
+                          )
+                          setEditingConnection(
+                            false,
+                          )
+                          setConnectionError(
+                            null,
+                          )
                         }}
                         disabled={
-                          isCreatingConnection ||
-                          isSavingConnection
+                          savingConnection
                         }
                         className="h-10 rounded-lg border px-4 text-sm font-medium disabled:opacity-50"
                       >
@@ -1972,31 +1724,26 @@ export default function AgentsClient({
                       <button
                         type="button"
                         onClick={
-                          isEditingConnection
-                            ? handleUpdateConnection
-                            : handleCreateConnection
+                          saveConnection
                         }
                         disabled={
-                          isCreatingConnection ||
-                          isSavingConnection
+                          savingConnection
                         }
-                        className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-50"
                       >
-                        {isEditingConnection
-                          ? isSavingConnection
-                            ? 'Saving...'
-                            : 'Save Changes'
-                          : isCreatingConnection
-                            ? 'Registering...'
+                        {savingConnection
+                          ? 'Saving...'
+                          : editingConnection
+                            ? 'Save Changes'
                             : 'Register Connection'}
                       </button>
                     </div>
                   </div>
-                </div>
+                </section>
               )}
 
               {/* Danger zone */}
-              <div className="rounded-xl border border-red-200 p-5">
+              <section className="rounded-xl border border-red-200 p-5">
                 <div className="flex items-start gap-3">
                   <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
 
@@ -2007,30 +1754,30 @@ export default function AgentsClient({
 
                     <p className="mt-1 text-xs text-muted-foreground">
                       Permanently remove this agent registration.
-                      This does not mean surveillance data should be
-                      silently destroyed or bypass governance controls.
                     </p>
 
                     <button
                       type="button"
-                      onClick={handleDeleteAgent}
-                      disabled={
-                        isDeletingAgent ||
-                        isDeletingConnection ||
-                        isCreatingConnection ||
-                        isSavingConnection ||
-                        isVerifying
+                      onClick={
+                        deleteAgent
                       }
-                      className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={
+                        deletingAgent ||
+                        deletingConnection ||
+                        savingConnection ||
+                        verifying
+                      }
+                      className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                      {isDeletingAgent
+
+                      {deletingAgent
                         ? 'Deleting Agent...'
                         : 'Delete Agent'}
                     </button>
                   </div>
                 </div>
-              </div>
+              </section>
             </div>
           </div>
         </div>
@@ -2038,51 +1785,85 @@ export default function AgentsClient({
 
       {/* Add Agent modal */}
       {showNewAgent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-xl">
-            <div className="mb-5">
-              <h2 className="text-xl font-semibold">
-                Add AI Agent
-              </h2>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 animate-in fade-in duration-150"
+          onMouseDown={(event) => {
+            if (
+              event.target ===
+                event.currentTarget &&
+              !creatingAgent
+            ) {
+              resetAgentForm()
+              setShowNewAgent(false)
+            }
+          }}
+        >
+          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">
+                  Add AI Agent
+                </h2>
 
-              <p className="mt-1 text-sm text-muted-foreground">
-                Register an AI agent in the Arbyter governance
-                environment.
-              </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Register an AI agent in the Arbyter governance
+                  environment.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!creatingAgent) {
+                    resetAgentForm()
+                    setShowNewAgent(false)
+                  }
+                }}
+                disabled={
+                  creatingAgent
+                }
+                className="flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
             <div className="space-y-4">
               <input
-                type="text"
                 value={agentName}
                 onChange={(event) =>
-                  setAgentName(event.target.value)
+                  setAgentName(
+                    event.target.value,
+                  )
                 }
                 placeholder="Agent name"
-                disabled={isCreating}
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                disabled={creatingAgent}
+                className="form-input"
               />
 
               <textarea
                 value={agentDescription}
                 onChange={(event) =>
                   setAgentDescription(
-                    event.target.value
+                    event.target.value,
                   )
                 }
                 placeholder="What does this agent do?"
                 rows={3}
-                disabled={isCreating}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                disabled={creatingAgent}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring"
               />
 
               <select
                 value={agentType}
                 onChange={(event) =>
-                  setAgentType(event.target.value)
+                  setAgentType(
+                    event.target.value,
+                  )
                 }
-                disabled={isCreating}
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                disabled={creatingAgent}
+                className="form-input"
               >
                 <option value="general">
                   General AI Agent
@@ -2110,10 +1891,8 @@ export default function AgentsClient({
               </select>
 
               <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                New agents are registered in Arbyter. They are
-                not considered connected or under active
-                surveillance until a real connection is
-                configured and verified.
+                Registration does not mean the agent is connected
+                or under active surveillance.
               </div>
 
               {createError && (
@@ -2127,12 +1906,12 @@ export default function AgentsClient({
               <button
                 type="button"
                 onClick={() => {
-                  if (!isCreating) {
-                    resetForm()
+                  if (!creatingAgent) {
+                    resetAgentForm()
                     setShowNewAgent(false)
                   }
                 }}
-                disabled={isCreating}
+                disabled={creatingAgent}
                 className="h-10 rounded-lg border px-4 text-sm font-medium disabled:opacity-50"
               >
                 Cancel
@@ -2140,11 +1919,11 @@ export default function AgentsClient({
 
               <button
                 type="button"
-                onClick={handleCreateAgent}
-                disabled={isCreating}
-                className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={createAgent}
+                disabled={creatingAgent}
+                className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-50"
               >
-                {isCreating
+                {creatingAgent
                   ? 'Adding...'
                   : 'Add Agent'}
               </button>
@@ -2153,5 +1932,57 @@ export default function AgentsClient({
         </div>
       )}
     </main>
+  )
+}
+
+function SummaryCard({
+  label,
+  value,
+  description,
+  icon,
+}: {
+  label: string
+  value: string | number
+  description: string
+  icon: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border bg-card p-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {label}
+        </p>
+
+        <span className="text-muted-foreground">
+          {icon}
+        </span>
+      </div>
+
+      <p className="mt-2 text-2xl font-semibold">
+        {value}
+      </p>
+
+      <p className="mt-1 text-xs text-muted-foreground">
+        {description}
+      </p>
+    </div>
+  )
+}
+
+function FormField({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="mb-1.5 block text-xs font-medium">
+        {label}
+      </label>
+
+      {children}
+    </div>
   )
 }
