@@ -21,9 +21,78 @@ import {
   RangeSelector,
   type RangeValue,
 } from '@/components/dashboard/range-selector'
+import { createClient } from '@/lib/supabase/client'
 
 export default function OverviewPage() {
   const [range, setRange] = React.useState<RangeValue>('30d')
+  const [agentCount, setAgentCount] = React.useState<number>(0)
+
+  React.useEffect(() => {
+    async function loadAgentCount() {
+      const supabase = createClient()
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        console.error('Failed to get current user:', userError)
+        return
+      }
+
+      const { data: userRecord, error: userRecordError } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single()
+
+      if (userRecordError || !userRecord?.organization_id) {
+        console.error(
+          'Failed to get user organization:',
+          userRecordError
+        )
+        return
+      }
+
+      const { count, error: agentsError } = await supabase
+        .from('ai_agents')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', userRecord.organization_id)
+
+      if (agentsError) {
+        console.error('Failed to load agent count:', agentsError)
+        return
+      }
+
+      setAgentCount(count ?? 0)
+    }
+
+    loadAgentCount()
+  }, [])
+
+  const liveKpis = React.useMemo(() => {
+    return kpis.map((kpi) =>
+      kpi.id === 'agents'
+        ? {
+            ...kpi,
+            value: String(agentCount),
+            delta: `${agentCount === 1 ? '1 agent' : `${agentCount} agents`} in your organization`,
+          }
+        : kpi
+    )
+  }, [agentCount])
+
+  const liveSnapshotNodes = React.useMemo(() => {
+    return snapshotNodes.map((node) =>
+      node.id === 'agents'
+        ? {
+            ...node,
+            count: agentCount,
+          }
+        : node
+    )
+  }, [agentCount])
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,7 +105,7 @@ export default function OverviewPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((kpi) => (
+        {liveKpis.map((kpi) => (
           <KpiCard key={kpi.id} kpi={kpi} />
         ))}
       </div>
@@ -58,6 +127,7 @@ export default function OverviewPage() {
         >
           <AttentionList items={attentionItems} />
         </Panel>
+
         <Panel
           title="Agent Activity"
           description="Recent actions across your AI agents"
@@ -72,7 +142,7 @@ export default function OverviewPage() {
         title="Governance Snapshot"
         description="How agents, policies, controls, risks, and evidence connect"
       >
-        <GovernanceSnapshot nodes={snapshotNodes} />
+        <GovernanceSnapshot nodes={liveSnapshotNodes} />
       </Panel>
     </div>
   )
