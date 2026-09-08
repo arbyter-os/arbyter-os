@@ -141,7 +141,13 @@ export default function AgentsClient({
   const [isCreatingConnection, setIsCreatingConnection] =
     React.useState(false)
 
+  const [isVerifying, setIsVerifying] =
+    React.useState(false)
+
   const [connectionError, setConnectionError] =
+    React.useState<string | null>(null)
+
+  const [verificationMessage, setVerificationMessage] =
     React.useState<string | null>(null)
 
   const [agentName, setAgentName] =
@@ -208,12 +214,14 @@ export default function AgentsClient({
       environment: 'production',
     })
     setConnectionError(null)
+    setVerificationMessage(null)
   }
 
   async function openAgent(agent: Agent) {
     setSelectedAgent(agent)
     setShowConnectionSetup(false)
     setConnectionError(null)
+    setVerificationMessage(null)
     setIsLoadingConnection(true)
     setConnectionState('Registered')
 
@@ -289,6 +297,7 @@ export default function AgentsClient({
 
     setIsCreatingConnection(true)
     setConnectionError(null)
+    setVerificationMessage(null)
 
     try {
       const supabase = createClient()
@@ -427,6 +436,60 @@ export default function AgentsClient({
       )
     } finally {
       setIsCreatingConnection(false)
+    }
+  }
+
+  async function handleVerifyConnection() {
+    if (!selectedAgent) {
+      return
+    }
+
+    setIsVerifying(true)
+    setConnectionError(null)
+    setVerificationMessage(null)
+
+    try {
+      const response = await fetch(
+        '/api/agents/verify',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            agentId: selectedAgent.id,
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+            'Connection verification failed.'
+        )
+      }
+
+      setConnectionState('Connection Setup')
+
+      setVerificationMessage(
+        data?.message ||
+          'Verification attempt recorded.'
+      )
+    } catch (error) {
+      console.error(
+        'Failed to verify agent connection:',
+        error
+      )
+
+      setConnectionError(
+        error instanceof Error
+          ? error.message
+          : 'Connection verification failed.'
+      )
+    } finally {
+      setIsVerifying(false)
     }
   }
 
@@ -964,6 +1027,12 @@ export default function AgentsClient({
                 </div>
               )}
 
+              {verificationMessage && (
+                <div className="rounded-xl border bg-muted/20 p-4 text-sm">
+                  {verificationMessage}
+                </div>
+              )}
+
               {/* Connection setup */}
               {connectionState === 'Registered' &&
                 !showConnectionSetup && (
@@ -971,6 +1040,7 @@ export default function AgentsClient({
                     type="button"
                     onClick={() => {
                       setConnectionError(null)
+                      setVerificationMessage(null)
                       setShowConnectionSetup(true)
                     }}
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
@@ -981,21 +1051,41 @@ export default function AgentsClient({
                 )}
 
               {connectionState !== 'Registered' && (
-                <div className="rounded-xl border p-4">
-                  <div className="flex items-start gap-3">
-                    <ShieldCheck className="mt-0.5 h-4 w-4" />
+                <div className="rounded-xl border p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
 
-                    <div>
-                      <p className="text-sm font-medium">
-                        Connection registered
-                      </p>
+                      <div>
+                        <p className="text-sm font-medium">
+                          Connection configuration found
+                        </p>
 
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        The connection exists in Supabase. Verification,
-                        health checks, and surveillance will be implemented
-                        as the next connector layer.
-                      </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          The connection exists in Supabase. Run a
+                          verification attempt to evaluate the
+                          connection through Arbyter's server-side
+                          verification layer.
+                        </p>
+                      </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={
+                        handleVerifyConnection
+                      }
+                      disabled={
+                        isVerifying ||
+                        isLoadingConnection
+                      }
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg bg-foreground px-3 text-xs font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      {isVerifying
+                        ? 'Verifying...'
+                        : 'Verify Connection'}
+                    </button>
                   </div>
                 </div>
               )}
@@ -1249,16 +1339,23 @@ export default function AgentsClient({
                 <option value="general">
                   General AI Agent
                 </option>
-                <option value="risk">Risk</option>
+
+                <option value="risk">
+                  Risk
+                </option>
+
                 <option value="compliance">
                   Compliance
                 </option>
+
                 <option value="policy">
                   Policy
                 </option>
+
                 <option value="investigation">
                   Investigation
                 </option>
+
                 <option value="evidence">
                   Evidence
                 </option>
