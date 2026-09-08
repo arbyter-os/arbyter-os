@@ -589,6 +589,11 @@ export async function POST(request: Request) {
 
     /*
      * Record lifecycle event.
+     *
+     * IMPORTANT:
+     * agent_connection_events.status has a database CHECK constraint
+     * that accepts event-style statuses such as "success" and "failed".
+     * The health-check table separately uses "healthy"/"unhealthy".
      */
     const { error: eventError } = await supabase
       .from("agent_connection_events")
@@ -599,7 +604,7 @@ export async function POST(request: Request) {
         event_type: isHealthy
           ? "verification_succeeded"
           : "verification_failed",
-        status: verificationStatus,
+        status: isHealthy ? "success" : "failed",
         message: isHealthy
           ? "Endpoint responded successfully."
           : errorMessage ??
