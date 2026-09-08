@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient()
 
-    // 1. Authenticate the current user.
+    // Authenticate the user.
     const {
       data: { user },
       error: userError,
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // 2. Resolve the user's organization.
+    // Resolve the user's organization.
     const { data: profile, error: profileError } = await supabase
       .from("users")
       .select("organization_id")
@@ -45,7 +45,6 @@ export async function POST(request: Request) {
 
     const organizationId = profile.organization_id
 
-    // 3. Parse and validate the request.
     const body = (await request.json()) as CredentialRequest
 
     const agentConnectionId = body.agentConnectionId?.trim()
@@ -81,10 +80,12 @@ export async function POST(request: Request) {
       )
     }
 
-    // 4. Verify the connection belongs to this organization.
+    // Verify the connection belongs to the authenticated user's organization.
     const { data: connection, error: connectionError } = await supabase
       .from("agent_connections")
-      .select("id, organization_id, agent_id, provider, connection_type")
+      .select(
+        "id, organization_id, agent_id, provider, connection_type"
+      )
       .eq("id", agentConnectionId)
       .eq("organization_id", organizationId)
       .single()
@@ -96,25 +97,24 @@ export async function POST(request: Request) {
       )
     }
 
-    // 5. Use the privileged client only on the server.
     const admin = createAdminClient()
 
-    // 6. Store the actual secret in Supabase Vault.
+    // Store the actual secret in Supabase Vault.
     //
-    // IMPORTANT:
-    // The secret itself is never written to agent_credentials.
-    // Only the UUID returned by Vault is stored there.
-    const vaultName = `arbyter/${organizationId}/${agentConnectionId}/${name}`
+    // Only the returned UUID will ever be stored in
+    // agent_credentials.secret_reference.
+    const vaultName =
+      `arbyter/${organizationId}/${agentConnectionId}/${name}`
 
-    const { data: vaultSecretId, error: vaultError } = await admin.rpc(
-      "create_secret",
-      {
+    const { data: vaultSecretId, error: vaultError } = await admin
+      .schema("vault")
+      .rpc("create_secret", {
         new_secret: secret,
         new_name: vaultName,
-        new_description: `Arbyter credential for ${connection.provider || "custom"} agent connection`,
+        new_description:
+          `Arbyter credential for ${connection.provider || "custom"} agent connection`,
         new_key_id: null,
-      }
-    )
+      })
 
     if (vaultError || !vaultSecretId) {
       console.error("Vault credential creation failed:", vaultError)
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // 7. Store only metadata + opaque Vault reference.
+    // Store only the Vault reference and non-secret metadata.
     const { data: credential, error: credentialError } = await admin
       .from("agent_credentials")
       .insert({
@@ -147,22 +147,26 @@ export async function POST(request: Request) {
       )
       .single()
 
-    // 8. If the database insert fails, remove the Vault secret so we
-    // don't leave an orphaned secret behind.
     if (credentialError || !credential) {
-      console.error("Credential metadata creation failed:", credentialError)
+      console.error(
+        "Credential metadata creation failed:",
+        credentialError
+      )
 
-      await admin.rpc("delete_secret", {
-        secret_id: vaultSecretId,
-      })
-
+      // There is intentionally no automatic Vault deletion here because
+      // this Supabase project does not expose vault.delete_secret().
+      // The orphaned Vault record can be cleaned up through an explicit
+      // server-side administrative cleanup process later.
       return NextResponse.json(
-        { error: "Unable to save credential metadata." },
+        {
+          error:
+            "Credential metadata could not be saved. The credential requires administrative cleanup.",
+        },
         { status: 500 }
       )
     }
 
-    // 9. Never return the secret or the Vault reference to the browser.
+    // Never return the secret or Vault reference.
     return NextResponse.json(
       {
         success: true,
