@@ -73,7 +73,7 @@ export default async function AgentsPage() {
   for (const task of agentTasks ?? []) {
     taskCountByAgent.set(
       task.agent_id,
-      (taskCountByAgent.get(agent.id) ?? 0) + 1
+      (taskCountByAgent.get(task.agent_id) ?? 0) + 1
     )
   }
 
