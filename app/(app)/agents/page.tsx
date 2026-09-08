@@ -20,9 +20,10 @@ export default async function AgentsPage() {
     .select(`
       id,
       name,
-      description,
-      agent_type,
+      purpose,
+      team,
       status,
+      risk,
       created_at
     `)
     .order('created_at', { ascending: false })
@@ -128,16 +129,23 @@ export default async function AgentsPage() {
     id: agent.id,
     name: agent.name,
     purpose:
-      agent.description ||
+      agent.purpose ||
       'AI agent registered in the Arbyter governance environment.',
-    team: agent.agent_type || 'AI Operations',
+    team: agent.team || 'AI Operations',
     status:
       agent.status === 'paused'
         ? 'Paused'
         : agent.status === 'needs_review'
           ? 'Needs Review'
           : 'Active',
-    risk: 'Medium' as const,
+    risk:
+      agent.risk === 'critical'
+        ? 'Critical'
+        : agent.risk === 'high'
+          ? 'High'
+          : agent.risk === 'low'
+            ? 'Low'
+            : 'Medium',
     tasks: taskCountByAgent.get(agent.id) ?? 0,
     lastActivity:
       lastActivityByAgent.get(agent.id) ?? 'No activity recorded',
