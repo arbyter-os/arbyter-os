@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ChevronRight,
 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 type Agent = {
   id: string
@@ -53,11 +54,19 @@ function riskClass(risk: Agent['risk']) {
 export default function AgentsClient({
   initialAgents,
 }: AgentsClientProps) {
-  const [agents] = React.useState<Agent[]>(initialAgents)
+  const [agents, setAgents] = React.useState<Agent[]>(initialAgents)
   const [search, setSearch] = React.useState('')
   const [status, setStatus] = React.useState('All')
   const [risk, setRisk] = React.useState('All')
   const [showNewAgent, setShowNewAgent] = React.useState(false)
+
+  const [agentName, setAgentName] = React.useState('')
+  const [agentDescription, setAgentDescription] = React.useState('')
+  const [agentType, setAgentType] = React.useState('general')
+  const [isCreating, setIsCreating] = React.useState(false)
+  const [createError, setCreateError] = React.useState<string | null>(
+    null
+  )
 
   const filteredAgents = agents.filter((agent) => {
     const query = search.toLowerCase()
@@ -93,6 +102,124 @@ export default function AgentsClient({
     0
   )
 
+  function resetForm() {
+    setAgentName('')
+    setAgentDescription('')
+    setAgentType('general')
+    setCreateError(null)
+  }
+
+  async function handleCreateAgent() {
+    if (!agentName.trim()) {
+      setCreateError('Please enter an agent name.')
+      return
+    }
+
+    if (!agentDescription.trim()) {
+      setCreateError('Please describe what this agent does.')
+      return
+    }
+
+    setIsCreating(true)
+    setCreateError(null)
+
+    try {
+      const supabase = createClient()
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !user) {
+        throw new Error('You must be signed in to create an agent.')
+      }
+
+      const { data: userRecord, error: userRecordError } =
+        await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single()
+
+      if (
+        userRecordError ||
+        !userRecord?.organization_id
+      ) {
+        throw new Error(
+          'Could not determine your organization.'
+        )
+      }
+
+      const { data: newAgent, error: insertError } =
+        await supabase
+          .from('ai_agents')
+          .insert({
+            organization_id: userRecord.organization_id,
+            name: agentName.trim(),
+            description: agentDescription.trim(),
+            agent_type: agentType,
+            status: 'active',
+          })
+          .select(
+            'id, name, description, agent_type, status, created_at'
+          )
+          .single()
+
+      if (insertError || !newAgent) {
+        throw new Error(
+          insertError?.message ||
+            'Failed to create the agent.'
+        )
+      }
+
+      const normalizedAgent: Agent = {
+        id: newAgent.id,
+        name: newAgent.name,
+        purpose:
+          newAgent.description ||
+          'AI agent registered in the Arbyter governance environment.',
+        team:
+          newAgent.agent_type ||
+          'AI Operations',
+        status:
+          newAgent.status === 'paused'
+            ? 'Paused'
+            : newAgent.status === 'needs_review'
+              ? 'Needs Review'
+              : 'Active',
+        risk: 'Medium',
+        tasks: 0,
+        lastActivity: 'No activity recorded',
+      }
+
+      setAgents((current) => [
+        normalizedAgent,
+        ...current,
+      ])
+
+      resetForm()
+      setShowNewAgent(false)
+
+      /*
+       * Refresh the server-rendered Agents page as well.
+       * This ensures the database becomes the authoritative
+       * source after the optimistic UI update.
+       */
+      window.location.reload()
+    } catch (error) {
+      console.error('Failed to create agent:', error)
+
+      setCreateError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to create the agent.'
+      )
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   return (
     <main className="flex flex-col gap-6">
       {/* Header */}
@@ -107,13 +234,17 @@ export default function AgentsClient({
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Discover, monitor, and govern every AI agent operating across your organization.
+            Discover, monitor, and govern every AI agent operating
+            across your organization.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={() => setShowNewAgent(true)}
+          onClick={() => {
+            resetForm()
+            setShowNewAgent(true)
+          }}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
         >
           <Plus className="h-4 w-4" />
@@ -203,7 +334,8 @@ export default function AgentsClient({
             </p>
 
             <p className="mt-1 text-xs text-muted-foreground">
-              Critical-risk agents should be reviewed before continuing unrestricted operation.
+              Critical-risk agents should be reviewed before
+              continuing unrestricted operation.
             </p>
           </div>
         </section>
@@ -218,7 +350,9 @@ export default function AgentsClient({
             <input
               type="text"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) =>
+                setSearch(event.target.value)
+              }
               placeholder="Search agents..."
               className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
             />
@@ -227,18 +361,24 @@ export default function AgentsClient({
           <div className="flex flex-col gap-2 sm:flex-row">
             <select
               value={status}
-              onChange={(event) => setStatus(event.target.value)}
+              onChange={(event) =>
+                setStatus(event.target.value)
+              }
               className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
             >
               <option value="All">All statuses</option>
               <option value="Active">Active</option>
               <option value="Paused">Paused</option>
-              <option value="Needs Review">Needs Review</option>
+              <option value="Needs Review">
+                Needs Review
+              </option>
             </select>
 
             <select
               value={risk}
-              onChange={(event) => setRisk(event.target.value)}
+              onChange={(event) =>
+                setRisk(event.target.value)
+              }
               className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
             >
               <option value="All">All risk levels</option>
@@ -259,7 +399,8 @@ export default function AgentsClient({
           </h2>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            Every registered agent and its current governance posture.
+            Every registered agent and its current governance
+            posture.
           </p>
         </div>
 
@@ -342,52 +483,87 @@ export default function AgentsClient({
               </h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Register an AI agent in the Arbyter governance environment.
+                Register an AI agent in the Arbyter governance
+                environment.
               </p>
             </div>
 
             <div className="space-y-4">
               <input
                 type="text"
+                value={agentName}
+                onChange={(event) =>
+                  setAgentName(event.target.value)
+                }
                 placeholder="Agent name"
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
+                disabled={isCreating}
+                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
 
               <textarea
+                value={agentDescription}
+                onChange={(event) =>
+                  setAgentDescription(event.target.value)
+                }
                 placeholder="What does this agent do?"
                 rows={3}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none"
+                disabled={isCreating}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
 
-              <input
-                type="text"
-                placeholder="Owning team"
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
-              />
-
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none">
-                <option value="Low">Low risk</option>
-                <option value="Medium">Medium risk</option>
-                <option value="High">High risk</option>
-                <option value="Critical">Critical risk</option>
+              <select
+                value={agentType}
+                onChange={(event) =>
+                  setAgentType(event.target.value)
+                }
+                disabled={isCreating}
+                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="general">General AI Agent</option>
+                <option value="risk">Risk</option>
+                <option value="compliance">Compliance</option>
+                <option value="policy">Policy</option>
+                <option value="investigation">
+                  Investigation
+                </option>
+                <option value="evidence">Evidence</option>
               </select>
+
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                New agents are registered as <strong>Active</strong>{' '}
+                and assigned a default Medium risk posture until
+                governance data is configured.
+              </div>
+
+              {createError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {createError}
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setShowNewAgent(false)}
-                className="h-10 rounded-lg border px-4 text-sm font-medium"
+                onClick={() => {
+                  if (!isCreating) {
+                    resetForm()
+                    setShowNewAgent(false)
+                  }
+                }}
+                disabled={isCreating}
+                className="h-10 rounded-lg border px-4 text-sm font-medium disabled:opacity-50"
               >
                 Cancel
               </button>
 
               <button
                 type="button"
-                onClick={() => setShowNewAgent(false)}
-                className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background"
+                onClick={handleCreateAgent}
+                disabled={isCreating}
+                className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Add Agent
+                {isCreating ? 'Adding...' : 'Add Agent'}
               </button>
             </div>
           </div>
