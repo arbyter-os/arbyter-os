@@ -1,17 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import AgentsClient from './client'
-
 export default async function AgentsPage() {
   const supabase = await createClient()
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
   if (!user) {
     return null
   }
-
   const {
     data: agents,
     error: agentsError,
@@ -20,32 +16,26 @@ export default async function AgentsPage() {
     .select(`
       id,
       name,
-      purpose,
-      team,
+      description,
+      agent_type,
       status,
-      risk,
       created_at
     `)
     .order('created_at', { ascending: false })
-
   if (agentsError) {
     console.error('Failed to load agents:', agentsError)
-
     return (
       <main className="flex flex-col gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">
           Agents
         </h1>
-
         <div className="rounded-xl border bg-card p-6 text-sm text-destructive">
           Failed to load agents: {agentsError.message}
         </div>
       </main>
     )
   }
-
   const agentIds = (agents ?? []).map((agent) => agent.id)
-
   const {
     data: activities,
     error: activitiesError,
@@ -56,26 +46,22 @@ export default async function AgentsPage() {
         .in('agent_id', agentIds)
         .order('created_at', { ascending: false })
     : { data: [], error: null }
-
   if (activitiesError) {
     console.error(
       'Failed to load agent activity:',
       activitiesError
     )
-
     return (
       <main className="flex flex-col gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">
           Agents
         </h1>
-
         <div className="rounded-xl border bg-card p-6 text-sm text-destructive">
           Failed to load agent activity: {activitiesError.message}
         </div>
       </main>
     )
   }
-
   const {
     data: agentTasks,
     error: agentTasksError,
@@ -85,28 +71,23 @@ export default async function AgentsPage() {
         .select('agent_id, assigned_at, completed_at')
         .in('agent_id', agentIds)
     : { data: [], error: null }
-
   if (agentTasksError) {
     console.error(
       'Failed to load agent tasks:',
       agentTasksError
     )
-
     return (
       <main className="flex flex-col gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">
           Agents
         </h1>
-
         <div className="rounded-xl border bg-card p-6 text-sm text-destructive">
           Failed to load agent tasks: {agentTasksError.message}
         </div>
       </main>
     )
   }
-
   const lastActivityByAgent = new Map<string, string>()
-
   for (const activity of activities ?? []) {
     if (!lastActivityByAgent.has(activity.agent_id)) {
       lastActivityByAgent.set(
@@ -115,41 +96,30 @@ export default async function AgentsPage() {
       )
     }
   }
-
   const taskCountByAgent = new Map<string, number>()
-
   for (const task of agentTasks ?? []) {
     taskCountByAgent.set(
       task.agent_id,
       (taskCountByAgent.get(task.agent_id) ?? 0) + 1
     )
   }
-
   const normalizedAgents = (agents ?? []).map((agent) => ({
     id: agent.id,
     name: agent.name,
     purpose:
-      agent.purpose ||
+      agent.description ||
       'AI agent registered in the Arbyter governance environment.',
-    team: agent.team || 'AI Operations',
+    team: agent.agent_type || 'AI Operations',
     status:
       agent.status === 'paused'
         ? 'Paused'
         : agent.status === 'needs_review'
           ? 'Needs Review'
           : 'Active',
-    risk:
-      agent.risk === 'critical'
-        ? 'Critical'
-        : agent.risk === 'high'
-          ? 'High'
-          : agent.risk === 'low'
-            ? 'Low'
-            : 'Medium',
+    risk: 'Medium' as const,
     tasks: taskCountByAgent.get(agent.id) ?? 0,
     lastActivity:
       lastActivityByAgent.get(agent.id) ?? 'No activity recorded',
   }))
-
   return <AgentsClient initialAgents={normalizedAgents} />
 }
