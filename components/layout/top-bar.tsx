@@ -26,7 +26,11 @@ import {
 } from '@/components/ui/menu'
 import { createClient } from '@/lib/supabase/client'
 
-const notifications: { title: string; meta: string; icon: LucideIcon }[] = [
+const notifications: {
+  title: string
+  meta: string
+  icon: LucideIcon
+}[] = [
   { title: 'Credit model flagged high-risk', meta: '2h ago', icon: Bell },
   { title: 'Control assessment completed', meta: '38m ago', icon: Check },
   { title: 'Policy conflict detected', meta: '1h ago', icon: Bell },
@@ -96,12 +100,13 @@ export function TopBar({
     email.split('@')[0] ||
     'User'
 
-  const initials = displayName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'U'
+  const initials =
+    displayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'U'
 
   const workspaceInitials =
     organizationName
@@ -112,9 +117,17 @@ export function TopBar({
       .join('') || 'A'
 
   async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
+    setLoadingProfile(true)
+
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+      console.error('Sign out failed:', error)
+      setLoadingProfile(false)
+      return
+    }
+
+    window.location.href = '/login'
   }
 
   return (
@@ -142,12 +155,14 @@ export function TopBar({
           <li className="hidden text-muted-foreground sm:block">
             Arbyter OS
           </li>
+
           <li
             className="hidden text-muted-foreground/40 sm:block"
             aria-hidden
           >
             /
           </li>
+
           <li className="truncate font-semibold text-foreground">
             {current}
           </li>
@@ -161,7 +176,9 @@ export function TopBar({
           className="hidden h-9 w-56 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:border-ring/40 md:flex xl:w-72"
         >
           <Search className="size-4" />
+
           <span>Search…</span>
+
           <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.625rem] font-medium text-muted-foreground">
             ⌘K
           </kbd>
@@ -182,11 +199,13 @@ export function TopBar({
             className="relative flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground"
           >
             <Bell className="size-[1.15rem]" />
+
             <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary ring-2 ring-background" />
           </MenuTrigger>
 
           <MenuContent className="w-80">
             <MenuLabel>Notifications</MenuLabel>
+
             <MenuSeparator />
 
             {notifications.map((n) => (
@@ -200,6 +219,7 @@ export function TopBar({
                   <span className="text-sm text-foreground">
                     {n.title}
                   </span>
+
                   <span className="text-xs text-muted-foreground">
                     {n.meta}
                   </span>
@@ -225,6 +245,7 @@ export function TopBar({
 
           <MenuContent align="end">
             <MenuLabel>Workspace</MenuLabel>
+
             <MenuSeparator />
 
             <MenuItem>
@@ -261,9 +282,7 @@ export function TopBar({
               Profile
             </MenuItem>
 
-            <MenuItem
-              onClick={() => router.push('/settings')}
-            >
+            <MenuItem onSelect={() => router.push('/settings')}>
               <Settings />
               Settings
             </MenuItem>
@@ -271,7 +290,7 @@ export function TopBar({
             <MenuSeparator />
 
             <MenuItem
-              onClick={handleSignOut}
+              onSelect={handleSignOut}
               className="text-destructive [&_svg]:text-destructive"
             >
               <LogOut />
