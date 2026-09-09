@@ -233,8 +233,8 @@ export async function POST(request: Request) {
           organization_id: organizationId,
           agent_id: agentId,
           agent_connection_id: connection.id,
-          event_type: "verification_not_applicable",
-          status: "pending",
+          event_type: "connection_failed",
+          status: "error",
           message,
           metadata: {
             verification_method: "inbound_webhook_event",
@@ -273,8 +273,8 @@ export async function POST(request: Request) {
           organization_id: organizationId,
           agent_id: agentId,
           agent_connection_id: connection.id,
-          event_type: "verification_not_applicable",
-          status: "pending",
+          event_type: "connection_failed",
+          status: "error",
           message,
           metadata: {
             verification_method: "sdk_runtime_handshake",
@@ -311,8 +311,8 @@ export async function POST(request: Request) {
           organization_id: organizationId,
           agent_id: agentId,
           agent_connection_id: connection.id,
-          event_type: "verification_not_applicable",
-          status: "pending",
+          event_type: "connection_failed",
+          status: "error",
           message,
           metadata: {
             verification_method: "mcp_transport_handshake",
@@ -394,9 +394,6 @@ export async function POST(request: Request) {
         .eq("id", connection.id)
         .eq("organization_id", organizationId);
 
-      /*
-       * A failed verification removes the current verified state.
-       */
       await supabase
         .from("agent_identities")
         .update({
@@ -412,7 +409,7 @@ export async function POST(request: Request) {
           organization_id: organizationId,
           agent_id: agentId,
           agent_connection_id: connection.id,
-          event_type: "verification_failed",
+          event_type: "connection_failed",
           status: "error",
           message: endpointValidation.error,
           metadata: {
@@ -607,14 +604,6 @@ export async function POST(request: Request) {
 
     /*
      * Update agent identity verification.
-     *
-     * Successful endpoint verification:
-     *   verified = true
-     *   verified_at = current timestamp
-     *
-     * Failed endpoint verification:
-     *   verified = false
-     *   verified_at = null
      */
     const {
       data: existingIdentity,
@@ -681,15 +670,23 @@ export async function POST(request: Request) {
     /*
      * Record lifecycle event.
      *
-     * IMPORTANT:
-     * agent_connection_events.status only allows:
-     *   pending
-     *   connected
-     *   disconnected
-     *   error
+     * Database constraints allow:
+     * event_type:
+     * created
+     * connected
+     * disconnected
+     * connection_failed
+     * reconnected
+     * configuration_changed
+     * credential_rotated
+     * disabled
+     * enabled
      *
-     * Therefore successful verification uses "connected"
-     * and failed verification uses "error".
+     * status:
+     * pending
+     * connected
+     * disconnected
+     * error
      */
     const { error: eventError } = await supabase
       .from("agent_connection_events")
@@ -698,8 +695,8 @@ export async function POST(request: Request) {
         agent_id: agentId,
         agent_connection_id: connection.id,
         event_type: isHealthy
-          ? "verification_succeeded"
-          : "verification_failed",
+          ? "connected"
+          : "connection_failed",
         status: isHealthy ? "connected" : "error",
         message: isHealthy
           ? "Endpoint responded successfully. Agent identity verified."
@@ -711,6 +708,7 @@ export async function POST(request: Request) {
           endpoint_host:
             endpointValidation.url.hostname,
           identity_verified: isHealthy,
+          verification_method: "endpoint_reachability",
         },
         occurred_at: checkedAt,
       });
@@ -723,6 +721,7 @@ export async function POST(request: Request) {
             `Verification completed, but the connection event could not be recorded: ${eventError.message}`,
           healthCheck,
           connection: updatedConnection,
+          verified: isHealthy,
         },
         { status: 500 },
       );
