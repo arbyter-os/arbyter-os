@@ -1,22 +1,6 @@
 'use client'
 
-import * as React from 'react'
-import {
-  Activity,
-  AlertTriangle,
-  Bot,
-  CheckCircle2,
-  ChevronRight,
-  CircleDot,
-  Link2,
-  Pencil,
-  Plus,
-  Search,
-  ShieldCheck,
-  Trash2,
-  X,
-  Zap,
-} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 type AgentStatus = 'Active' | 'Paused' | 'Needs Review'
@@ -33,30 +17,6 @@ type Agent = {
   lastActivity: string
 }
 
-type AgentsClientProps = {
-  initialAgents: Agent[]
-}
-
-type ConnectionState =
-  | 'Registered'
-  | 'Connection Setup'
-  | 'Connected'
-  | 'Verified'
-  | 'Healthy'
-  | 'Surveillance Active'
-
-type ConnectionForm = {
-  connectionType: string
-  provider: string
-  endpointUrl: string
-  environment: string
-  authenticationMethod: string
-  credentialLabel: string
-  webhookSecretLabel: string
-  mcpTransport: string
-  sdkPackage: string
-}
-
 type ConnectionRecord = {
   id: string
   status: string | null
@@ -66,84 +26,83 @@ type ConnectionRecord = {
   provider: string | null
   endpoint_url: string | null
   environment: string | null
-  capabilities: Record<string, unknown> | null
+  capabilities: Record<string, boolean> | null
 }
 
-const LIFECYCLE_STATES: ConnectionState[] = [
-  'Registered',
-  'Connection Setup',
-  'Connected',
-  'Verified',
-  'Healthy',
-  'Surveillance Active',
-]
-
-const AVAILABLE_CAPABILITIES = [
-  {
-    id: 'messages.send',
-    name: 'Send messages',
-    description:
-      'Allow this connection to send outbound messages.',
-    providers: ['agentmail'],
-  },
-  {
-    id: 'messages.read',
-    name: 'Read messages',
-    description:
-      'Allow this connection to read messages.',
-    providers: ['agentmail'],
-    available: false,
-  },
-  {
-    id: 'messages.reply',
-    name: 'Reply to messages',
-    description:
-      'Allow this connection to reply to existing messages.',
-    providers: ['agentmail'],
-    available: false,
-  },
-]
-
-function getStatusClass(status: AgentStatus) {
-  if (status === 'Active') {
-    return 'bg-green-50 text-green-700'
+type ConnectionForm = {
+  connectionType: 'webhook' | 'api' | 'sdk' | 'mcp'
+  provider: string
+  endpointUrl: string
+  environment: 'production' | 'staging' | 'development'
+  authenticationMethod: 'api_key' | 'oauth' | 'none'
+  credentialLabel: string
+  webhookSecretLabel: string
+  mcpTransport: 'http' | 'sse' | 'stdio'
+  sdkPackage: string
+  capabilities: {
+    messagesSend: boolean
+    messagesRead: boolean
+    messagesReply: boolean
   }
-
-  if (status === 'Needs Review') {
-    return 'bg-yellow-50 text-yellow-700'
-  }
-
-  return 'bg-gray-100 text-gray-600'
 }
 
-function getRiskClass(risk: RiskLevel) {
+const supabase = createClient()
+
+const emptyConnectionForm: ConnectionForm = {
+  connectionType: 'api',
+  provider: '',
+  endpointUrl: '',
+  environment: 'production',
+  authenticationMethod: 'api_key',
+  credentialLabel: '',
+  webhookSecretLabel: '',
+  mcpTransport: 'http',
+  sdkPackage: '',
+  capabilities: {
+    messagesSend: false,
+    messagesRead: false,
+    messagesReply: false,
+  },
+}
+
+function getStatusClasses(status: AgentStatus) {
+  switch (status) {
+    case 'Active':
+      return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+    case 'Paused':
+      return 'bg-muted text-muted-foreground'
+    case 'Needs Review':
+      return 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+  }
+}
+
+function getRiskClasses(risk: RiskLevel) {
   switch (risk) {
-    case 'Critical':
-      return 'border-red-200 bg-red-50 text-red-700'
-    case 'High':
-      return 'border-orange-200 bg-orange-50 text-orange-700'
+    case 'Low':
+      return 'text-emerald-600 dark:text-emerald-400'
     case 'Medium':
-      return 'border-yellow-200 bg-yellow-50 text-yellow-700'
-    default:
-      return 'border-gray-200 bg-gray-50 text-gray-600'
+      return 'text-amber-600 dark:text-amber-400'
+    case 'High':
+      return 'text-orange-600 dark:text-orange-400'
+    case 'Critical':
+      return 'text-red-600 dark:text-red-400'
   }
 }
 
 function getConnectionState(
   connection: ConnectionRecord | null,
-  verified: boolean,
-): ConnectionState {
-  if (!connection) {
-    return 'Registered'
-  }
+  verified: boolean
+) {
+  if (!connection) return 'Registered'
 
-  if (connection.health_status === 'healthy' && verified) {
+  if (
+    connection.health_status === 'healthy' &&
+    verified
+  ) {
     return 'Healthy'
   }
 
-  if (verified) {
-    return 'Verified'
-  }
+  if (verified) return 'Verified'
 
   if (
     connection.status === 'connected' ||
@@ -155,114 +114,757 @@ function getConnectionState(
   return 'Connection Setup'
 }
 
-function normalizeConnectionType(value: string) {
-  const normalized = value.toLowerCase().trim()
+function formatDate(value: string | null) {
+  if (!value) return 'Never'
 
-  if (
-    normalized === 'rest' ||
-    normalized === 'rest_api' ||
-    normalized === 'api'
-  ) {
-    return 'api'
+  try {
+    return new Date(value).toLocaleString([], {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    })
+  } catch {
+    return value
   }
-
-  if (normalized === 'webhook') {
-    return 'webhook'
-  }
-
-  if (normalized === 'sdk') {
-    return 'sdk'
-  }
-
-  if (normalized === 'mcp') {
-    return 'mcp'
-  }
-
-  return normalized
 }
 
-export default function AgentsClient({
-  initialAgents,
-}: AgentsClientProps) {
-  const [agents, setAgents] = React.useState<Agent[]>(
-    initialAgents,
-  )
+export default function AgentsClient() {
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [loadingAgents, setLoadingAgents] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const [search, setSearch] = React.useState('')
-  const [statusFilter, setStatusFilter] = React.useState('All')
-  const [riskFilter, setRiskFilter] = React.useState('All')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'All' | AgentStatus>('All')
+  const [riskFilter, setRiskFilter] = useState<'All' | RiskLevel>('All')
 
-  const [showNewAgent, setShowNewAgent] =
-    React.useState(false)
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [showAgentPanel, setShowAgentPanel] = useState(false)
 
-  const [selectedAgent, setSelectedAgent] =
-    React.useState<Agent | null>(null)
+  const [connection, setConnection] = useState<ConnectionRecord | null>(null)
+  const [verified, setVerified] = useState(false)
+  const [connectionState, setConnectionState] = useState('Registered')
+  const [loadingConnection, setLoadingConnection] = useState(false)
+  const [connectionError, setConnectionError] = useState<string | null>(null)
 
-  const [connection, setConnection] =
-    React.useState<ConnectionRecord | null>(null)
-
-  const [connectionState, setConnectionState] =
-    React.useState<ConnectionState>('Registered')
-
-  const [loadingConnection, setLoadingConnection] =
-    React.useState(false)
-
-  const [showConnectionForm, setShowConnectionForm] =
-    React.useState(false)
-
-  const [editingConnection, setEditingConnection] =
-    React.useState(false)
+  const [showConnectionForm, setShowConnectionForm] = useState(false)
+  const [editingConnection, setEditingConnection] = useState(false)
 
   const [connectionForm, setConnectionForm] =
-    React.useState<ConnectionForm>({
-      connectionType: 'webhook',
-      provider: '',
-      endpointUrl: '',
-      environment: 'production',
-      authenticationMethod: 'none',
-      credentialLabel: '',
-      webhookSecretLabel: '',
-      mcpTransport: 'http',
-      sdkPackage: '',
+    useState<ConnectionForm>(emptyConnectionForm)
+
+  const [message, setMessage] = useState<string | null>(null)
+
+  const [showAddAgent, setShowAddAgent] = useState(false)
+  const [creatingAgent, setCreatingAgent] = useState(false)
+
+  const [newAgentName, setNewAgentName] = useState('')
+  const [newAgentPurpose, setNewAgentPurpose] = useState('')
+  const [newAgentType, setNewAgentType] = useState('general')
+  const [newAgentTeam, setNewAgentTeam] = useState('')
+
+  const [deletingAgent, setDeletingAgent] = useState(false)
+
+  async function loadAgents() {
+    setLoadingAgents(true)
+    setError(null)
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        setError('You must be signed in to view agents.')
+        setAgents([])
+        return
+      }
+
+      const { data: userRecord, error: userError } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (userError) throw userError
+
+      if (!userRecord?.organization_id) {
+        setError('No organization is associated with your account.')
+        setAgents([])
+        return
+      }
+
+      const { data, error: agentsError } = await supabase
+        .from('ai_agents')
+        .select(
+          'id, name, description, agent_type, status, created_at'
+        )
+        .eq('organization_id', userRecord.organization_id)
+        .order('created_at', { ascending: false })
+
+      if (agentsError) throw agentsError
+
+      const mappedAgents: Agent[] = (data ?? []).map((agent) => {
+        const rawStatus = String(agent.status ?? 'active').toLowerCase()
+
+        let status: AgentStatus = 'Active'
+
+        if (rawStatus === 'paused' || rawStatus === 'inactive') {
+          status = 'Paused'
+        } else if (
+          rawStatus === 'needs_review' ||
+          rawStatus === 'review'
+        ) {
+          status = 'Needs Review'
+        }
+
+        return {
+          id: agent.id,
+          name: agent.name,
+          purpose: agent.description ?? 'No purpose specified',
+          team: agent.agent_type ?? 'General',
+          status,
+          risk: 'Low',
+          tasks: 0,
+          lastActivity: agent.created_at
+            ? formatDate(agent.created_at)
+            : 'Never',
+        }
+      })
+
+      setAgents(mappedAgents)
+    } catch (err) {
+      console.error('Failed to load agents:', err)
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load agents.'
+      )
+    } finally {
+      setLoadingAgents(false)
+    }
+  }
+
+  useEffect(() => {
+    loadAgents()
+  }, [])
+
+  async function loadConnection(agentId: string) {
+    setLoadingConnection(true)
+    setConnectionError(null)
+
+    try {
+      const { data, error: connectionError } = await supabase
+        .from('agent_connections')
+        .select(
+          `
+            id,
+            status,
+            health_status,
+            last_connected_at,
+            connection_type,
+            provider,
+            endpoint_url,
+            environment,
+            capabilities
+          `
+        )
+        .eq('agent_id', agentId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (connectionError) throw connectionError
+
+      const { data: identity, error: identityError } =
+        await supabase
+          .from('agent_identities')
+          .select('verified')
+          .eq('agent_id', agentId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+      if (identityError) {
+        console.warn('Unable to load agent identity:', identityError)
+      }
+
+      const nextConnection = data as ConnectionRecord | null
+      const nextVerified = Boolean(identity?.verified)
+
+      setConnection(nextConnection)
+      setVerified(nextVerified)
+      setConnectionState(
+        getConnectionState(nextConnection, nextVerified)
+      )
+
+      if (nextConnection) {
+        const capabilities = nextConnection.capabilities ?? {}
+
+        setConnectionForm({
+          connectionType:
+            nextConnection.connection_type === 'webhook' ||
+            nextConnection.connection_type === 'sdk' ||
+            nextConnection.connection_type === 'mcp'
+              ? nextConnection.connection_type
+              : 'api',
+
+          provider: nextConnection.provider ?? '',
+          endpointUrl: nextConnection.endpoint_url ?? '',
+
+          environment:
+            nextConnection.environment === 'staging' ||
+            nextConnection.environment === 'development'
+              ? nextConnection.environment
+              : 'production',
+
+          authenticationMethod: 'api_key',
+          credentialLabel: '',
+          webhookSecretLabel: '',
+          mcpTransport: 'http',
+          sdkPackage: '',
+
+          capabilities: {
+            messagesSend: Boolean(capabilities['messages.send']),
+            messagesRead: Boolean(capabilities['messages.read']),
+            messagesReply: Boolean(capabilities['messages.reply']),
+          },
+        })
+      } else {
+        setConnectionForm(emptyConnectionForm)
+      }
+    } catch (err) {
+      console.error('Failed to load connection:', err)
+
+      setConnectionError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load connection.'
+      )
+    } finally {
+      setLoadingConnection(false)
+    }
+  }
+
+  function openAgent(agent: Agent) {
+    // Open immediately. Connection data loads after the panel is visible.
+    setSelectedAgent(agent)
+    setShowAgentPanel(true)
+
+    setConnection(null)
+    setVerified(false)
+    setConnectionState('Registered')
+    setLoadingConnection(true)
+
+    setShowConnectionForm(false)
+    setEditingConnection(false)
+
+    setConnectionError(null)
+    setMessage(null)
+
+    void loadConnection(agent.id)
+  }
+
+  function closeAgentPanel() {
+    setShowAgentPanel(false)
+
+    window.setTimeout(() => {
+      setSelectedAgent(null)
+      setConnection(null)
+      setConnectionError(null)
+      setMessage(null)
+    }, 180)
+  }
+
+  function startNewConnection() {
+    setEditingConnection(false)
+
+    setConnectionForm({
+      ...emptyConnectionForm,
+      capabilities: {
+        messagesSend: false,
+        messagesRead: false,
+        messagesReply: false,
+      },
     })
 
-  const [connectionError, setConnectionError] =
-    React.useState<string | null>(null)
+    setShowConnectionForm(true)
+    setMessage(null)
+    setConnectionError(null)
+  }
 
-  const [message, setMessage] =
-    React.useState<string | null>(null)
+  function startEditConnection() {
+    if (!connection) return
 
-  const [savingConnection, setSavingConnection] =
-    React.useState(false)
+    setEditingConnection(true)
+    setShowConnectionForm(true)
+    setMessage(null)
+    setConnectionError(null)
+  }
 
-  const [deletingConnection, setDeletingConnection] =
-    React.useState(false)
+  function updateCapability(
+    capability:
+      | 'messagesSend'
+      | 'messagesRead'
+      | 'messagesReply',
+    value: boolean
+  ) {
+    setConnectionForm((current) => ({
+      ...current,
+      capabilities: {
+        ...current.capabilities,
+        [capability]: value,
+      },
+    }))
+  }
 
-  const [verifying, setVerifying] =
-    React.useState(false)
+  async function saveConnection() {
+    if (!selectedAgent) return
 
-  const [deletingAgent, setDeletingAgent] =
-    React.useState(false)
+    setMessage(null)
+    setConnectionError(null)
 
-  const [savingCapabilities, setSavingCapabilities] =
-    React.useState(false)
+    if (!connectionForm.provider.trim()) {
+      setConnectionError('Provider is required.')
+      return
+    }
 
-  const [agentName, setAgentName] =
-    React.useState('')
+    if (
+      connectionForm.connectionType !== 'sdk' &&
+      connectionForm.connectionType !== 'mcp' &&
+      !connectionForm.endpointUrl.trim()
+    ) {
+      setConnectionError('Endpoint URL is required.')
+      return
+    }
 
-  const [agentDescription, setAgentDescription] =
-    React.useState('')
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-  const [agentType, setAgentType] =
-    React.useState('general')
+      if (!user) {
+        setConnectionError('You must be signed in.')
+        return
+      }
 
-  const [creatingAgent, setCreatingAgent] =
-    React.useState(false)
+      const { data: userRecord, error: userError } =
+        await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', user.id)
+          .maybeSingle()
 
-  const [createError, setCreateError] =
-    React.useState<string | null>(null)
+      if (userError) throw userError
 
-  const filteredAgents = React.useMemo(() => {
+      if (!userRecord?.organization_id) {
+        setConnectionError(
+          'No organization is associated with your account.'
+        )
+        return
+      }
+
+      const capabilities = {
+        'messages.send':
+          connectionForm.capabilities.messagesSend,
+        'messages.read':
+          connectionForm.capabilities.messagesRead,
+        'messages.reply':
+          connectionForm.capabilities.messagesReply,
+      }
+
+      const configuration = {
+        authentication_method:
+          connectionForm.authenticationMethod,
+        ...(connectionForm.credentialLabel
+          ? {
+              credential_label:
+                connectionForm.credentialLabel,
+            }
+          : {}),
+        ...(connectionForm.webhookSecretLabel
+          ? {
+              webhook_secret_label:
+                connectionForm.webhookSecretLabel,
+            }
+          : {}),
+        ...(connectionForm.mcpTransport
+          ? {
+              mcp_transport: connectionForm.mcpTransport,
+            }
+          : {}),
+        ...(connectionForm.sdkPackage
+          ? {
+              sdk_package: connectionForm.sdkPackage,
+            }
+          : {}),
+      }
+
+      if (editingConnection && connection) {
+        const { error: updateError } = await supabase
+          .from('agent_connections')
+          .update({
+            connection_type:
+              connectionForm.connectionType,
+            provider: connectionForm.provider.trim(),
+            endpoint_url:
+              connectionForm.endpointUrl.trim() || null,
+            environment: connectionForm.environment,
+            configuration,
+            capabilities,
+          })
+          .eq('id', connection.id)
+          .eq('agent_id', selectedAgent.id)
+          .eq(
+            'organization_id',
+            userRecord.organization_id
+          )
+
+        if (updateError) throw updateError
+
+        await supabase
+          .from('agent_connection_events')
+          .insert({
+            organization_id: userRecord.organization_id,
+            agent_id: selectedAgent.id,
+            connection_id: connection.id,
+            event_type: 'connected',
+            metadata: {
+              source: 'agents_ui',
+              action: 'updated',
+            },
+          })
+
+        setMessage('Connection updated successfully.')
+      } else {
+        const { data: newConnection, error: insertError } =
+          await supabase
+            .from('agent_connections')
+            .insert({
+              organization_id: userRecord.organization_id,
+              agent_id: selectedAgent.id,
+              connection_type:
+                connectionForm.connectionType,
+              provider:
+                connectionForm.provider.trim(),
+              endpoint_url:
+                connectionForm.endpointUrl.trim() || null,
+              environment: connectionForm.environment,
+              status: 'created',
+              configuration,
+              capabilities,
+            })
+            .select(
+              `
+                id,
+                status,
+                health_status,
+                last_connected_at,
+                connection_type,
+                provider,
+                endpoint_url,
+                environment,
+                capabilities
+              `
+            )
+            .single()
+
+        if (insertError) throw insertError
+
+        await supabase
+          .from('agent_connection_events')
+          .insert({
+            organization_id: userRecord.organization_id,
+            agent_id: selectedAgent.id,
+            connection_id: newConnection.id,
+            event_type: 'created',
+            metadata: {
+              source: 'agents_ui',
+            },
+          })
+
+        setMessage('Connection created successfully.')
+      }
+
+      setShowConnectionForm(false)
+      setEditingConnection(false)
+
+      await loadConnection(selectedAgent.id)
+    } catch (err) {
+      console.error('Failed to save connection:', err)
+
+      setConnectionError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to save connection.'
+      )
+    }
+  }
+
+  async function deleteConnection() {
+    if (!connection || !selectedAgent) return
+
+    const confirmed = window.confirm(
+      'Remove this agent connection?'
+    )
+
+    if (!confirmed) return
+
+    setMessage(null)
+    setConnectionError(null)
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        setConnectionError('You must be signed in.')
+        return
+      }
+
+      const { data: userRecord } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (!userRecord?.organization_id) {
+        setConnectionError(
+          'No organization is associated with your account.'
+        )
+        return
+      }
+
+      const { error } = await supabase
+        .from('agent_connections')
+        .delete()
+        .eq('id', connection.id)
+        .eq('agent_id', selectedAgent.id)
+        .eq(
+          'organization_id',
+          userRecord.organization_id
+        )
+
+      if (error) throw error
+
+      setConnection(null)
+      setVerified(false)
+      setConnectionState('Registered')
+      setShowConnectionForm(false)
+      setEditingConnection(false)
+
+      setMessage('Connection removed.')
+    } catch (err) {
+      console.error('Failed to delete connection:', err)
+
+      setConnectionError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to remove connection.'
+      )
+    }
+  }
+
+  async function verifyConnection() {
+    if (!selectedAgent || !connection) return
+
+    setMessage(null)
+    setConnectionError(null)
+
+    try {
+      const response = await fetch('/api/agents/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentId: selectedAgent.id,
+          connectionId: connection.id,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || 'Verification failed.'
+        )
+      }
+
+      setMessage(
+        data?.message ||
+          'Connection verified successfully.'
+      )
+
+      await loadConnection(selectedAgent.id)
+    } catch (err) {
+      console.error('Verification failed:', err)
+
+      setConnectionError(
+        err instanceof Error
+          ? err.message
+          : 'Verification failed.'
+      )
+    }
+  }
+
+  async function createAgent() {
+    if (!newAgentName.trim()) return
+
+    setCreatingAgent(true)
+    setError(null)
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        setError('You must be signed in to create an agent.')
+        return
+      }
+
+      const { data: userRecord, error: userError } =
+        await supabase
+          .from('users')
+          .select('organization_id')
+          .eq('id', user.id)
+          .maybeSingle()
+
+      if (userError) throw userError
+
+      if (!userRecord?.organization_id) {
+        setError(
+          'No organization is associated with your account.'
+        )
+        return
+      }
+
+      const { data, error: insertError } =
+        await supabase
+          .from('ai_agents')
+          .insert({
+            organization_id: userRecord.organization_id,
+            name: newAgentName.trim(),
+            description:
+              newAgentPurpose.trim() || null,
+            agent_type:
+              newAgentType.trim() || 'general',
+            status: 'active',
+          })
+          .select(
+            'id, name, description, agent_type, status, created_at'
+          )
+          .single()
+
+      if (insertError) throw insertError
+
+      const newAgent: Agent = {
+        id: data.id,
+        name: data.name,
+        purpose:
+          data.description ?? 'No purpose specified',
+        team: data.agent_type ?? 'General',
+        status: 'Active',
+        risk: 'Low',
+        tasks: 0,
+        lastActivity: data.created_at
+          ? formatDate(data.created_at)
+          : 'Never',
+      }
+
+      setAgents((current) => [
+        newAgent,
+        ...current,
+      ])
+
+      setNewAgentName('')
+      setNewAgentPurpose('')
+      setNewAgentType('general')
+      setNewAgentTeam('')
+      setShowAddAgent(false)
+
+      openAgent(newAgent)
+    } catch (err) {
+      console.error('Failed to create agent:', err)
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to create agent.'
+      )
+    } finally {
+      setCreatingAgent(false)
+    }
+  }
+
+  async function deleteAgent() {
+    if (!selectedAgent) return
+
+    const confirmed = window.confirm(
+      `Delete "${selectedAgent.name}"? This cannot be undone.`
+    )
+
+    if (!confirmed) return
+
+    setDeletingAgent(true)
+    setConnectionError(null)
+    setMessage(null)
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (!user) {
+        setConnectionError('You must be signed in.')
+        return
+      }
+
+      const { data: userRecord } = await supabase
+        .from('users')
+        .select('organization_id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (!userRecord?.organization_id) {
+        setConnectionError(
+          'No organization is associated with your account.'
+        )
+        return
+      }
+
+      const { error: deleteError } = await supabase
+        .from('ai_agents')
+        .delete()
+        .eq('id', selectedAgent.id)
+        .eq(
+          'organization_id',
+          userRecord.organization_id
+        )
+
+      if (deleteError) throw deleteError
+
+      setAgents((current) =>
+        current.filter(
+          (agent) => agent.id !== selectedAgent.id
+        )
+      )
+
+      closeAgentPanel()
+    } catch (err) {
+      console.error('Failed to delete agent:', err)
+
+      setConnectionError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to delete agent.'
+      )
+    } finally {
+      setDeletingAgent(false)
+    }
+  }
+
+  const filteredAgents = useMemo(() => {
     const query = search.trim().toLowerCase()
 
     return agents.filter((agent) => {
@@ -293,1205 +895,122 @@ export default function AgentsClient({
     riskFilter,
   ])
 
-  const activeAgents = agents.filter(
-    (agent) => agent.status === 'Active',
+  const activeCount = agents.filter(
+    (agent) => agent.status === 'Active'
   ).length
 
-  const reviewAgents = agents.filter(
-    (agent) => agent.status === 'Needs Review',
+  const reviewCount = agents.filter(
+    (agent) => agent.status === 'Needs Review'
   ).length
 
-  const criticalAgents = agents.filter(
-    (agent) => agent.risk === 'Critical',
-  ).length
-
-  const totalTasks = agents.reduce(
+  const taskCount = agents.reduce(
     (total, agent) => total + agent.tasks,
-    0,
+    0
   )
 
-  function openAgent(agent: Agent) {
-    /*
-     * Open the detail surface immediately.
-     *
-     * The connection is loaded after the shell is visible,
-     * so clicking an agent does not wait for Supabase before
-     * showing the agent.
-     */
-    setSelectedAgent(agent)
-
-    setConnection(null)
-    setConnectionState('Registered')
-    setLoadingConnection(true)
-
-    setShowConnectionForm(false)
-    setEditingConnection(false)
-
-    setConnectionError(null)
-    setMessage(null)
-
-    void loadConnection(agent.id)
-  }
-
-  async function loadConnection(agentId: string) {
-    try {
-      const supabase = createClient()
-
-      const { data, error } = await supabase
-        .from('agent_connections')
-        .select(
-          `
-            id,
-            status,
-            health_status,
-            last_connected_at,
-            connection_type,
-            provider,
-            endpoint_url,
-            environment,
-            capabilities
-          `,
-        )
-        .eq('agent_id', agentId)
-        .order('created_at', {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle()
-
-      if (error) {
-        throw error
-      }
-
-      if (!data) {
-        setConnection(null)
-        setConnectionState('Registered')
-        return
-      }
-
-      setConnection({
-        ...data,
-        capabilities:
-          data.capabilities &&
-          typeof data.capabilities === 'object'
-            ? (data.capabilities as Record<string, unknown>)
-            : {},
-      })
-
-      setConnectionForm({
-        connectionType:
-          normalizeConnectionType(
-            data.connection_type || 'webhook',
-          ),
-        provider: data.provider || '',
-        endpointUrl: data.endpoint_url || '',
-        environment:
-          data.environment || 'production',
-        authenticationMethod: 'none',
-        credentialLabel: '',
-        webhookSecretLabel: '',
-        mcpTransport: 'http',
-        sdkPackage: '',
-      })
-
-      const { data: identity } = await supabase
-        .from('agent_identities')
-        .select('verified')
-        .eq('agent_id', agentId)
-        .order('created_at', {
-          ascending: false,
-        })
-        .limit(1)
-        .maybeSingle()
-
-      setConnectionState(
-        getConnectionState(
-          data,
-          identity?.verified === true,
-        ),
-      )
-    } catch (error) {
-      console.error(
-        'Failed to load agent connection:',
-        error,
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Unable to load connection information.',
-      )
-    } finally {
-      setLoadingConnection(false)
-    }
-  }
-
-  function closeAgent() {
-    setSelectedAgent(null)
-    setConnection(null)
-    setConnectionError(null)
-    setMessage(null)
-    setShowConnectionForm(false)
-    setEditingConnection(false)
-    setSavingCapabilities(false)
-  }
-
-  React.useEffect(() => {
-    if (!selectedAgent) {
-      return
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        closeAgent()
-      }
-    }
-
-    document.addEventListener(
-      'keydown',
-      handleEscape,
-    )
-
-    return () => {
-      document.removeEventListener(
-        'keydown',
-        handleEscape,
-      )
-    }
-  }, [selectedAgent])
-
-  function resetAgentForm() {
-    setAgentName('')
-    setAgentDescription('')
-    setAgentType('general')
-    setCreateError(null)
-  }
-
-  function resetConnectionForm() {
-    setConnectionForm({
-      connectionType: 'webhook',
-      provider: '',
-      endpointUrl: '',
-      environment: 'production',
-      authenticationMethod: 'none',
-      credentialLabel: '',
-      webhookSecretLabel: '',
-      mcpTransport: 'http',
-      sdkPackage: '',
-    })
-
-    setConnectionError(null)
-    setEditingConnection(false)
-  }
-
-  function startConnectionSetup() {
-    setConnectionError(null)
-    setMessage(null)
-    setEditingConnection(false)
-    resetConnectionForm()
-    setShowConnectionForm(true)
-  }
-
-  function startConnectionEdit() {
-    if (!connection) {
-      return
-    }
-
-    setConnectionForm({
-      connectionType:
-        normalizeConnectionType(
-          connection.connection_type || 'webhook',
-        ),
-      provider: connection.provider || '',
-      endpointUrl:
-        connection.endpoint_url || '',
-      environment:
-        connection.environment || 'production',
-      authenticationMethod: 'none',
-      credentialLabel: '',
-      webhookSecretLabel: '',
-      mcpTransport: 'http',
-      sdkPackage: '',
-    })
-
-    setConnectionError(null)
-    setMessage(null)
-    setEditingConnection(true)
-    setShowConnectionForm(true)
-  }
-
-  function validateConnection() {
-    const type = normalizeConnectionType(
-      connectionForm.connectionType,
-    )
-
-    if (!connectionForm.provider.trim()) {
-      setConnectionError(
-        'Please enter the agent provider.',
-      )
-      return false
-    }
-
-    if (type === 'api') {
-      if (!connectionForm.endpointUrl.trim()) {
-        setConnectionError(
-          'Please enter the REST API endpoint URL.',
-        )
-        return false
-      }
-
-      try {
-        const url = new URL(
-          connectionForm.endpointUrl.trim(),
-        )
-
-        if (url.protocol !== 'https:') {
-          setConnectionError(
-            'REST API connections must use HTTPS.',
-          )
-          return false
-        }
-      } catch {
-        setConnectionError(
-          'Please enter a valid REST API endpoint URL.',
-        )
-        return false
-      }
-
-      if (
-        connectionForm.authenticationMethod ===
-        'none'
-      ) {
-        setConnectionError(
-          'Please select an authentication method for the REST API.',
-        )
-        return false
-      }
-    }
-
-    if (type === 'webhook') {
-      return true
-    }
-
-    if (type === 'sdk') {
-      if (!connectionForm.sdkPackage.trim()) {
-        setConnectionError(
-          'Please enter the SDK/package identifier.',
-        )
-        return false
-      }
-
-      return true
-    }
-
-    if (type === 'mcp') {
-      if (
-        connectionForm.mcpTransport ===
-          'http' ||
-        connectionForm.mcpTransport ===
-          'sse'
-      ) {
-        if (!connectionForm.endpointUrl.trim()) {
-          setConnectionError(
-            'Please enter the MCP server endpoint.',
-          )
-          return false
-        }
-
-        try {
-          const url = new URL(
-            connectionForm.endpointUrl.trim(),
-          )
-
-          if (url.protocol !== 'https:') {
-            setConnectionError(
-              'MCP HTTP/SSE connections must use HTTPS.',
-            )
-            return false
-          }
-        } catch {
-          setConnectionError(
-            'Please enter a valid MCP endpoint URL.',
-          )
-          return false
-        }
-      }
-
-      return true
-    }
-
-    return true
-  }
-
-  async function getOrganizationId() {
-    const supabase = createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      throw new Error(
-        'You must be signed in.',
-      )
-    }
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('organization_id')
-      .eq('id', user.id)
-      .single()
-
-    if (error || !data?.organization_id) {
-      throw new Error(
-        'Could not determine your organization.',
-      )
-    }
-
-    return data.organization_id
-  }
-
-  async function saveConnection() {
-    if (!selectedAgent) {
-      return
-    }
-
-    if (!validateConnection()) {
-      return
-    }
-
-    setSavingConnection(true)
-    setConnectionError(null)
-    setMessage(null)
-
-    try {
-      const supabase = createClient()
-      const organizationId =
-        await getOrganizationId()
-
-      const type = normalizeConnectionType(
-        connectionForm.connectionType,
-      )
-
-      const configuration: Record<
-        string,
-        unknown
-      > = {}
-
-      if (type === 'api') {
-        configuration.authentication_method =
-          connectionForm.authenticationMethod
-
-        if (
-          connectionForm.credentialLabel.trim()
-        ) {
-          configuration.credential_label =
-            connectionForm.credentialLabel.trim()
-        }
-      }
-
-      if (type === 'webhook') {
-        configuration.direction = 'inbound'
-
-        if (
-          connectionForm.webhookSecretLabel.trim()
-        ) {
-          configuration.secret_label =
-            connectionForm.webhookSecretLabel.trim()
-        }
-      }
-
-      if (type === 'sdk') {
-        configuration.package =
-          connectionForm.sdkPackage.trim()
-      }
-
-      if (type === 'mcp') {
-        configuration.transport =
-          connectionForm.mcpTransport
-      }
-
-      const payload = {
-        connection_type: type,
-        provider:
-          connectionForm.provider.trim(),
-        endpoint_url:
-          type === 'api' ||
-          (
-            type === 'mcp' &&
-            (
-              connectionForm.mcpTransport ===
-                'http' ||
-              connectionForm.mcpTransport ===
-                'sse'
-            )
-          )
-            ? connectionForm.endpointUrl.trim()
-            : null,
-        environment:
-          connectionForm.environment,
-        status: 'pending',
-        health_status: 'unknown',
-        last_connected_at: null,
-        last_seen_at: null,
-        last_health_check_at: null,
-        consecutive_failures: 0,
-        configuration,
-      }
-
-      if (editingConnection && connection) {
-        const { data, error } = await supabase
-          .from('agent_connections')
-          .update(payload)
-          .eq('id', connection.id)
-          .eq(
-            'agent_id',
-            selectedAgent.id,
-          )
-          .eq(
-            'organization_id',
-            organizationId,
-          )
-          .select(
-            `
-              id,
-              status,
-              health_status,
-              last_connected_at,
-              connection_type,
-              provider,
-              endpoint_url,
-              environment,
-              capabilities
-            `,
-          )
-          .single()
-
-        if (error || !data) {
-          throw new Error(
-            error?.message ||
-              'Failed to update the connection.',
-          )
-        }
-
-        await supabase
-          .from('agent_connection_events')
-          .insert({
-            organization_id:
-              organizationId,
-            agent_id: selectedAgent.id,
-            agent_connection_id: connection.id,
-            event_type:
-              'connection_updated',
-            status: 'pending',
-            message:
-              'Agent connection configuration updated.',
-            metadata: {
-              connection_type: type,
-              provider:
-                connectionForm.provider.trim(),
-              environment:
-                connectionForm.environment,
-            },
-          })
-
-        setConnection({
-          ...data,
-          capabilities:
-            data.capabilities &&
-            typeof data.capabilities === 'object'
-              ? (data.capabilities as Record<string, unknown>)
-              : {},
-        })
-
-        setConnectionState(
-          'Connection Setup',
-        )
-
-        setShowConnectionForm(false)
-        setEditingConnection(false)
-
-        setMessage(
-          'Connection updated. Verify it before treating the agent as connected.',
-        )
-      } else {
-        const { data: existing } =
-          await supabase
-            .from('agent_connections')
-            .select('id')
-            .eq(
-              'agent_id',
-              selectedAgent.id,
-            )
-            .limit(1)
-            .maybeSingle()
-
-        if (existing) {
-          throw new Error(
-            'This agent already has a connection. Use Edit Connection instead.',
-          )
-        }
-
-        const { data, error } =
-          await supabase
-            .from('agent_connections')
-            .insert({
-              organization_id:
-                organizationId,
-              agent_id:
-                selectedAgent.id,
-              ...payload,
-              capabilities: {},
-            })
-            .select(
-              `
-                id,
-                status,
-                health_status,
-                last_connected_at,
-                connection_type,
-                provider,
-                endpoint_url,
-                environment,
-                capabilities
-              `,
-            )
-            .single()
-
-        if (error || !data) {
-          throw new Error(
-            error?.message ||
-              'Failed to create the connection.',
-          )
-        }
-
-        await supabase
-          .from('agent_connection_events')
-          .insert({
-            organization_id:
-              organizationId,
-            agent_id: selectedAgent.id,
-            agent_connection_id: data.id,
-            event_type:
-              'connection_setup',
-            status: 'pending',
-            message:
-              'Agent connection configuration created.',
-            metadata: {
-              connection_type: type,
-              provider:
-                connectionForm.provider.trim(),
-              environment:
-                connectionForm.environment,
-            },
-          })
-
-        setConnection({
-          ...data,
-          capabilities:
-            data.capabilities &&
-            typeof data.capabilities === 'object'
-              ? (data.capabilities as Record<string, unknown>)
-              : {},
-        })
-
-        setConnectionState(
-          'Connection Setup',
-        )
-
-        setShowConnectionForm(false)
-
-        setMessage(
-          'Connection registered. Verify it before treating the agent as connected.',
-        )
-      }
-    } catch (error) {
-      console.error(
-        'Failed to save connection:',
-        error,
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to save the connection.',
-      )
-    } finally {
-      setSavingConnection(false)
-    }
-  }
-
-  async function updateCapability(
-    capabilityId: string,
-    enabled: boolean,
-  ) {
-    if (!selectedAgent || !connection) {
-      return
-    }
-
-    setSavingCapabilities(true)
-    setConnectionError(null)
-    setMessage(null)
-
-    const previousCapabilities =
-      connection.capabilities || {}
-
-    const nextCapabilities = {
-      ...previousCapabilities,
-      [capabilityId]: enabled,
-    }
-
-    setConnection((current) =>
-      current
-        ? {
-            ...current,
-            capabilities:
-              nextCapabilities,
-          }
-        : current,
-    )
-
-    try {
-      const supabase = createClient()
-      const organizationId =
-        await getOrganizationId()
-
-      const { error } = await supabase
-        .from('agent_connections')
-        .update({
-          capabilities:
-            nextCapabilities,
-        })
-        .eq('id', connection.id)
-        .eq(
-          'agent_id',
-          selectedAgent.id,
-        )
-        .eq(
-          'organization_id',
-          organizationId,
-        )
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      await supabase
-        .from('agent_connection_events')
-        .insert({
-          organization_id:
-            organizationId,
-          agent_id:
-            selectedAgent.id,
-          agent_connection_id:
-            connection.id,
-          event_type:
-            'connection_updated',
-          status: 'completed',
-          message: enabled
-            ? `Capability enabled: ${capabilityId}`
-            : `Capability disabled: ${capabilityId}`,
-          metadata: {
-            capability:
-              capabilityId,
-            enabled,
-          },
-        })
-
-      setMessage(
-        enabled
-          ? `${capabilityId} enabled for this connection.`
-          : `${capabilityId} disabled for this connection.`,
-      )
-    } catch (error) {
-      console.error(
-        'Failed to update capability:',
-        error,
-      )
-
-      setConnection((current) =>
-        current
-          ? {
-              ...current,
-              capabilities:
-                previousCapabilities,
-            }
-          : current,
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to update capability.',
-      )
-    } finally {
-      setSavingCapabilities(false)
-    }
-  }
-
-  async function deleteConnection() {
-    if (!selectedAgent || !connection) {
-      return
-    }
-
-    if (
-      !window.confirm(
-        `Delete the connection configuration for "${selectedAgent.name}"?`,
-      )
-    ) {
-      return
-    }
-
-    setDeletingConnection(true)
-    setConnectionError(null)
-    setMessage(null)
-
-    try {
-      const supabase = createClient()
-      const organizationId =
-        await getOrganizationId()
-
-      const { error } = await supabase
-        .from('agent_connections')
-        .delete()
-        .eq('id', connection.id)
-        .eq(
-          'agent_id',
-          selectedAgent.id,
-        )
-        .eq(
-          'organization_id',
-          organizationId,
-        )
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      setConnection(null)
-      setConnectionState('Registered')
-      setShowConnectionForm(false)
-      setEditingConnection(false)
-
-      resetConnectionForm()
-
-      setMessage(
-        'Connection deleted. The agent remains registered.',
-      )
-    } catch (error) {
-      console.error(
-        'Failed to delete connection:',
-        error,
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete the connection.',
-      )
-    } finally {
-      setDeletingConnection(false)
-    }
-  }
-
-  async function verifyConnection() {
-    if (!selectedAgent) {
-      return
-    }
-
-    setVerifying(true)
-    setConnectionError(null)
-    setMessage(null)
-
-    try {
-      const response = await fetch(
-        '/api/agents/verify',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':
-              'application/json',
-            Accept:
-              'application/json',
-          },
-          credentials: 'same-origin',
-          cache: 'no-store',
-          body: JSON.stringify({
-            agentId:
-              selectedAgent.id,
-          }),
-        },
-      )
-
-      const contentType =
-        response.headers.get(
-          'content-type',
-        ) || ''
-
-      let data: {
-        success?: boolean
-        message?: string
-        error?: string
-      } = {}
-
-      if (
-        contentType.includes(
-          'application/json',
-        )
-      ) {
-        data = await response.json()
-      } else {
-        const text =
-          await response.text()
-
-        throw new Error(
-          text ||
-            `Verification failed with HTTP ${response.status}.`,
-        )
-      }
-
-      if (
-        !response.ok ||
-        data.success === false
-      ) {
-        throw new Error(
-          data.message ||
-            data.error ||
-            'Connection verification failed.',
-        )
-      }
-
-      setMessage(
-        data.message ||
-          'Connection verification completed.',
-      )
-
-      await loadConnection(
-        selectedAgent.id,
-      )
-    } catch (error) {
-      console.error(
-        'Failed to verify connection:',
-        error,
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Connection verification failed.',
-      )
-    } finally {
-      setVerifying(false)
-    }
-  }
-
-  async function deleteAgent() {
-    if (!selectedAgent) {
-      return
-    }
-
-    if (
-      !window.confirm(
-        `Delete "${selectedAgent.name}" permanently?\n\nThis removes the agent registration.`,
-      )
-    ) {
-      return
-    }
-
-    setDeletingAgent(true)
-    setConnectionError(null)
-    setMessage(null)
-
-    try {
-      const supabase = createClient()
-      const organizationId =
-        await getOrganizationId()
-
-      const { data, error } =
-        await supabase
-          .from('ai_agents')
-          .delete()
-          .eq(
-            'id',
-            selectedAgent.id,
-          )
-          .eq(
-            'organization_id',
-            organizationId,
-          )
-          .select('id')
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      if (!data || data.length === 0) {
-        throw new Error(
-          'The agent was not deleted. Check the ai_agents DELETE policy.',
-        )
-      }
-
-      setAgents((current) =>
-        current.filter(
-          (agent) =>
-            agent.id !==
-            selectedAgent.id,
-        ),
-      )
-
-      closeAgent()
-    } catch (error) {
-      console.error(
-        'Failed to delete agent:',
-        error,
-      )
-
-      setConnectionError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to delete the agent.',
-      )
-    } finally {
-      setDeletingAgent(false)
-    }
-  }
-
-  async function createAgent() {
-    if (!agentName.trim()) {
-      setCreateError(
-        'Please enter an agent name.',
-      )
-      return
-    }
-
-    if (!agentDescription.trim()) {
-      setCreateError(
-        'Please describe what this agent does.',
-      )
-      return
-    }
-
-    setCreatingAgent(true)
-    setCreateError(null)
-
-    try {
-      const supabase = createClient()
-      const organizationId =
-        await getOrganizationId()
-
-      const { data, error } =
-        await supabase
-          .from('ai_agents')
-          .insert({
-            organization_id:
-              organizationId,
-            name:
-              agentName.trim(),
-            description:
-              agentDescription.trim(),
-            agent_type:
-              agentType,
-            status: 'active',
-          })
-          .select(
-            `
-              id,
-              name,
-              description,
-              agent_type,
-              status
-            `,
-          )
-          .single()
-
-      if (error || !data) {
-        throw new Error(
-          error?.message ||
-            'Failed to create the agent.',
-        )
-      }
-
-      const newAgent: Agent = {
-        id: data.id,
-        name: data.name,
-        purpose:
-          data.description ||
-          'AI agent registered in the Arbyter governance environment.',
-        team:
-          data.agent_type ||
-          'AI Operations',
-        status:
-          data.status === 'paused'
-            ? 'Paused'
-            : data.status ===
-                'needs_review'
-              ? 'Needs Review'
-              : 'Active',
-        risk: 'Medium',
-        tasks: 0,
-        lastActivity:
-          'No activity recorded',
-      }
-
-      setAgents((current) => [
-        newAgent,
-        ...current,
-      ])
-
-      resetAgentForm()
-      setShowNewAgent(false)
-    } catch (error) {
-      console.error(
-        'Failed to create agent:',
-        error,
-      )
-
-      setCreateError(
-        error instanceof Error
-          ? error.message
-          : 'Failed to create the agent.',
-      )
-    } finally {
-      setCreatingAgent(false)
-    }
-  }
-
-  const connectionType =
-    normalizeConnectionType(
-      connectionForm.connectionType,
-    )
-
-  const connectionProvider =
-    connection?.provider?.toLowerCase() || ''
-
-  const supportsAgentMail =
-    connectionProvider === 'agentmail'
-
   return (
-    <main className="flex flex-col gap-6">
-      {/* Header */}
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">
-            AI Environment
-          </p>
+    <div className="min-h-full bg-background">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="text-sm font-medium text-muted-foreground">
+              AI Environment
+            </div>
 
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-            Agents
-          </h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+              Agents
+            </h1>
 
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Discover, connect, monitor, and govern every AI
-            agent operating across your organization.
-          </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Manage AI agents, connections, permissions,
+              and operational state.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAddAgent(true)}
+            className="inline-flex h-10 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-medium text-background shadow-sm transition hover:opacity-90 active:scale-[0.98]"
+          >
+            <span className="mr-2 text-lg leading-none">
+              +
+            </span>
+            Add Agent
+          </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            resetAgentForm()
-            setShowNewAgent(true)
-          }}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
-        >
-          <Plus className="h-4 w-4" />
-          Add Agent
-        </button>
-      </section>
+        {/* Summary */}
+        <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <SummaryCard
+            label="Total Agents"
+            value={agents.length}
+          />
 
-      {/* Summary */}
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SummaryCard
-          label="Total Agents"
-          value={agents.length}
-          description="Registered in Arbyter"
-          icon={<Bot className="h-4 w-4" />}
-        />
+          <SummaryCard
+            label="Active"
+            value={activeCount}
+          />
 
-        <SummaryCard
-          label="Active"
-          value={activeAgents}
-          description="Currently registered as active"
-          icon={<Activity className="h-4 w-4" />}
-        />
+          <SummaryCard
+            label="Needs Review"
+            value={reviewCount}
+          />
 
-        <SummaryCard
-          label="Needs Review"
-          value={reviewAgents}
-          description="Governance attention required"
-          icon={
-            <AlertTriangle className="h-4 w-4" />
-          }
-        />
+          <SummaryCard
+            label="Tasks Executed"
+            value={taskCount}
+          />
+        </div>
 
-        <SummaryCard
-          label="Tasks Executed"
-          value={totalTasks.toLocaleString()}
-          description="Across registered agents"
-          icon={
-            <ShieldCheck className="h-4 w-4" />
-          }
-        />
-      </section>
+        {/* Notice */}
+        <div className="mt-6 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+          <div className="flex gap-3">
+            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-semibold text-amber-600 dark:text-amber-400">
+              !
+            </div>
 
-      {/* Critical notice */}
-      {criticalAgents > 0 && (
-        <section className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50/50 p-4">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+            <div>
+              <p className="text-sm font-medium">
+                Agent governance is active
+              </p>
 
-          <div>
-            <p className="text-sm font-medium">
-              {criticalAgents}{' '}
-              {criticalAgents === 1
-                ? 'agent requires'
-                : 'agents require'}{' '}
-              immediate review
-            </p>
-
-            <p className="mt-1 text-xs text-muted-foreground">
-              Critical-risk agents should be reviewed before
-              unrestricted operation.
-            </p>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+                Connections, verification, health, and
+                capabilities are managed through Arbyter.
+              </p>
+            </div>
           </div>
-        </section>
-      )}
+        </div>
 
-      {/* Filters */}
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        {/* Filters */}
+        <div className="mt-6 rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row">
+            <div className="relative flex-1">
+              <input
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+                placeholder="Search agents..."
+                className="h-10 w-full rounded-xl border bg-background px-3 text-sm outline-none transition placeholder:text-muted-foreground focus:border-foreground/30 focus:ring-2 focus:ring-foreground/5"
+              />
+            </div>
 
-            <input
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Search agents..."
-              className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
             <select
               value={statusFilter}
               onChange={(event) =>
                 setStatusFilter(
-                  event.target.value,
+                  event.target.value as
+                    | 'All'
+                    | AgentStatus
                 )
               }
-              className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
+              className="h-10 rounded-xl border bg-background px-3 text-sm outline-none"
             >
-              <option value="All">
-                All statuses
-              </option>
-              <option value="Active">
-                Active
-              </option>
-              <option value="Paused">
-                Paused
-              </option>
+              <option value="All">All Status</option>
+              <option value="Active">Active</option>
+              <option value="Paused">Paused</option>
               <option value="Needs Review">
                 Needs Review
               </option>
@@ -1501,716 +1020,401 @@ export default function AgentsClient({
               value={riskFilter}
               onChange={(event) =>
                 setRiskFilter(
-                  event.target.value,
+                  event.target.value as
+                    | 'All'
+                    | RiskLevel
                 )
               }
-              className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
+              className="h-10 rounded-xl border bg-background px-3 text-sm outline-none"
             >
-              <option value="All">
-                All risk levels
-              </option>
-              <option value="Critical">
-                Critical
-              </option>
-              <option value="High">
-                High
-              </option>
-              <option value="Medium">
-                Medium
-              </option>
-              <option value="Low">
-                Low
-              </option>
+              <option value="All">All Risk</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
             </select>
           </div>
         </div>
-      </section>
 
-      {/* Agent inventory */}
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="border-b p-5">
-          <h2 className="font-semibold">
-            AI Agent Inventory
-          </h2>
+        {/* Error */}
+        {error && (
+          <div className="mt-4 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </div>
+        )}
 
-          <p className="mt-1 text-sm text-muted-foreground">
-            Every registered agent and its current governance
-            posture.
-          </p>
-        </div>
+        {/* Agent inventory */}
+        <div className="mt-6 overflow-hidden rounded-2xl border bg-card shadow-sm">
+          <div className="border-b px-5 py-4">
+            <div className="text-sm font-semibold">
+              Agent Inventory
+            </div>
 
-        <div className="divide-y">
-          {filteredAgents.map((agent) => (
-            <button
-              key={agent.id}
-              type="button"
-              onClick={() => openAgent(agent)}
-              className="group flex w-full cursor-pointer flex-col gap-4 p-5 text-left transition-all duration-200 hover:bg-muted/30 focus:outline-none focus-visible:bg-muted/30 active:bg-muted/40 lg:flex-row lg:items-center"
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background transition-all duration-200 group-hover:border-foreground/20 group-hover:shadow-sm">
-                <Bot className="h-4 w-4" />
+            <div className="mt-0.5 text-xs text-muted-foreground">
+              {filteredAgents.length} agent
+              {filteredAgents.length === 1 ? '' : 's'}
+            </div>
+          </div>
+
+          {loadingAgents ? (
+            <div className="space-y-3 p-4">
+              {[1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="h-20 animate-pulse rounded-xl bg-muted"
+                />
+              ))}
+            </div>
+          ) : filteredAgents.length === 0 ? (
+            <div className="px-5 py-14 text-center">
+              <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                AI
               </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-medium">
-                    {agent.name}
-                  </h3>
+              <p className="mt-4 text-sm font-medium">
+                No agents found
+              </p>
 
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusClass(
-                      agent.status,
-                    )}`}
-                  >
-                    {agent.status}
-                  </span>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Try changing your filters or create a new
+                agent.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {filteredAgents.map((agent) => (
+                <button
+                  key={agent.id}
+                  type="button"
+                  onClick={() => openAgent(agent)}
+                  aria-label={`Open ${agent.name}`}
+                  className="group flex w-full items-center gap-4 px-5 py-4 text-left transition duration-150 hover:bg-muted/40 active:bg-muted/60"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background text-sm font-semibold">
+                    {agent.name
+                      .slice(0, 1)
+                      .toUpperCase()}
+                  </div>
 
-                  <span
-                    className={`rounded-full border px-2.5 py-1 text-xs font-medium ${getRiskClass(
-                      agent.risk,
-                    )}`}
-                  >
-                    {agent.risk} risk
-                  </span>
-                </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-semibold">
+                        {agent.name}
+                      </span>
 
-                <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-                  {agent.purpose}
-                </p>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${getStatusClasses(
+                          agent.status
+                        )}`}
+                      >
+                        {agent.status}
+                      </span>
+                    </div>
 
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-                  <span>
-                    Team: {agent.team}
-                  </span>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                      <span>{agent.team}</span>
+                      <span>{agent.tasks} tasks</span>
+                      <span>
+                        Risk:{' '}
+                        <span
+                          className={getRiskClasses(
+                            agent.risk
+                          )}
+                        >
+                          {agent.risk}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
 
-                  <span>
-                    Tasks: {agent.tasks}
-                  </span>
+                  <div className="hidden text-right sm:block">
+                    <div className="text-xs text-muted-foreground">
+                      Last activity
+                    </div>
+                    <div className="mt-1 text-xs font-medium">
+                      {agent.lastActivity}
+                    </div>
+                  </div>
 
-                  <span>
-                    Last activity:{' '}
-                    {agent.lastActivity}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex shrink-0 items-center justify-end">
-                <ChevronRight className="h-4 w-4 text-muted-foreground transition-all duration-200 group-hover:translate-x-1 group-hover:text-foreground" />
-              </div>
-            </button>
-          ))}
-
-          {filteredAgents.length === 0 && (
-            <div className="px-5 py-12 text-center text-sm text-muted-foreground">
-              No agents match your filters.
+                  <div className="ml-1 text-xl text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5">
+                    ›
+                  </div>
+                </button>
+              ))}
             </div>
           )}
         </div>
-      </section>
+      </div>
 
-      {/* Agent detail modal */}
-      {selectedAgent && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px] animate-in fade-in duration-150"
-          onMouseDown={(event) => {
-            if (
-              event.target ===
-                event.currentTarget &&
-              !deletingAgent &&
-              !deletingConnection &&
-              !savingConnection &&
-              !savingCapabilities &&
-              !verifying
-            ) {
-              closeAgent()
+      {/* Agent detail side panel */}
+      {showAgentPanel && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Close agent panel"
+            onClick={closeAgentPanel}
+            className="absolute inset-0 bg-black/25 backdrop-blur-[1px] animate-in fade-in duration-150"
+          />
+
+          <aside
+            className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l bg-background shadow-2xl animate-in slide-in-from-right duration-200"
+            role="dialog"
+            aria-modal="true"
+            aria-label={
+              selectedAgent
+                ? `${selectedAgent.name} details`
+                : 'Agent details'
             }
-          }}
-        >
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-2xl animate-in zoom-in-[0.98] duration-200">
-            {/* Modal header */}
-            <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-background/95 p-6 backdrop-blur">
-              <div className="min-w-0 pr-4">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border bg-muted/30">
-                    <Bot className="h-4 w-4" />
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">
-                      AI Agent
-                    </p>
-
-                    <h2 className="text-xl font-semibold tracking-tight">
-                      {selectedAgent.name}
-                    </h2>
-                  </div>
+          >
+            {/* Panel header */}
+            <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
+              <div className="min-w-0">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Agent
                 </div>
 
-                <p className="mt-3 text-sm text-muted-foreground">
-                  {selectedAgent.purpose}
-                </p>
+                <h2 className="mt-0.5 truncate text-lg font-semibold">
+                  {selectedAgent?.name}
+                </h2>
               </div>
 
               <button
                 type="button"
-                onClick={closeAgent}
-                disabled={
-                  deletingAgent ||
-                  deletingConnection ||
-                  savingConnection ||
-                  savingCapabilities ||
-                  verifying
-                }
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition-all duration-150 hover:bg-muted hover:text-foreground active:scale-95 disabled:opacity-50"
-                aria-label="Close agent details"
+                onClick={closeAgentPanel}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-background text-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Close"
               >
-                <X className="h-4 w-4" />
+                ×
               </button>
             </div>
 
-            <div className="space-y-6 p-6">
-              {/* Lifecycle */}
-              <section>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold">
-                      Connection lifecycle
-                    </h3>
+            {/* Panel body */}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {selectedAgent && (
+                <div className="space-y-6 p-5">
+                  {/* Agent overview */}
+                  <section>
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border bg-muted/40 text-lg font-semibold">
+                        {selectedAgent.name
+                          .slice(0, 1)
+                          .toUpperCase()}
+                      </div>
 
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Arbyter only activates surveillance after a
-                      real connection and verified signal source.
-                    </p>
-                  </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-semibold">
+                            {selectedAgent.name}
+                          </h3>
 
-                  <CircleDot className="h-5 w-5 text-muted-foreground" />
-                </div>
-
-                <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {LIFECYCLE_STATES.map(
-                    (state, index) => {
-                      const currentIndex =
-                        LIFECYCLE_STATES.indexOf(
-                          connectionState,
-                        )
-
-                      const complete =
-                        index <= currentIndex
-
-                      const current =
-                        state ===
-                        connectionState
-
-                      return (
-                        <div
-                          key={state}
-                          className={`rounded-xl border p-3 transition-all duration-200 ${
-                            current
-                              ? 'border-foreground bg-muted/40 shadow-sm'
-                              : complete
-                                ? 'bg-muted/20'
-                                : 'opacity-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            {complete ? (
-                              <CheckCircle2 className="h-4 w-4" />
-                            ) : (
-                              <CircleDot className="h-4 w-4" />
-                            )}
-
-                            <span className="text-xs font-medium">
-                              {state}
-                            </span>
-                          </div>
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${getStatusClasses(
+                              selectedAgent.status
+                            )}`}
+                          >
+                            {selectedAgent.status}
+                          </span>
                         </div>
-                      )
-                    },
-                  )}
-                </div>
-              </section>
 
-              {/* Current state */}
-              <section className="rounded-xl border bg-muted/20 p-4">
-                <div className="flex items-start gap-3">
-                  <Link2 className="mt-0.5 h-4 w-4 shrink-0" />
-
-                  <div>
-                    <p className="text-sm font-medium">
-                      Current connection state
-                    </p>
-
-                    <p className="mt-1 text-sm">
-                      {loadingConnection
-                        ? 'Loading connection...'
-                        : connectionState}
-                    </p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Registration alone is never treated as a
-                      live surveillance connection.
-                    </p>
-                  </div>
-                </div>
-              </section>
-
-              {/* Errors */}
-              {connectionError && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                  {connectionError}
-                </div>
-              )}
-
-              {message && (
-                <div className="rounded-xl border bg-muted/20 p-4 text-sm">
-                  {message}
-                </div>
-              )}
-
-              {/* Loading */}
-              {loadingConnection && (
-                <div className="space-y-3">
-                  <div className="h-24 animate-pulse rounded-xl border bg-muted/20" />
-                  <div className="h-32 animate-pulse rounded-xl border bg-muted/20" />
-                </div>
-              )}
-
-              {/* No connection */}
-              {!loadingConnection &&
-                !connection &&
-                !showConnectionForm && (
-                  <section className="rounded-xl border p-5">
-                    <div className="flex items-start gap-3">
-                      <Link2 className="mt-0.5 h-4 w-4" />
-
-                      <div>
-                        <p className="text-sm font-medium">
-                          No connection configured
-                        </p>
-
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          This agent is registered but has not yet
-                          been connected to an external signal
-                          source.
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {selectedAgent.purpose}
                         </p>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={
-                        startConnectionSetup
-                      }
-                      className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
-                    >
-                      <Link2 className="h-4 w-4" />
-                      Connect Agent
-                    </button>
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <InfoCard
+                        label="Team"
+                        value={selectedAgent.team}
+                      />
+
+                      <InfoCard
+                        label="Risk"
+                        value={selectedAgent.risk}
+                      />
+
+                      <InfoCard
+                        label="Tasks"
+                        value={String(
+                          selectedAgent.tasks
+                        )}
+                      />
+
+                      <InfoCard
+                        label="Last Activity"
+                        value={selectedAgent.lastActivity}
+                      />
+                    </div>
                   </section>
-                )}
 
-              {/* Existing connection */}
-              {!loadingConnection &&
-                connection &&
-                !showConnectionForm && (
-                  <>
-                    <section className="rounded-xl border p-5">
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex items-start gap-3">
-                          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
-
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium">
-                              Connection configuration
-                            </p>
-
-                            <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
-                              <p>
-                                Type:{' '}
-                                {connection.connection_type ||
-                                  'Unknown'}
-                              </p>
-
-                              <p>
-                                Provider:{' '}
-                                {connection.provider ||
-                                  'Unknown'}
-                              </p>
-
-                              <p className="break-all">
-                                Endpoint:{' '}
-                                {connection.endpoint_url ||
-                                  'Not required'}
-                              </p>
-
-                              <p>
-                                Environment:{' '}
-                                {connection.environment ||
-                                  'Unknown'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex shrink-0 flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={
-                              startConnectionEdit
-                            }
-                            disabled={
-                              deletingConnection ||
-                              verifying ||
-                              savingCapabilities
-                            }
-                            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-all duration-150 hover:bg-muted active:scale-[0.98] disabled:opacity-50"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={
-                              verifyConnection
-                            }
-                            disabled={
-                              verifying ||
-                              deletingConnection ||
-                              savingCapabilities
-                            }
-                            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-foreground px-3 text-xs font-medium text-background transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-                          >
-                            <ShieldCheck className="h-3.5 w-3.5" />
-                            {verifying
-                              ? 'Verifying...'
-                              : 'Verify'}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 border-t pt-4">
-                        <button
-                          type="button"
-                          onClick={
-                            deleteConnection
-                          }
-                          disabled={
-                            deletingConnection ||
-                            verifying ||
-                            savingCapabilities
-                          }
-                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition-all duration-150 hover:bg-red-50 active:scale-[0.98] disabled:opacity-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-
-                          {deletingConnection
-                            ? 'Deleting...'
-                            : 'Delete Connection'}
-                        </button>
-                      </div>
-                    </section>
-
-                    {/* Capabilities */}
-                    <section className="rounded-xl border p-5">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-muted/30">
-                          <Zap className="h-4 w-4" />
-                        </div>
-
+                  {/* Connection */}
+                  <section className="rounded-2xl border bg-card">
+                    <div className="border-b px-4 py-4">
+                      <div className="flex items-center justify-between gap-3">
                         <div>
-                          <h3 className="font-semibold">
-                            Capabilities
+                          <h3 className="text-sm font-semibold">
+                            Connection
                           </h3>
 
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            Control exactly what this connection is
-                            permitted to execute through Arbyter.
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            Connect this agent to its execution
+                            environment.
                           </p>
                         </div>
+
+                        <ConnectionStateBadge
+                          state={connectionState}
+                        />
                       </div>
+                    </div>
 
-                      <div className="mt-5 space-y-2">
-                        {AVAILABLE_CAPABILITIES.map(
-                          (capability) => {
-                            const providerAllowed =
-                              capability.providers.includes(
-                                connectionProvider,
-                              )
-
-                            const available =
-                              capability.available !== false &&
-                              providerAllowed
-
-                            const enabled =
-                              connection.capabilities?.[
-                                capability.id
-                              ] === true
-
-                            return (
-                              <div
-                                key={capability.id}
-                                className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-all duration-200 ${
-                                  enabled
-                                    ? 'border-foreground/20 bg-muted/30'
-                                    : 'bg-background'
-                                } ${
-                                  !available
-                                    ? 'opacity-50'
-                                    : ''
-                                }`}
+                    <div className="p-4">
+                      {loadingConnection ? (
+                        <div className="space-y-3">
+                          <div className="h-12 animate-pulse rounded-xl bg-muted" />
+                          <div className="h-20 animate-pulse rounded-xl bg-muted" />
+                        </div>
+                      ) : connectionError ? (
+                        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-sm text-red-600 dark:text-red-400">
+                          {connectionError}
+                        </div>
+                      ) : showConnectionForm ? (
+                        <div className="space-y-5">
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <FormField label="Connection Type">
+                              <select
+                                value={
+                                  connectionForm.connectionType
+                                }
+                                onChange={(event) =>
+                                  setConnectionForm(
+                                    (current) => ({
+                                      ...current,
+                                      connectionType:
+                                        event.target.value as ConnectionForm['connectionType'],
+                                    })
+                                  )
+                                }
+                                className="form-control"
                               >
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-medium">
-                                      {capability.name}
-                                    </p>
+                                <option value="api">
+                                  REST API
+                                </option>
+                                <option value="webhook">
+                                  Webhook
+                                </option>
+                                <option value="sdk">
+                                  SDK
+                                </option>
+                                <option value="mcp">
+                                  MCP
+                                </option>
+                              </select>
+                            </FormField>
 
-                                    {enabled && (
-                                      <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                                        Enabled
-                                      </span>
-                                    )}
+                            <FormField label="Provider">
+                              <input
+                                value={
+                                  connectionForm.provider
+                                }
+                                onChange={(event) =>
+                                  setConnectionForm(
+                                    (current) => ({
+                                      ...current,
+                                      provider:
+                                        event.target.value,
+                                    })
+                                  )
+                                }
+                                placeholder="e.g. agentmail"
+                                className="form-control"
+                              />
+                            </FormField>
+                          </div>
 
-                                    {!available && (
-                                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                        Coming soon
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    {capability.description}
-                                  </p>
-
-                                  <p className="mt-2 font-mono text-[10px] text-muted-foreground">
-                                    {capability.id}
-                                  </p>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  role="switch"
-                                  aria-checked={
-                                    enabled
+                          {connectionForm.connectionType !==
+                            'sdk' &&
+                            connectionForm.connectionType !==
+                              'mcp' && (
+                              <FormField label="Endpoint URL">
+                                <input
+                                  value={
+                                    connectionForm.endpointUrl
                                   }
-                                  disabled={
-                                    !available ||
-                                    savingCapabilities
-                                  }
-                                  onClick={() =>
-                                    updateCapability(
-                                      capability.id,
-                                      !enabled,
+                                  onChange={(event) =>
+                                    setConnectionForm(
+                                      (current) => ({
+                                        ...current,
+                                        endpointUrl:
+                                          event.target.value,
+                                      })
                                     )
                                   }
-                                  className={`relative h-6 w-11 shrink-0 rounded-full transition-all duration-200 disabled:cursor-not-allowed ${
-                                    enabled
-                                      ? 'bg-foreground'
-                                      : 'bg-muted-foreground/20'
-                                  }`}
-                                >
-                                  <span
-                                    className={`absolute top-1 h-4 w-4 rounded-full bg-background shadow-sm transition-transform duration-200 ${
-                                      enabled
-                                        ? 'translate-x-6'
-                                        : 'translate-x-1'
-                                    }`}
-                                  />
-                                </button>
-                              </div>
-                            )
-                          },
-                        )}
-                      </div>
+                                  placeholder="https://..."
+                                  className="form-control"
+                                />
+                              </FormField>
+                            )}
 
-                      <div className="mt-4 rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
-                        Permissions are enforced again by the
-                        server-side Connector Runtime. Turning a
-                        capability on here does not bypass
-                        authentication or organization access
-                        controls.
-                      </div>
-                    </section>
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <FormField label="Environment">
+                              <select
+                                value={
+                                  connectionForm.environment
+                                }
+                                onChange={(event) =>
+                                  setConnectionForm(
+                                    (current) => ({
+                                      ...current,
+                                      environment:
+                                        event.target.value as ConnectionForm['environment'],
+                                    })
+                                  )
+                                }
+                                className="form-control"
+                              >
+                                <option value="production">
+                                  Production
+                                </option>
+                                <option value="staging">
+                                  Staging
+                                </option>
+                                <option value="development">
+                                  Development
+                                </option>
+                              </select>
+                            </FormField>
 
-                    {/* Runtime readiness */}
-                    {supportsAgentMail && (
-                      <section className="rounded-xl border bg-muted/20 p-5">
-                        <div className="flex items-start gap-3">
-                          <Activity className="mt-0.5 h-4 w-4 shrink-0" />
-
-                          <div>
-                            <p className="text-sm font-medium">
-                              Runtime integration
-                            </p>
-
-                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                              AgentMail is connected to Arbyter&apos;s
-                              generic connector runtime. Enabled
-                              capabilities can be executed only after
-                              passing the runtime&apos;s authorization
-                              checks.
-                            </p>
+                            <FormField label="Authentication">
+                              <select
+                                value={
+                                  connectionForm.authenticationMethod
+                                }
+                                onChange={(event) =>
+                                  setConnectionForm(
+                                    (current) => ({
+                                      ...current,
+                                      authenticationMethod:
+                                        event.target.value as ConnectionForm['authenticationMethod'],
+                                    })
+                                  )
+                                }
+                                className="form-control"
+                              >
+                                <option value="api_key">
+                                  API Key
+                                </option>
+                                <option value="oauth">
+                                  OAuth
+                                </option>
+                                <option value="none">
+                                  None
+                                </option>
+                              </select>
+                            </FormField>
                           </div>
-                        </div>
-                      </section>
-                    )}
-                  </>
-                )}
 
-              {/* Connection form */}
-              {showConnectionForm && (
-                <section className="rounded-xl border p-5">
-                  <div>
-                    <h3 className="font-semibold">
-                      {editingConnection
-                        ? 'Edit Agent Connection'
-                        : 'Connect AI Agent'}
-                    </h3>
-
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Configure how Arbyter communicates with or
-                      receives signals from this agent.
-                    </p>
-                  </div>
-
-                  <div className="mt-5 space-y-4">
-                    <FormField label="Connection type">
-                      <select
-                        value={
-                          connectionForm.connectionType
-                        }
-                        onChange={(event) => {
-                          const nextType =
-                            normalizeConnectionType(
-                              event.target.value,
-                            )
-
-                          setConnectionError(null)
-
-                          setConnectionForm(
-                            (current) => ({
-                              ...current,
-                              connectionType:
-                                nextType,
-                              endpointUrl:
-                                nextType ===
-                                'webhook'
-                                  ? ''
-                                  : current.endpointUrl,
-                            }),
-                          )
-                        }}
-                        disabled={
-                          savingConnection
-                        }
-                        className="form-input"
-                      >
-                        <option value="webhook">
-                          Webhook
-                        </option>
-
-                        <option value="api">
-                          REST API
-                        </option>
-
-                        <option value="sdk">
-                          SDK
-                        </option>
-
-                        <option value="mcp">
-                          MCP
-                        </option>
-                      </select>
-                    </FormField>
-
-                    <FormField label="Provider">
-                      <input
-                        value={
-                          connectionForm.provider
-                        }
-                        onChange={(event) =>
-                          setConnectionForm(
-                            (current) => ({
-                              ...current,
-                              provider:
-                                event.target.value,
-                            }),
-                          )
-                        }
-                        placeholder="e.g. AgentMail, OpenAI, Anthropic"
-                        disabled={
-                          savingConnection
-                        }
-                        className="form-input"
-                      />
-                    </FormField>
-
-                    {connectionType === 'api' && (
-                      <>
-                        <FormField label="API endpoint">
-                          <input
-                            type="url"
-                            value={
-                              connectionForm.endpointUrl
-                            }
-                            onChange={(event) =>
-                              setConnectionForm(
-                                (current) => ({
-                                  ...current,
-                                  endpointUrl:
-                                    event.target.value,
-                                }),
-                              )
-                            }
-                            placeholder="https://api.example.com/v1/agent"
-                            disabled={
-                              savingConnection
-                            }
-                            className="form-input"
-                          />
-                        </FormField>
-
-                        <FormField label="Authentication">
-                          <select
-                            value={
-                              connectionForm.authenticationMethod
-                            }
-                            onChange={(event) =>
-                              setConnectionForm(
-                                (current) => ({
-                                  ...current,
-                                  authenticationMethod:
-                                    event.target.value,
-                                }),
-                              )
-                            }
-                            disabled={
-                              savingConnection
-                            }
-                            className="form-input"
-                          >
-                            <option value="none">
-                              Select authentication
-                            </option>
-
-                            <option value="api_key">
-                              API Key
-                            </option>
-
-                            <option value="bearer">
-                              Bearer Token
-                            </option>
-
-                            <option value="oauth2">
-                              OAuth 2.0
-                            </option>
-                          </select>
-                        </FormField>
-
-                        {connectionForm.authenticationMethod !==
-                          'none' && (
-                          <FormField label="Credential label">
+                          <FormField label="Credential Label">
                             <input
                               value={
                                 connectionForm.credentialLabel
@@ -2221,515 +1425,638 @@ export default function AgentsClient({
                                     ...current,
                                     credentialLabel:
                                       event.target.value,
-                                  }),
+                                  })
                                 )
                               }
-                              placeholder="e.g. Production API credential"
-                              disabled={
-                                savingConnection
-                              }
-                              className="form-input"
+                              placeholder="Optional label only — never enter the secret here"
+                              className="form-control"
                             />
-
-                            <p className="mt-1.5 text-xs text-muted-foreground">
-                              The secret itself will be added
-                              through Arbyter&apos;s secure credential
-                              system. Do not paste an API key here.
-                            </p>
                           </FormField>
-                        )}
-                      </>
-                    )}
 
-                    {connectionType ===
-                      'webhook' && (
-                      <section className="rounded-xl border bg-muted/20 p-4">
-                        <div className="flex items-start gap-3">
-                          <Link2 className="mt-0.5 h-4 w-4 shrink-0" />
+                          {/* Capabilities */}
+                          <div className="rounded-2xl border bg-muted/20 p-4">
+                            <div>
+                              <h4 className="text-sm font-semibold">
+                                Capabilities
+                              </h4>
 
-                          <div>
-                            <p className="text-sm font-medium">
-                              Inbound webhook
-                            </p>
+                              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                                Choose what this connection is
+                                allowed to execute.
+                              </p>
+                            </div>
 
-                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                              The external agent or service sends
-                              events to Arbyter. Arbyter does not
-                              perform a GET request against the
-                              agent.
-                            </p>
+                            <div className="mt-4 space-y-2">
+                              <CapabilityRow
+                                title="Send messages"
+                                description="Allow the agent to send outbound messages."
+                                checked={
+                                  connectionForm.capabilities
+                                    .messagesSend
+                                }
+                                onChange={(value) =>
+                                  updateCapability(
+                                    'messagesSend',
+                                    value
+                                  )
+                                }
+                                available
+                              />
+
+                              <CapabilityRow
+                                title="Read messages"
+                                description="Read incoming messages and mailbox data."
+                                checked={
+                                  connectionForm.capabilities
+                                    .messagesRead
+                                }
+                                onChange={() => {}}
+                                comingSoon
+                              />
+
+                              <CapabilityRow
+                                title="Reply to messages"
+                                description="Reply to an existing message thread."
+                                checked={
+                                  connectionForm.capabilities
+                                    .messagesReply
+                                }
+                                onChange={() => {}}
+                                comingSoon
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowConnectionForm(false)
+                                setEditingConnection(false)
+                              }}
+                              className="h-10 rounded-xl border px-4 text-sm font-medium transition hover:bg-muted"
+                            >
+                              Cancel
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={saveConnection}
+                              className="h-10 rounded-xl bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 active:scale-[0.98]"
+                            >
+                              {editingConnection
+                                ? 'Save Changes'
+                                : 'Create Connection'}
+                            </button>
                           </div>
                         </div>
+                      ) : connection ? (
+                        <div className="space-y-4">
+                          <div className="rounded-xl border bg-muted/20 p-4">
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              <DetailItem
+                                label="Provider"
+                                value={
+                                  connection.provider ||
+                                  'Not specified'
+                                }
+                              />
 
-                        <div className="mt-4 rounded-lg border bg-background p-3">
-                          <p className="text-xs font-medium">
-                            Arbyter receiver
-                          </p>
+                              <DetailItem
+                                label="Type"
+                                value={
+                                  connection.connection_type ||
+                                  'Not specified'
+                                }
+                              />
 
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            The secure Arbyter webhook receiver will
-                            be generated when webhook infrastructure
-                            is enabled.
-                          </p>
+                              <DetailItem
+                                label="Environment"
+                                value={
+                                  connection.environment ||
+                                  'Not specified'
+                                }
+                              />
+
+                              <DetailItem
+                                label="Health"
+                                value={
+                                  connection.health_status ||
+                                  'Unknown'
+                                }
+                              />
+                            </div>
+
+                            {connection.endpoint_url && (
+                              <div className="mt-4 border-t pt-4">
+                                <DetailItem
+                                  label="Endpoint"
+                                  value={
+                                    connection.endpoint_url
+                                  }
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="rounded-xl border bg-muted/20 p-4">
+                            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              Capabilities
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              <CapabilityPill
+                                label="Send messages"
+                                enabled={Boolean(
+                                  connection.capabilities?.[
+                                    'messages.send'
+                                  ]
+                                )}
+                              />
+
+                              <CapabilityPill
+                                label="Read messages"
+                                enabled={false}
+                                comingSoon
+                              />
+
+                              <CapabilityPill
+                                label="Reply to messages"
+                                enabled={false}
+                                comingSoon
+                              />
+                            </div>
+                          </div>
+
+                          {message && (
+                            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2.5 text-sm text-emerald-600 dark:text-emerald-400">
+                              {message}
+                            </div>
+                          )}
+
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={verifyConnection}
+                              className="h-10 rounded-xl bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 active:scale-[0.98]"
+                            >
+                              Verify Connection
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={startEditConnection}
+                              className="h-10 rounded-xl border px-4 text-sm font-medium transition hover:bg-muted"
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={deleteConnection}
+                              className="h-10 rounded-xl border border-red-500/20 px-4 text-sm font-medium text-red-600 transition hover:bg-red-500/5 dark:text-red-400"
+                            >
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="text-xs text-muted-foreground">
+                            Last connected:{' '}
+                            {formatDate(
+                              connection.last_connected_at
+                            )}
+                          </div>
                         </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed p-6 text-center">
+                          <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-xs font-semibold">
+                            API
+                          </div>
 
-                        <div className="mt-4">
-                          <FormField label="Webhook secret label">
-                            <input
-                              value={
-                                connectionForm.webhookSecretLabel
-                              }
-                              onChange={(event) =>
-                                setConnectionForm(
-                                  (current) => ({
-                                    ...current,
-                                    webhookSecretLabel:
-                                      event.target.value,
-                                  }),
-                                )
-                              }
-                              placeholder="e.g. Agent signing secret"
-                              disabled={
-                                savingConnection
-                              }
-                              className="form-input"
-                            />
-
-                            <p className="mt-1.5 text-xs text-muted-foreground">
-                              Do not paste the webhook secret here.
-                              We will store it securely server-side.
-                            </p>
-                          </FormField>
-                        </div>
-                      </section>
-                    )}
-
-                    {connectionType === 'sdk' && (
-                      <section className="space-y-4">
-                        <div className="rounded-xl border bg-muted/20 p-4">
-                          <p className="text-sm font-medium">
-                            SDK integration
+                          <p className="mt-3 text-sm font-medium">
+                            No connection configured
                           </p>
 
                           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            SDK agents communicate with Arbyter
-                            through an installed runtime package.
-                            An HTTP endpoint is not required.
+                            Connect this agent to an external
+                            service or execution environment.
                           </p>
-                        </div>
 
-                        <FormField label="SDK / package identifier">
-                          <input
-                            value={
-                              connectionForm.sdkPackage
-                            }
-                            onChange={(event) =>
-                              setConnectionForm(
-                                (current) => ({
-                                  ...current,
-                                  sdkPackage:
-                                    event.target.value,
-                                }),
-                              )
-                            }
-                            placeholder="e.g. @arbyter/agent-sdk"
-                            disabled={
-                              savingConnection
-                            }
-                            className="form-input"
-                          />
-                        </FormField>
-                      </section>
-                    )}
-
-                    {connectionType === 'mcp' && (
-                      <>
-                        <FormField label="MCP transport">
-                          <select
-                            value={
-                              connectionForm.mcpTransport
-                            }
-                            onChange={(event) =>
-                              setConnectionForm(
-                                (current) => ({
-                                  ...current,
-                                  mcpTransport:
-                                    event.target.value,
-                                }),
-                              )
-                            }
-                            disabled={
-                              savingConnection
-                            }
-                            className="form-input"
+                          <button
+                            type="button"
+                            onClick={startNewConnection}
+                            className="mt-4 h-10 rounded-xl bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 active:scale-[0.98]"
                           >
-                            <option value="http">
-                              HTTP
-                            </option>
+                            Set Up Connection
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </section>
 
-                            <option value="sse">
-                              Server-Sent Events
-                            </option>
+                  {/* Lifecycle */}
+                  <section>
+                    <div className="mb-3">
+                      <h3 className="text-sm font-semibold">
+                        Connection Lifecycle
+                      </h3>
 
-                            <option value="stdio">
-                              Local stdio
-                            </option>
-                          </select>
-                        </FormField>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        Current operational state of this agent.
+                      </p>
+                    </div>
 
-                        {(
-                          connectionForm.mcpTransport ===
-                            'http' ||
-                          connectionForm.mcpTransport ===
-                            'sse'
-                        ) && (
-                          <FormField label="MCP server endpoint">
-                            <input
-                              type="url"
-                              value={
-                                connectionForm.endpointUrl
-                              }
-                              onChange={(event) =>
-                                setConnectionForm(
-                                  (current) => ({
-                                    ...current,
-                                    endpointUrl:
-                                      event.target.value,
-                                  }),
-                                )
-                              }
-                              placeholder="https://mcp.example.com"
-                              disabled={
-                                savingConnection
-                              }
-                              className="form-input"
-                            />
-                          </FormField>
-                        )}
+                    <Lifecycle
+                      currentState={connectionState}
+                    />
+                  </section>
 
-                        {connectionForm.mcpTransport ===
-                          'stdio' && (
-                          <div className="rounded-xl border bg-muted/20 p-4">
-                            <p className="text-sm font-medium">
-                              Local MCP server
-                            </p>
+                  {/* Danger zone */}
+                  <section className="rounded-2xl border border-red-500/15 bg-red-500/[0.02] p-4">
+                    <div>
+                      <h3 className="text-sm font-semibold">
+                        Danger Zone
+                      </h3>
 
-                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                              No URL is required for a local stdio
-                              transport. Runtime configuration will
-                              be handled by the Arbyter connector.
-                            </p>
-                          </div>
-                        )}
-                      </>
+                      <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                        Permanently remove this agent from the
+                        organization.
+                      </p>
+                    </div>
+
+                    {connectionError && (
+                      <div className="mt-3 rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2.5 text-sm text-red-600 dark:text-red-400">
+                        {connectionError}
+                      </div>
                     )}
-
-                    <FormField label="Environment">
-                      <select
-                        value={
-                          connectionForm.environment
-                        }
-                        onChange={(event) =>
-                          setConnectionForm(
-                            (current) => ({
-                              ...current,
-                              environment:
-                                event.target.value,
-                            }),
-                          )
-                        }
-                        disabled={
-                          savingConnection
-                        }
-                        className="form-input"
-                      >
-                        <option value="production">
-                          Production
-                        </option>
-
-                        <option value="staging">
-                          Staging
-                        </option>
-
-                        <option value="development">
-                          Development
-                        </option>
-                      </select>
-                    </FormField>
-
-                    <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                      Saving this form only registers the connection
-                      configuration. It does not execute a request or
-                      claim that the agent is connected.
-                    </div>
-
-                    <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowConnectionForm(
-                            false,
-                          )
-                          setEditingConnection(
-                            false,
-                          )
-                          setConnectionError(
-                            null,
-                          )
-                        }}
-                        disabled={
-                          savingConnection
-                        }
-                        className="h-10 rounded-lg border px-4 text-sm font-medium transition-all duration-150 active:scale-[0.98] disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={
-                          saveConnection
-                        }
-                        disabled={
-                          savingConnection
-                        }
-                        className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-                      >
-                        {savingConnection
-                          ? 'Saving...'
-                          : editingConnection
-                            ? 'Save Changes'
-                            : 'Register Connection'}
-                      </button>
-                    </div>
-                  </div>
-                </section>
-              )}
-
-              {/* Danger zone */}
-              <section className="rounded-xl border border-red-200 p-5">
-                <div className="flex items-start gap-3">
-                  <Trash2 className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
-
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      Danger zone
-                    </p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Permanently remove this agent registration.
-                    </p>
 
                     <button
                       type="button"
-                      onClick={
-                        deleteAgent
-                      }
-                      disabled={
-                        deletingAgent ||
-                        deletingConnection ||
-                        savingConnection ||
-                        savingCapabilities ||
-                        verifying
-                      }
-                      className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition-all duration-150 hover:bg-red-50 active:scale-[0.98] disabled:opacity-50"
+                      onClick={deleteAgent}
+                      disabled={deletingAgent}
+                      className="mt-4 h-10 rounded-xl border border-red-500/20 px-4 text-sm font-medium text-red-600 transition hover:bg-red-500/5 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-400"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
-
                       {deletingAgent
-                        ? 'Deleting Agent...'
+                        ? 'Deleting...'
                         : 'Delete Agent'}
                     </button>
-                  </div>
+                  </section>
                 </div>
-              </section>
+              )}
             </div>
-          </div>
+          </aside>
         </div>
       )}
 
-      {/* Add Agent modal */}
-      {showNewAgent && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px] animate-in fade-in duration-150"
-          onMouseDown={(event) => {
-            if (
-              event.target ===
-                event.currentTarget &&
-              !creatingAgent
-            ) {
-              resetAgentForm()
-              setShowNewAgent(false)
-            }
-          }}
-        >
-          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-2xl animate-in zoom-in-[0.98] duration-200">
-            <div className="mb-5 flex items-start justify-between">
+      {/* Add agent modal */}
+      {showAddAgent && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close add agent dialog"
+            onClick={() => setShowAddAgent(false)}
+            className="absolute inset-0 bg-black/25 backdrop-blur-[1px] animate-in fade-in duration-150"
+          />
+
+          <div
+            className="relative w-full max-w-lg rounded-2xl border bg-background shadow-2xl animate-in zoom-in-95 duration-150"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Agent"
+          >
+            <div className="flex items-center justify-between border-b px-5 py-4">
               <div>
-                <h2 className="text-xl font-semibold">
-                  Add AI Agent
+                <h2 className="text-base font-semibold">
+                  Add Agent
                 </h2>
 
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Register an AI agent in the Arbyter governance
-                  environment.
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Register a new AI agent in Arbyter.
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={() => {
-                  if (!creatingAgent) {
-                    resetAgentForm()
-                    setShowNewAgent(false)
-                  }
-                }}
-                disabled={
-                  creatingAgent
-                }
-                className="flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground transition-all duration-150 hover:bg-muted active:scale-95 disabled:opacity-50"
-                aria-label="Close"
+                onClick={() => setShowAddAgent(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border text-lg text-muted-foreground transition hover:bg-muted"
               >
-                <X className="h-4 w-4" />
+                ×
               </button>
             </div>
 
-            <div className="space-y-4">
-              <input
-                value={agentName}
-                onChange={(event) =>
-                  setAgentName(
-                    event.target.value,
-                  )
-                }
-                placeholder="Agent name"
-                disabled={creatingAgent}
-                className="form-input"
-              />
+            <div className="space-y-4 p-5">
+              <FormField label="Agent Name">
+                <input
+                  value={newAgentName}
+                  onChange={(event) =>
+                    setNewAgentName(event.target.value)
+                  }
+                  placeholder="e.g. Research Agent"
+                  className="form-control"
+                  autoFocus
+                />
+              </FormField>
 
-              <textarea
-                value={agentDescription}
-                onChange={(event) =>
-                  setAgentDescription(
-                    event.target.value,
-                  )
-                }
-                placeholder="What does this agent do?"
-                rows={3}
-                disabled={creatingAgent}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-ring"
-              />
+              <FormField label="Purpose">
+                <textarea
+                  value={newAgentPurpose}
+                  onChange={(event) =>
+                    setNewAgentPurpose(event.target.value)
+                  }
+                  placeholder="What is this agent responsible for?"
+                  rows={3}
+                  className="form-control resize-none py-2.5"
+                />
+              </FormField>
 
-              <select
-                value={agentType}
-                onChange={(event) =>
-                  setAgentType(
-                    event.target.value,
-                  )
-                }
-                disabled={creatingAgent}
-                className="form-input"
-              >
-                <option value="general">
-                  General AI Agent
-                </option>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField label="Agent Type">
+                  <input
+                    value={newAgentType}
+                    onChange={(event) =>
+                      setNewAgentType(event.target.value)
+                    }
+                    placeholder="general"
+                    className="form-control"
+                  />
+                </FormField>
 
-                <option value="risk">
-                  Risk
-                </option>
-
-                <option value="compliance">
-                  Compliance
-                </option>
-
-                <option value="policy">
-                  Policy
-                </option>
-
-                <option value="investigation">
-                  Investigation
-                </option>
-
-                <option value="evidence">
-                  Evidence
-                </option>
-              </select>
-
-              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
-                Registration does not mean the agent is connected
-                or under active surveillance.
+                <FormField label="Team">
+                  <input
+                    value={newAgentTeam}
+                    onChange={(event) =>
+                      setNewAgentTeam(event.target.value)
+                    }
+                    placeholder="Optional"
+                    className="form-control"
+                  />
+                </FormField>
               </div>
 
-              {createError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {createError}
-                </div>
-              )}
-            </div>
+              <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAddAgent(false)}
+                  className="h-10 rounded-xl border px-4 text-sm font-medium transition hover:bg-muted"
+                >
+                  Cancel
+                </button>
 
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!creatingAgent) {
-                    resetAgentForm()
-                    setShowNewAgent(false)
+                <button
+                  type="button"
+                  onClick={createAgent}
+                  disabled={
+                    creatingAgent ||
+                    !newAgentName.trim()
                   }
-                }}
-                disabled={creatingAgent}
-                className="h-10 rounded-lg border px-4 text-sm font-medium transition-all duration-150 active:scale-[0.98] disabled:opacity-50"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={createAgent}
-                disabled={creatingAgent}
-                className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-              >
-                {creatingAgent
-                  ? 'Adding...'
-                  : 'Add Agent'}
-              </button>
+                  className="h-10 rounded-xl bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {creatingAgent
+                    ? 'Creating...'
+                    : 'Create Agent'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
-    </main>
+    </div>
   )
 }
 
 function SummaryCard({
   label,
   value,
-  description,
-  icon,
 }: {
   label: string
-  value: string | number
-  description: string
-  icon: React.ReactNode
+  value: number
 }) {
   return (
-    <div className="rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-sm">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {label}
-        </p>
-
-        <span className="text-muted-foreground">
-          {icon}
-        </span>
+    <div className="rounded-2xl border bg-card p-4 shadow-sm">
+      <div className="text-xs font-medium text-muted-foreground">
+        {label}
       </div>
 
-      <p className="mt-2 text-2xl font-semibold">
+      <div className="mt-2 text-2xl font-semibold tracking-tight">
         {value}
-      </p>
+      </div>
+    </div>
+  )
+}
 
-      <p className="mt-1 text-xs text-muted-foreground">
-        {description}
-      </p>
+function InfoCard({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-xl border bg-muted/20 px-3 py-3">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+
+      <div className="mt-1 truncate text-sm font-medium">
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function DetailItem({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+
+      <div className="mt-1 break-all text-sm font-medium">
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function ConnectionStateBadge({
+  state,
+}: {
+  state: string
+}) {
+  const healthy = state === 'Healthy'
+  const verified = state === 'Verified'
+  const connected = state === 'Connected'
+
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${
+        healthy
+          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+          : verified
+            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+            : connected
+              ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+              : 'bg-muted text-muted-foreground'
+      }`}
+    >
+      {state}
+    </span>
+  )
+}
+
+function CapabilityRow({
+  title,
+  description,
+  checked,
+  onChange,
+  available,
+  comingSoon,
+}: {
+  title: string
+  description: string
+  checked: boolean
+  onChange: (value: boolean) => void
+  available?: boolean
+  comingSoon?: boolean
+}) {
+  return (
+    <label
+      className={`flex items-center gap-3 rounded-xl border p-3 transition ${
+        comingSoon
+          ? 'cursor-default opacity-60'
+          : 'cursor-pointer hover:bg-background'
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={comingSoon}
+        onChange={(event) =>
+          onChange(event.target.checked)
+        }
+        className="h-4 w-4 rounded border"
+      />
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium">
+            {title}
+          </span>
+
+          {available && (
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+              Available
+            </span>
+          )}
+
+          {comingSoon && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              Coming soon
+            </span>
+          )}
+        </div>
+
+        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">
+          {description}
+        </p>
+      </div>
+    </label>
+  )
+}
+
+function CapabilityPill({
+  label,
+  enabled,
+  comingSoon,
+}: {
+  label: string
+  enabled: boolean
+  comingSoon?: boolean
+}) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+        comingSoon
+          ? 'bg-muted text-muted-foreground'
+          : enabled
+            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+            : 'bg-muted text-muted-foreground'
+      }`}
+    >
+      {label}
+      {comingSoon
+        ? ' · Coming soon'
+        : enabled
+          ? ' · Enabled'
+          : ' · Disabled'}
+    </span>
+  )
+}
+
+function Lifecycle({
+  currentState,
+}: {
+  currentState: string
+}) {
+  const states = [
+    'Registered',
+    'Connection Setup',
+    'Connected',
+    'Verified',
+    'Healthy',
+    'Surveillance Active',
+  ]
+
+  const currentIndex = Math.max(
+    states.indexOf(currentState),
+    0
+  )
+
+  return (
+    <div className="space-y-2">
+      {states.map((state, index) => {
+        const completed = index <= currentIndex
+        const current = state === currentState
+
+        return (
+          <div
+            key={state}
+            className={`flex items-center gap-3 rounded-xl border px-3 py-3 transition ${
+              current
+                ? 'border-foreground/15 bg-muted/40'
+                : 'border-transparent'
+            }`}
+          >
+            <div
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                completed
+                  ? 'bg-foreground text-background'
+                  : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              {completed ? '✓' : index + 1}
+            </div>
+
+            <div className="flex-1">
+              <div className="text-sm font-medium">
+                {state}
+              </div>
+
+              {current && (
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  Current state
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -2743,7 +2070,7 @@ function FormField({
 }) {
   return (
     <div>
-      <label className="mb-1.5 block text-xs font-medium">
+      <label className="mb-1.5 block text-xs font-medium text-foreground">
         {label}
       </label>
 
