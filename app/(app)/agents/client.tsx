@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Trash2,
   X,
+  Zap,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -65,6 +66,7 @@ type ConnectionRecord = {
   provider: string | null
   endpoint_url: string | null
   environment: string | null
+  capabilities: Record<string, unknown> | null
 }
 
 const LIFECYCLE_STATES: ConnectionState[] = [
@@ -74,6 +76,32 @@ const LIFECYCLE_STATES: ConnectionState[] = [
   'Verified',
   'Healthy',
   'Surveillance Active',
+]
+
+const AVAILABLE_CAPABILITIES = [
+  {
+    id: 'messages.send',
+    name: 'Send messages',
+    description:
+      'Allow this connection to send outbound messages.',
+    providers: ['agentmail'],
+  },
+  {
+    id: 'messages.read',
+    name: 'Read messages',
+    description:
+      'Allow this connection to read messages.',
+    providers: ['agentmail'],
+    available: false,
+  },
+  {
+    id: 'messages.reply',
+    name: 'Reply to messages',
+    description:
+      'Allow this connection to reply to existing messages.',
+    providers: ['agentmail'],
+    available: false,
+  },
 ]
 
 function getStatusClass(status: AgentStatus) {
@@ -216,6 +244,9 @@ export default function AgentsClient({
   const [deletingAgent, setDeletingAgent] =
     React.useState(false)
 
+  const [savingCapabilities, setSavingCapabilities] =
+    React.useState(false)
+
   const [agentName, setAgentName] =
     React.useState('')
 
@@ -280,6 +311,13 @@ export default function AgentsClient({
   )
 
   function openAgent(agent: Agent) {
+    /*
+     * Open the detail surface immediately.
+     *
+     * The connection is loaded after the shell is visible,
+     * so clicking an agent does not wait for Supabase before
+     * showing the agent.
+     */
     setSelectedAgent(agent)
 
     setConnection(null)
@@ -292,7 +330,7 @@ export default function AgentsClient({
     setConnectionError(null)
     setMessage(null)
 
-    loadConnection(agent.id)
+    void loadConnection(agent.id)
   }
 
   async function loadConnection(agentId: string) {
@@ -310,7 +348,8 @@ export default function AgentsClient({
             connection_type,
             provider,
             endpoint_url,
-            environment
+            environment,
+            capabilities
           `,
         )
         .eq('agent_id', agentId)
@@ -330,7 +369,14 @@ export default function AgentsClient({
         return
       }
 
-      setConnection(data)
+      setConnection({
+        ...data,
+        capabilities:
+          data.capabilities &&
+          typeof data.capabilities === 'object'
+            ? (data.capabilities as Record<string, unknown>)
+            : {},
+      })
 
       setConnectionForm({
         connectionType:
@@ -387,6 +433,7 @@ export default function AgentsClient({
     setMessage(null)
     setShowConnectionForm(false)
     setEditingConnection(false)
+    setSavingCapabilities(false)
   }
 
   React.useEffect(() => {
@@ -485,12 +532,6 @@ export default function AgentsClient({
       return false
     }
 
-    /*
-     * REST API
-     *
-     * Requires an HTTPS endpoint.
-     * Authentication is configured separately.
-     */
     if (type === 'api') {
       if (!connectionForm.endpointUrl.trim()) {
         setConnectionError(
@@ -528,21 +569,10 @@ export default function AgentsClient({
       }
     }
 
-    /*
-     * Webhook
-     *
-     * No outbound agent endpoint is required.
-     * Arbyter will receive events through its webhook receiver.
-     */
     if (type === 'webhook') {
       return true
     }
 
-    /*
-     * SDK
-     *
-     * SDK connections do not require an HTTP endpoint.
-     */
     if (type === 'sdk') {
       if (!connectionForm.sdkPackage.trim()) {
         setConnectionError(
@@ -554,12 +584,6 @@ export default function AgentsClient({
       return true
     }
 
-    /*
-     * MCP
-     *
-     * HTTP/SSE transports need an HTTPS endpoint.
-     * Local stdio does not.
-     */
     if (type === 'mcp') {
       if (
         connectionForm.mcpTransport ===
@@ -650,13 +674,6 @@ export default function AgentsClient({
         connectionForm.connectionType,
       )
 
-      /*
-       * Only store non-secret configuration here.
-       *
-       * API keys and webhook secrets must NOT be placed
-       * in this browser-side payload. Those will be handled
-       * by the secure server-side credential system later.
-       */
       const configuration: Record<
         string,
         unknown
@@ -745,7 +762,8 @@ export default function AgentsClient({
               connection_type,
               provider,
               endpoint_url,
-              environment
+              environment,
+              capabilities
             `,
           )
           .single()
@@ -778,10 +796,19 @@ export default function AgentsClient({
             },
           })
 
-        setConnection(data)
+        setConnection({
+          ...data,
+          capabilities:
+            data.capabilities &&
+            typeof data.capabilities === 'object'
+              ? (data.capabilities as Record<string, unknown>)
+              : {},
+        })
+
         setConnectionState(
           'Connection Setup',
         )
+
         setShowConnectionForm(false)
         setEditingConnection(false)
 
@@ -826,7 +853,8 @@ export default function AgentsClient({
                 connection_type,
                 provider,
                 endpoint_url,
-                environment
+                environment,
+                capabilities
               `,
             )
             .single()
@@ -859,10 +887,19 @@ export default function AgentsClient({
             },
           })
 
-        setConnection(data)
+        setConnection({
+          ...data,
+          capabilities:
+            data.capabilities &&
+            typeof data.capabilities === 'object'
+              ? (data.capabilities as Record<string, unknown>)
+              : {},
+        })
+
         setConnectionState(
           'Connection Setup',
         )
+
         setShowConnectionForm(false)
 
         setMessage(
@@ -882,6 +919,114 @@ export default function AgentsClient({
       )
     } finally {
       setSavingConnection(false)
+    }
+  }
+
+  async function updateCapability(
+    capabilityId: string,
+    enabled: boolean,
+  ) {
+    if (!selectedAgent || !connection) {
+      return
+    }
+
+    setSavingCapabilities(true)
+    setConnectionError(null)
+    setMessage(null)
+
+    const previousCapabilities =
+      connection.capabilities || {}
+
+    const nextCapabilities = {
+      ...previousCapabilities,
+      [capabilityId]: enabled,
+    }
+
+    setConnection((current) =>
+      current
+        ? {
+            ...current,
+            capabilities:
+              nextCapabilities,
+          }
+        : current,
+    )
+
+    try {
+      const supabase = createClient()
+      const organizationId =
+        await getOrganizationId()
+
+      const { error } = await supabase
+        .from('agent_connections')
+        .update({
+          capabilities:
+            nextCapabilities,
+        })
+        .eq('id', connection.id)
+        .eq(
+          'agent_id',
+          selectedAgent.id,
+        )
+        .eq(
+          'organization_id',
+          organizationId,
+        )
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      await supabase
+        .from('agent_connection_events')
+        .insert({
+          organization_id:
+            organizationId,
+          agent_id:
+            selectedAgent.id,
+          agent_connection_id:
+            connection.id,
+          event_type:
+            'connection_updated',
+          status: 'completed',
+          message: enabled
+            ? `Capability enabled: ${capabilityId}`
+            : `Capability disabled: ${capabilityId}`,
+          metadata: {
+            capability:
+              capabilityId,
+            enabled,
+          },
+        })
+
+      setMessage(
+        enabled
+          ? `${capabilityId} enabled for this connection.`
+          : `${capabilityId} disabled for this connection.`,
+      )
+    } catch (error) {
+      console.error(
+        'Failed to update capability:',
+        error,
+      )
+
+      setConnection((current) =>
+        current
+          ? {
+              ...current,
+              capabilities:
+                previousCapabilities,
+            }
+          : current,
+      )
+
+      setConnectionError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update capability.',
+      )
+    } finally {
+      setSavingCapabilities(false)
     }
   }
 
@@ -1217,6 +1362,12 @@ export default function AgentsClient({
       connectionForm.connectionType,
     )
 
+  const connectionProvider =
+    connection?.provider?.toLowerCase() || ''
+
+  const supportsAgentMail =
+    connectionProvider === 'agentmail'
+
   return (
     <main className="flex flex-col gap-6">
       {/* Header */}
@@ -1242,7 +1393,7 @@ export default function AgentsClient({
             resetAgentForm()
             setShowNewAgent(true)
           }}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" />
           Add Agent
@@ -1394,9 +1545,9 @@ export default function AgentsClient({
               key={agent.id}
               type="button"
               onClick={() => openAgent(agent)}
-              className="group flex w-full cursor-pointer flex-col gap-4 p-5 text-left transition hover:bg-muted/30 focus:outline-none focus-visible:bg-muted/30 lg:flex-row lg:items-center"
+              className="group flex w-full cursor-pointer flex-col gap-4 p-5 text-left transition-all duration-200 hover:bg-muted/30 focus:outline-none focus-visible:bg-muted/30 active:bg-muted/40 lg:flex-row lg:items-center"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background transition group-hover:border-foreground/20">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background transition-all duration-200 group-hover:border-foreground/20 group-hover:shadow-sm">
                 <Bot className="h-4 w-4" />
               </div>
 
@@ -1444,7 +1595,7 @@ export default function AgentsClient({
               </div>
 
               <div className="flex shrink-0 items-center justify-end">
-                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground transition-all duration-200 group-hover:translate-x-1 group-hover:text-foreground" />
               </div>
             </button>
           ))}
@@ -1460,7 +1611,7 @@ export default function AgentsClient({
       {/* Agent detail modal */}
       {selectedAgent && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px] animate-in fade-in duration-150"
           onMouseDown={(event) => {
             if (
               event.target ===
@@ -1468,25 +1619,34 @@ export default function AgentsClient({
               !deletingAgent &&
               !deletingConnection &&
               !savingConnection &&
+              !savingCapabilities &&
               !verifying
             ) {
               closeAgent()
             }
           }}
         >
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border bg-background shadow-2xl animate-in zoom-in-[0.98] duration-200">
             {/* Modal header */}
-            <div className="flex items-start justify-between border-b p-6">
+            <div className="sticky top-0 z-10 flex items-start justify-between border-b bg-background/95 p-6 backdrop-blur">
               <div className="min-w-0 pr-4">
-                <p className="text-sm text-muted-foreground">
-                  AI Agent
-                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg border bg-muted/30">
+                    <Bot className="h-4 w-4" />
+                  </div>
 
-                <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-                  {selectedAgent.name}
-                </h2>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      AI Agent
+                    </p>
 
-                <p className="mt-2 text-sm text-muted-foreground">
+                    <h2 className="text-xl font-semibold tracking-tight">
+                      {selectedAgent.name}
+                    </h2>
+                  </div>
+                </div>
+
+                <p className="mt-3 text-sm text-muted-foreground">
                   {selectedAgent.purpose}
                 </p>
               </div>
@@ -1498,9 +1658,10 @@ export default function AgentsClient({
                   deletingAgent ||
                   deletingConnection ||
                   savingConnection ||
+                  savingCapabilities ||
                   verifying
                 }
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition-all duration-150 hover:bg-muted hover:text-foreground active:scale-95 disabled:opacity-50"
                 aria-label="Close agent details"
               >
                 <X className="h-4 w-4" />
@@ -1543,9 +1704,9 @@ export default function AgentsClient({
                       return (
                         <div
                           key={state}
-                          className={`rounded-xl border p-3 transition ${
+                          className={`rounded-xl border p-3 transition-all duration-200 ${
                             current
-                              ? 'border-foreground bg-muted/40'
+                              ? 'border-foreground bg-muted/40 shadow-sm'
                               : complete
                                 ? 'bg-muted/20'
                                 : 'opacity-50'
@@ -1608,14 +1769,9 @@ export default function AgentsClient({
 
               {/* Loading */}
               {loadingConnection && (
-                <div className="rounded-xl border bg-muted/20 p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
-
-                    <p className="text-sm text-muted-foreground">
-                      Loading connection details...
-                    </p>
-                  </div>
+                <div className="space-y-3">
+                  <div className="h-24 animate-pulse rounded-xl border bg-muted/20" />
+                  <div className="h-32 animate-pulse rounded-xl border bg-muted/20" />
                 </div>
               )}
 
@@ -1645,7 +1801,7 @@ export default function AgentsClient({
                       onClick={
                         startConnectionSetup
                       }
-                      className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
+                      className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
                     >
                       <Link2 className="h-4 w-4" />
                       Connect Agent
@@ -1657,99 +1813,249 @@ export default function AgentsClient({
               {!loadingConnection &&
                 connection &&
                 !showConnectionForm && (
-                  <section className="rounded-xl border p-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex items-start gap-3">
-                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                  <>
+                    <section className="rounded-xl border p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-3">
+                          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
 
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium">
-                            Connection configuration
-                          </p>
-
-                          <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
-                            <p>
-                              Type:{' '}
-                              {connection.connection_type ||
-                                'Unknown'}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">
+                              Connection configuration
                             </p>
 
-                            <p>
-                              Provider:{' '}
-                              {connection.provider ||
-                                'Unknown'}
-                            </p>
+                            <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+                              <p>
+                                Type:{' '}
+                                {connection.connection_type ||
+                                  'Unknown'}
+                              </p>
 
-                            <p className="break-all">
-                              Endpoint:{' '}
-                              {connection.endpoint_url ||
-                                'Not required'}
-                            </p>
+                              <p>
+                                Provider:{' '}
+                                {connection.provider ||
+                                  'Unknown'}
+                              </p>
 
-                            <p>
-                              Environment:{' '}
-                              {connection.environment ||
-                                'Unknown'}
-                            </p>
+                              <p className="break-all">
+                                Endpoint:{' '}
+                                {connection.endpoint_url ||
+                                  'Not required'}
+                              </p>
+
+                              <p>
+                                Environment:{' '}
+                                {connection.environment ||
+                                  'Unknown'}
+                              </p>
+                            </div>
                           </div>
+                        </div>
+
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={
+                              startConnectionEdit
+                            }
+                            disabled={
+                              deletingConnection ||
+                              verifying ||
+                              savingCapabilities
+                            }
+                            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition-all duration-150 hover:bg-muted active:scale-[0.98] disabled:opacity-50"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={
+                              verifyConnection
+                            }
+                            disabled={
+                              verifying ||
+                              deletingConnection ||
+                              savingCapabilities
+                            }
+                            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-foreground px-3 text-xs font-medium text-background transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                          >
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            {verifying
+                              ? 'Verifying...'
+                              : 'Verify'}
+                          </button>
                         </div>
                       </div>
 
-                      <div className="flex shrink-0 flex-wrap gap-2">
+                      <div className="mt-4 border-t pt-4">
                         <button
                           type="button"
                           onClick={
-                            startConnectionEdit
+                            deleteConnection
                           }
                           disabled={
                             deletingConnection ||
-                            verifying
-                          }
-                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border px-3 text-xs font-medium transition hover:bg-muted disabled:opacity-50"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={
-                            verifyConnection
-                          }
-                          disabled={
                             verifying ||
-                            deletingConnection
+                            savingCapabilities
                           }
-                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-foreground px-3 text-xs font-medium text-background transition hover:opacity-90 disabled:opacity-50"
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition-all duration-150 hover:bg-red-50 active:scale-[0.98] disabled:opacity-50"
                         >
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                          {verifying
-                            ? 'Verifying...'
-                            : 'Verify'}
+                          <Trash2 className="h-3.5 w-3.5" />
+
+                          {deletingConnection
+                            ? 'Deleting...'
+                            : 'Delete Connection'}
                         </button>
                       </div>
-                    </div>
+                    </section>
 
-                    <div className="mt-4 border-t pt-4">
-                      <button
-                        type="button"
-                        onClick={
-                          deleteConnection
-                        }
-                        disabled={
-                          deletingConnection ||
-                          verifying
-                        }
-                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
+                    {/* Capabilities */}
+                    <section className="rounded-xl border p-5">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-muted/30">
+                          <Zap className="h-4 w-4" />
+                        </div>
 
-                        {deletingConnection
-                          ? 'Deleting...'
-                          : 'Delete Connection'}
-                      </button>
-                    </div>
-                  </section>
+                        <div>
+                          <h3 className="font-semibold">
+                            Capabilities
+                          </h3>
+
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            Control exactly what this connection is
+                            permitted to execute through Arbyter.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 space-y-2">
+                        {AVAILABLE_CAPABILITIES.map(
+                          (capability) => {
+                            const providerAllowed =
+                              capability.providers.includes(
+                                connectionProvider,
+                              )
+
+                            const available =
+                              capability.available !== false &&
+                              providerAllowed
+
+                            const enabled =
+                              connection.capabilities?.[
+                                capability.id
+                              ] === true
+
+                            return (
+                              <div
+                                key={capability.id}
+                                className={`flex items-center justify-between gap-4 rounded-xl border p-4 transition-all duration-200 ${
+                                  enabled
+                                    ? 'border-foreground/20 bg-muted/30'
+                                    : 'bg-background'
+                                } ${
+                                  !available
+                                    ? 'opacity-50'
+                                    : ''
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium">
+                                      {capability.name}
+                                    </p>
+
+                                    {enabled && (
+                                      <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                                        Enabled
+                                      </span>
+                                    )}
+
+                                    {!available && (
+                                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                        Coming soon
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {capability.description}
+                                  </p>
+
+                                  <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+                                    {capability.id}
+                                  </p>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={
+                                    enabled
+                                  }
+                                  disabled={
+                                    !available ||
+                                    savingCapabilities
+                                  }
+                                  onClick={() =>
+                                    updateCapability(
+                                      capability.id,
+                                      !enabled,
+                                    )
+                                  }
+                                  className={`relative h-6 w-11 shrink-0 rounded-full transition-all duration-200 disabled:cursor-not-allowed ${
+                                    enabled
+                                      ? 'bg-foreground'
+                                      : 'bg-muted-foreground/20'
+                                  }`}
+                                >
+                                  <span
+                                    className={`absolute top-1 h-4 w-4 rounded-full bg-background shadow-sm transition-transform duration-200 ${
+                                      enabled
+                                        ? 'translate-x-6'
+                                        : 'translate-x-1'
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            )
+                          },
+                        )}
+                      </div>
+
+                      <div className="mt-4 rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
+                        Permissions are enforced again by the
+                        server-side Connector Runtime. Turning a
+                        capability on here does not bypass
+                        authentication or organization access
+                        controls.
+                      </div>
+                    </section>
+
+                    {/* Runtime readiness */}
+                    {supportsAgentMail && (
+                      <section className="rounded-xl border bg-muted/20 p-5">
+                        <div className="flex items-start gap-3">
+                          <Activity className="mt-0.5 h-4 w-4 shrink-0" />
+
+                          <div>
+                            <p className="text-sm font-medium">
+                              Runtime integration
+                            </p>
+
+                            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                              AgentMail is connected to Arbyter&apos;s
+                              generic connector runtime. Enabled
+                              capabilities can be executed only after
+                              passing the runtime&apos;s authorization
+                              checks.
+                            </p>
+                          </div>
+                        </div>
+                      </section>
+                    )}
+                  </>
                 )}
 
               {/* Connection form */}
@@ -1769,7 +2075,6 @@ export default function AgentsClient({
                   </div>
 
                   <div className="mt-5 space-y-4">
-                    {/* Connection type */}
                     <FormField label="Connection type">
                       <select
                         value={
@@ -1819,7 +2124,6 @@ export default function AgentsClient({
                       </select>
                     </FormField>
 
-                    {/* Provider */}
                     <FormField label="Provider">
                       <input
                         value={
@@ -1834,7 +2138,7 @@ export default function AgentsClient({
                             }),
                           )
                         }
-                        placeholder="e.g. OpenAI, Anthropic, Internal"
+                        placeholder="e.g. AgentMail, OpenAI, Anthropic"
                         disabled={
                           savingConnection
                         }
@@ -1842,7 +2146,6 @@ export default function AgentsClient({
                       />
                     </FormField>
 
-                    {/* REST API */}
                     {connectionType === 'api' && (
                       <>
                         <FormField label="API endpoint">
@@ -1938,7 +2241,6 @@ export default function AgentsClient({
                       </>
                     )}
 
-                    {/* Webhook */}
                     {connectionType ===
                       'webhook' && (
                       <section className="rounded-xl border bg-muted/20 p-4">
@@ -1986,7 +2288,7 @@ export default function AgentsClient({
                                   }),
                                 )
                               }
-                              placeholder="e.g. AgentMail signing secret"
+                              placeholder="e.g. Agent signing secret"
                               disabled={
                                 savingConnection
                               }
@@ -2002,7 +2304,6 @@ export default function AgentsClient({
                       </section>
                     )}
 
-                    {/* SDK */}
                     {connectionType === 'sdk' && (
                       <section className="space-y-4">
                         <div className="rounded-xl border bg-muted/20 p-4">
@@ -2041,7 +2342,6 @@ export default function AgentsClient({
                       </section>
                     )}
 
-                    {/* MCP */}
                     {connectionType === 'mcp' && (
                       <>
                         <FormField label="MCP transport">
@@ -2124,7 +2424,6 @@ export default function AgentsClient({
                       </>
                     )}
 
-                    {/* Environment */}
                     <FormField label="Environment">
                       <select
                         value={
@@ -2181,7 +2480,7 @@ export default function AgentsClient({
                         disabled={
                           savingConnection
                         }
-                        className="h-10 rounded-lg border px-4 text-sm font-medium disabled:opacity-50"
+                        className="h-10 rounded-lg border px-4 text-sm font-medium transition-all duration-150 active:scale-[0.98] disabled:opacity-50"
                       >
                         Cancel
                       </button>
@@ -2194,7 +2493,7 @@ export default function AgentsClient({
                         disabled={
                           savingConnection
                         }
-                        className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-50"
+                        className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                       >
                         {savingConnection
                           ? 'Saving...'
@@ -2230,9 +2529,10 @@ export default function AgentsClient({
                         deletingAgent ||
                         deletingConnection ||
                         savingConnection ||
+                        savingCapabilities ||
                         verifying
                       }
-                      className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                      className="mt-4 inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-700 transition-all duration-150 hover:bg-red-50 active:scale-[0.98] disabled:opacity-50"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
 
@@ -2251,7 +2551,7 @@ export default function AgentsClient({
       {/* Add Agent modal */}
       {showNewAgent && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px] animate-in fade-in duration-150"
           onMouseDown={(event) => {
             if (
               event.target ===
@@ -2263,7 +2563,7 @@ export default function AgentsClient({
             }
           }}
         >
-          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-2xl animate-in zoom-in-[0.98] duration-200">
             <div className="mb-5 flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-semibold">
@@ -2287,7 +2587,7 @@ export default function AgentsClient({
                 disabled={
                   creatingAgent
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted disabled:opacity-50"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border text-muted-foreground transition-all duration-150 hover:bg-muted active:scale-95 disabled:opacity-50"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -2377,7 +2677,7 @@ export default function AgentsClient({
                   }
                 }}
                 disabled={creatingAgent}
-                className="h-10 rounded-lg border px-4 text-sm font-medium disabled:opacity-50"
+                className="h-10 rounded-lg border px-4 text-sm font-medium transition-all duration-150 active:scale-[0.98] disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -2386,7 +2686,7 @@ export default function AgentsClient({
                 type="button"
                 onClick={createAgent}
                 disabled={creatingAgent}
-                className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 disabled:opacity-50"
+                className="h-10 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition-all duration-150 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               >
                 {creatingAgent
                   ? 'Adding...'
@@ -2412,7 +2712,7 @@ function SummaryCard({
   icon: React.ReactNode
 }) {
   return (
-    <div className="rounded-xl border bg-card p-5">
+    <div className="rounded-xl border bg-card p-5 transition-all duration-200 hover:shadow-sm">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {label}
