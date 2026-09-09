@@ -216,7 +216,7 @@ export async function POST(request: Request) {
     );
 
     /*
-     * Webhooks are inbound connections.
+     * Webhook connections are inbound.
      */
     if (
       connectionType === "webhook" ||
@@ -262,6 +262,8 @@ export async function POST(request: Request) {
      * SDK connections require an SDK/runtime handshake.
      */
     if (connectionType === "sdk") {
+      const checkedAt = new Date().toISOString();
+
       const message =
         "SDK connections require an SDK/runtime handshake or telemetry signal. An HTTP endpoint probe is not a valid SDK verification method.";
 
@@ -280,7 +282,7 @@ export async function POST(request: Request) {
             provider: connection.provider,
             environment: connection.environment,
           },
-          occurred_at: new Date().toISOString(),
+          occurred_at: checkedAt,
         });
 
       return NextResponse.json(
@@ -298,6 +300,8 @@ export async function POST(request: Request) {
      * MCP connections require transport-specific verification.
      */
     if (connectionType === "mcp") {
+      const checkedAt = new Date().toISOString();
+
       const message =
         "MCP connections require transport-specific verification. Configure the MCP transport before verification.";
 
@@ -316,7 +320,7 @@ export async function POST(request: Request) {
             provider: connection.provider,
             environment: connection.environment,
           },
-          occurred_at: new Date().toISOString(),
+          occurred_at: checkedAt,
         });
 
       return NextResponse.json(
@@ -390,6 +394,18 @@ export async function POST(request: Request) {
         .eq("id", connection.id)
         .eq("organization_id", organizationId);
 
+      /*
+       * A failed verification removes the current verified state.
+       */
+      await supabase
+        .from("agent_identities")
+        .update({
+          verified: false,
+          verified_at: null,
+        })
+        .eq("agent_id", agentId)
+        .eq("organization_id", organizationId);
+
       await supabase
         .from("agent_connection_events")
         .insert({
@@ -397,10 +413,11 @@ export async function POST(request: Request) {
           agent_id: agentId,
           agent_connection_id: connection.id,
           event_type: "verification_failed",
-          status: "failed",
+          status: "error",
           message: endpointValidation.error,
           metadata: {
             reason: "invalid_or_unsafe_endpoint",
+            identity_verified: false,
           },
           occurred_at: checkedAt,
         });
@@ -411,6 +428,7 @@ export async function POST(request: Request) {
           message: endpointValidation.error,
           connectionStatus: "error",
           healthStatus: "unhealthy",
+          verified: false,
         },
         { status: 400 },
       );
@@ -506,7 +524,7 @@ export async function POST(request: Request) {
       : Number(connection.consecutive_failures || 0) + 1;
 
     /*
-     * Record the health-check result.
+     * Record health-check result.
      */
     const {
       data: healthCheck,
@@ -590,9 +608,13 @@ export async function POST(request: Request) {
     /*
      * Update agent identity verification.
      *
-     * A successful endpoint verification means the identity is
-     * verified. A failed verification removes the current
-     * verification state.
+     * Successful endpoint verification:
+     *   verified = true
+     *   verified_at = current timestamp
+     *
+     * Failed endpoint verification:
+     *   verified = false
+     *   verified_at = null
      */
     const {
       data: existingIdentity,
@@ -658,6 +680,16 @@ export async function POST(request: Request) {
 
     /*
      * Record lifecycle event.
+     *
+     * IMPORTANT:
+     * agent_connection_events.status only allows:
+     *   pending
+     *   connected
+     *   disconnected
+     *   error
+     *
+     * Therefore successful verification uses "connected"
+     * and failed verification uses "error".
      */
     const { error: eventError } = await supabase
       .from("agent_connection_events")
@@ -668,7 +700,7 @@ export async function POST(request: Request) {
         event_type: isHealthy
           ? "verification_succeeded"
           : "verification_failed",
-        status: isHealthy ? "success" : "failed",
+        status: isHealthy ? "connected" : "error",
         message: isHealthy
           ? "Endpoint responded successfully. Agent identity verified."
           : errorMessage ??
