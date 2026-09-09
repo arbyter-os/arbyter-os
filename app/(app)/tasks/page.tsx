@@ -14,8 +14,8 @@ import { createClient } from '@/lib/supabase/client'
 
 const supabase = createClient()
 
-type TaskStatus = 'Running' | 'Pending' | 'Completed' | 'Blocked'
-type Priority = 'Critical' | 'High' | 'Medium' | 'Low'
+type TaskStatus = 'running' | 'pending' | 'completed' | 'blocked'
+type Priority = 'critical' | 'high' | 'medium' | 'low'
 
 type Task = {
   id: string
@@ -36,11 +36,11 @@ type Agent = {
 
 function priorityClass(priority: Priority) {
   switch (priority) {
-    case 'Critical':
+    case 'critical':
       return 'border-red-200 bg-red-50 text-red-700'
-    case 'High':
+    case 'high':
       return 'border-orange-200 bg-orange-50 text-orange-700'
-    case 'Medium':
+    case 'medium':
       return 'border-yellow-200 bg-yellow-50 text-yellow-700'
     default:
       return 'border-gray-200 bg-gray-50 text-gray-600'
@@ -49,11 +49,11 @@ function priorityClass(priority: Priority) {
 
 function statusClass(status: TaskStatus) {
   switch (status) {
-    case 'Running':
+    case 'running':
       return 'bg-blue-50 text-blue-700'
-    case 'Completed':
+    case 'completed':
       return 'bg-green-50 text-green-700'
-    case 'Blocked':
+    case 'blocked':
       return 'bg-red-50 text-red-700'
     default:
       return 'bg-gray-100 text-gray-600'
@@ -62,11 +62,11 @@ function statusClass(status: TaskStatus) {
 
 function statusIcon(status: TaskStatus) {
   switch (status) {
-    case 'Completed':
+    case 'completed':
       return <CheckCircle2 className="h-4 w-4" />
-    case 'Running':
+    case 'running':
       return <Clock3 className="h-4 w-4" />
-    case 'Blocked':
+    case 'blocked':
       return <AlertTriangle className="h-4 w-4" />
     default:
       return <Clock3 className="h-4 w-4" />
@@ -89,6 +89,35 @@ function formatDate(date: string | null) {
   })
 }
 
+function normalizeStatus(value: string | null): TaskStatus {
+  const normalized = (value ?? 'pending').toLowerCase()
+
+  if (
+    normalized === 'running' ||
+    normalized === 'completed' ||
+    normalized === 'blocked'
+  ) {
+    return normalized
+  }
+
+  return 'pending'
+}
+
+function normalizePriority(value: string | null): Priority {
+  const normalized = (value ?? 'medium').toLowerCase()
+
+  if (
+    normalized === 'critical' ||
+    normalized === 'high' ||
+    normalized === 'medium' ||
+    normalized === 'low'
+  ) {
+    return normalized
+  }
+
+  return 'medium'
+}
+
 export default function TasksPage() {
   const [tasks, setTasks] = React.useState<Task[]>([])
   const [agents, setAgents] = React.useState<Agent[]>([])
@@ -106,42 +135,48 @@ export default function TasksPage() {
   const [description, setDescription] = React.useState('')
   const [selectedAgent, setSelectedAgent] = React.useState('')
   const [selectedPriority, setSelectedPriority] =
-    React.useState<Priority>('Medium')
+    React.useState<Priority>('medium')
 
   const [error, setError] = React.useState<string | null>(null)
+
+  async function getOrganizationId() {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
+    if (authError) throw authError
+
+    if (!user) {
+      throw new Error('You must be signed in.')
+    }
+
+    const { data: userRecord, error: userError } = await supabase
+      .from('users')
+      .select('organization_id')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (userError) throw userError
+
+    if (!userRecord?.organization_id) {
+      throw new Error(
+        'No organization is associated with your account.'
+      )
+    }
+
+    return {
+      user,
+      organizationId: userRecord.organization_id,
+    }
+  }
 
   async function loadData() {
     setLoading(true)
     setError(null)
 
     try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-
-      if (authError) throw authError
-
-      if (!user) {
-        throw new Error('You must be signed in.')
-      }
-
-      const { data: userRecord, error: userError } =
-        await supabase
-          .from('users')
-          .select('organization_id')
-          .eq('id', user.id)
-          .maybeSingle()
-
-      if (userError) throw userError
-
-      if (!userRecord?.organization_id) {
-        throw new Error(
-          'No organization is associated with your account.'
-        )
-      }
-
-      const organizationId = userRecord.organization_id
+      const { organizationId } = await getOrganizationId()
 
       const [
         { data: taskRows, error: taskError },
@@ -155,7 +190,7 @@ export default function TasksPage() {
               title,
               description,
               status,
-              priorty,
+              priority,
               created_at,
               agent_tasks (
                 agent_id,
@@ -202,8 +237,8 @@ export default function TasksPage() {
           agent: agentId
             ? agentMap.get(agentId) ?? 'Unknown Agent'
             : 'Unassigned',
-          priority: task.priorty as Priority,
-          status: task.status as TaskStatus,
+          priority: normalizePriority(task.priority),
+          status: normalizeStatus(task.status),
           due: 'Not set',
           created: formatDate(task.created_at),
         }
@@ -243,55 +278,45 @@ export default function TasksPage() {
     setCreating(true)
 
     try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
+      const { user, organizationId } = await getOrganizationId()
 
-      if (authError) throw authError
-
-      if (!user) {
-        throw new Error('You must be signed in.')
-      }
-
-      const { data: userRecord, error: userError } =
+      const { data: selectedAgentRecord, error: agentError } =
         await supabase
-          .from('users')
-          .select('organization_id')
-          .eq('id', user.id)
+          .from('ai_agents')
+          .select('id, name')
+          .eq('id', selectedAgent)
+          .eq('organization_id', organizationId)
           .maybeSingle()
 
-      if (userError) throw userError
+      if (agentError) throw agentError
 
-      if (!userRecord?.organization_id) {
+      if (!selectedAgentRecord) {
         throw new Error(
-          'No organization is associated with your account.'
+          'The selected agent does not belong to your organization.'
         )
       }
 
-      const { data: task, error: taskError } =
-        await supabase
-          .from('tasks')
-          .insert({
-            organization_id: userRecord.organization_id,
-            title: title.trim(),
-            description: description.trim() || null,
-            status: 'Pending',
-            priorty: selectedPriority,
-            created_by: user.id,
-          })
-          .select('id')
-          .single()
+      const { data: task, error: taskError } = await supabase
+        .from('tasks')
+        .insert({
+          organization_id: organizationId,
+          title: title.trim(),
+          description: description.trim() || null,
+          status: 'pending',
+          priority: selectedPriority,
+          created_by: user.id,
+        })
+        .select('id')
+        .single()
 
       if (taskError) throw taskError
 
-      const { error: assignmentError } =
-        await supabase
-          .from('agent_tasks')
-          .insert({
-            task_id: task.id,
-            agent_id: selectedAgent,
-          })
+      const { error: assignmentError } = await supabase
+        .from('agent_tasks')
+        .insert({
+          task_id: task.id,
+          agent_id: selectedAgent,
+        })
 
       if (assignmentError) {
         await supabase
@@ -305,7 +330,7 @@ export default function TasksPage() {
       setTitle('')
       setDescription('')
       setSelectedAgent('')
-      setSelectedPriority('Medium')
+      setSelectedPriority('medium')
       setShowNewTask(false)
 
       await loadData()
@@ -330,33 +355,33 @@ export default function TasksPage() {
       task.agent.toLowerCase().includes(query)
 
     const matchesStatus =
-      status === 'All' || task.status === status
+      status === 'All' || task.status === status.toLowerCase()
 
     const matchesPriority =
-      priority === 'All' || task.priority === priority
+      priority === 'All' ||
+      task.priority === priority.toLowerCase()
 
     return matchesSearch && matchesStatus && matchesPriority
   })
 
   const running = tasks.filter(
-    (task) => task.status === 'Running'
+    (task) => task.status === 'running'
   ).length
 
   const pending = tasks.filter(
-    (task) => task.status === 'Pending'
+    (task) => task.status === 'pending'
   ).length
 
   const completed = tasks.filter(
-    (task) => task.status === 'Completed'
+    (task) => task.status === 'completed'
   ).length
 
   const blocked = tasks.filter(
-    (task) => task.status === 'Blocked'
+    (task) => task.status === 'blocked'
   ).length
 
   return (
     <main className="flex flex-col gap-6">
-      {/* Header */}
       <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-medium text-muted-foreground">
@@ -385,14 +410,12 @@ export default function TasksPage() {
         </button>
       </section>
 
-      {/* Error */}
       {error && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
         </div>
       )}
 
-      {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-5">
           <p className="text-sm text-muted-foreground">Running</p>
@@ -427,7 +450,6 @@ export default function TasksPage() {
         </div>
       </section>
 
-      {/* Filters */}
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative max-w-md flex-1">
@@ -470,7 +492,6 @@ export default function TasksPage() {
         </div>
       </section>
 
-      {/* Task list */}
       <section className="overflow-hidden rounded-xl border bg-card">
         <div className="border-b p-5">
           <h2 className="font-semibold">Task Queue</h2>
@@ -508,7 +529,8 @@ export default function TasksPage() {
                     >
                       <span className="inline-flex items-center gap-1">
                         {statusIcon(task.status)}
-                        {task.status}
+                        {task.status.charAt(0).toUpperCase() +
+                          task.status.slice(1)}
                       </span>
                     </span>
 
@@ -517,7 +539,8 @@ export default function TasksPage() {
                         task.priority
                       )}`}
                     >
-                      {task.priority}
+                      {task.priority.charAt(0).toUpperCase() +
+                        task.priority.slice(1)}
                     </span>
                   </div>
 
@@ -527,10 +550,7 @@ export default function TasksPage() {
 
                   <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
                     <span>Due: {task.due}</span>
-
-                    <span>
-                      Created: {task.created}
-                    </span>
+                    <span>Created: {task.created}</span>
                   </div>
                 </div>
 
@@ -550,7 +570,6 @@ export default function TasksPage() {
         </div>
       </section>
 
-      {/* Create task modal */}
       {showNewTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
           <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-xl">
@@ -568,9 +587,7 @@ export default function TasksPage() {
               <input
                 type="text"
                 value={title}
-                onChange={(event) =>
-                  setTitle(event.target.value)
-                }
+                onChange={(event) => setTitle(event.target.value)}
                 placeholder="Task title"
                 className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
               />
@@ -592,9 +609,7 @@ export default function TasksPage() {
                 }
                 className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
               >
-                <option value="">
-                  Select an agent
-                </option>
+                <option value="">Select an agent</option>
 
                 {agents.map((agent) => (
                   <option key={agent.id} value={agent.id}>
@@ -612,18 +627,10 @@ export default function TasksPage() {
                 }
                 className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
               >
-                <option value="Medium">
-                  Medium priority
-                </option>
-                <option value="Low">
-                  Low priority
-                </option>
-                <option value="High">
-                  High priority
-                </option>
-                <option value="Critical">
-                  Critical priority
-                </option>
+                <option value="medium">Medium priority</option>
+                <option value="low">Low priority</option>
+                <option value="high">High priority</option>
+                <option value="critical">Critical priority</option>
               </select>
             </div>
 
