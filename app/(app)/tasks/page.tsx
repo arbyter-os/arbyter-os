@@ -167,7 +167,7 @@ export default function TasksPage() {
           .order('created_at', { ascending: false }),
 
         supabase
-          .from('agents')
+          .from('ai_agents')
           .select('id, name, status')
           .eq('organization_id', organizationId)
           .order('name', { ascending: true }),
