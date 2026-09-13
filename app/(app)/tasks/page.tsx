@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Bot,
   ChevronRight,
+  Play,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -124,6 +125,8 @@ export default function TasksPage() {
 
   const [loading, setLoading] = React.useState(true)
   const [creating, setCreating] = React.useState(false)
+  const [executingTaskId, setExecutingTaskId] =
+    React.useState<string | null>(null)
 
   const [search, setSearch] = React.useState('')
   const [status, setStatus] = React.useState('All')
@@ -138,6 +141,7 @@ export default function TasksPage() {
     React.useState<Priority>('medium')
 
   const [error, setError] = React.useState<string | null>(null)
+  const [success, setSuccess] = React.useState<string | null>(null)
 
   async function getOrganizationId() {
     const {
@@ -264,6 +268,7 @@ export default function TasksPage() {
 
   async function createTask() {
     setError(null)
+    setSuccess(null)
 
     if (!title.trim()) {
       setError('Enter a task title.')
@@ -347,6 +352,52 @@ export default function TasksPage() {
     }
   }
 
+  async function executeTask(taskId: string) {
+    if (executingTaskId) return
+
+    setError(null)
+    setSuccess(null)
+    setExecutingTaskId(taskId)
+
+    try {
+      const response = await fetch('/api/tasks/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskId,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ?? 'Failed to execute task.'
+        )
+      }
+
+      setSuccess(
+        `Task executed successfully through ${data.provider}.`
+      )
+
+      await loadData()
+    } catch (err) {
+      console.error('Failed to execute task:', err)
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to execute task.'
+      )
+
+      await loadData()
+    } finally {
+      setExecutingTaskId(null)
+    }
+  }
+
   const filteredTasks = tasks.filter((task) => {
     const query = search.toLowerCase()
 
@@ -401,6 +452,7 @@ export default function TasksPage() {
           type="button"
           onClick={() => {
             setError(null)
+            setSuccess(null)
             setShowNewTask(true)
           }}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
@@ -413,6 +465,12 @@ export default function TasksPage() {
       {error && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="rounded-xl border border-green-500/20 bg-green-500/5 px-4 py-3 text-sm text-green-700 dark:text-green-400">
+          {success}
         </div>
       )}
 
@@ -507,61 +565,82 @@ export default function TasksPage() {
               Loading tasks...
             </div>
           ) : filteredTasks.length > 0 ? (
-            filteredTasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex flex-col gap-4 p-5 transition hover:bg-muted/20 lg:flex-row lg:items-center"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background">
-                  <Bot className="h-4 w-4" />
-                </div>
+            filteredTasks.map((task) => {
+              const isExecuting = executingTaskId === task.id
+              const canExecute =
+                task.status === 'pending' ||
+                task.status === 'blocked'
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-medium">
-                      {task.title}
-                    </h3>
-
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(
-                        task.status
-                      )}`}
-                    >
-                      <span className="inline-flex items-center gap-1">
-                        {statusIcon(task.status)}
-                        {task.status.charAt(0).toUpperCase() +
-                          task.status.slice(1)}
-                      </span>
-                    </span>
-
-                    <span
-                      className={`rounded-full border px-2.5 py-1 text-xs font-medium ${priorityClass(
-                        task.priority
-                      )}`}
-                    >
-                      {task.priority.charAt(0).toUpperCase() +
-                        task.priority.slice(1)}
-                    </span>
-                  </div>
-
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Assigned to {task.agent}
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-                    <span>Due: {task.due}</span>
-                    <span>Created: {task.created}</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              return (
+                <div
+                  key={task.id}
+                  className="flex flex-col gap-4 p-5 transition hover:bg-muted/20 lg:flex-row lg:items-center"
                 >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            ))
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background">
+                    <Bot className="h-4 w-4" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-medium">
+                        {task.title}
+                      </h3>
+
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(
+                          task.status
+                        )}`}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {statusIcon(task.status)}
+                          {task.status.charAt(0).toUpperCase() +
+                            task.status.slice(1)}
+                        </span>
+                      </span>
+
+                      <span
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium ${priorityClass(
+                          task.priority
+                        )}`}
+                      >
+                        {task.priority.charAt(0).toUpperCase() +
+                          task.priority.slice(1)}
+                      </span>
+                    </div>
+
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Assigned to {task.agent}
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+                      <span>Due: {task.due}</span>
+                      <span>Created: {task.created}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {canExecute && (
+                      <button
+                        type="button"
+                        onClick={() => executeTask(task.id)}
+                        disabled={executingTaskId !== null}
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-foreground px-3 text-xs font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Play className="h-3.5 w-3.5" />
+                        {isExecuting ? 'Executing...' : 'Execute'}
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })
           ) : (
             <div className="px-5 py-12 text-center text-sm text-muted-foreground">
               No tasks match your filters.
@@ -646,6 +725,7 @@ export default function TasksPage() {
                 type="button"
                 onClick={() => {
                   setError(null)
+                  setSuccess(null)
                   setShowNewTask(false)
                 }}
                 disabled={creating}
