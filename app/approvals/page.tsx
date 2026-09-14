@@ -1,0 +1,113 @@
+'use client'
+
+import * as React from 'react'
+
+import { PageHeader } from '@/components/dashboard/page-header'
+import { Panel } from '@/components/dashboard/panel'
+import { ApprovalList } from '@/components/dashboard/approval-list'
+import { loadPendingApprovals } from '@/lib/approvals/client'
+import type { Approval } from '@/lib/approvals/types'
+
+export default function ApprovalsPage() {
+  const [approvals, setApprovals] =
+    React.useState<Approval[]>([])
+  const [loading, setLoading] =
+    React.useState(true)
+  const [error, setError] =
+    React.useState<string | null>(null)
+
+  async function loadApprovals() {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const pending =
+        await loadPendingApprovals()
+
+      setApprovals(pending)
+    } catch (error) {
+      console.error(
+        'Failed to load approvals:',
+        error
+      )
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load approvals.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    loadApprovals()
+  }, [])
+
+  async function resolveApproval(
+    approvalId: string,
+    decision: 'approved' | 'rejected'
+  ) {
+    const response = await fetch(
+      `/api/approvals/${approvalId}/resolve`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          decision,
+        }),
+      }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error ??
+          'Failed to resolve approval.'
+      )
+    }
+
+    setApprovals((current) =>
+      current.filter(
+        (approval) =>
+          approval.id !== approvalId
+      )
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        greeting="Governance"
+        title="Approvals"
+        description="Review and authorize AI agent actions that require human oversight."
+      />
+
+      <Panel
+        title="Pending Approvals"
+        description={`${approvals.length} ${
+          approvals.length === 1
+            ? 'action'
+            : 'actions'
+        } waiting for review`}
+        bodyClassName="pt-1"
+      >
+        {error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        ) : (
+          <ApprovalList
+            approvals={approvals}
+            loading={loading}
+            onResolve={resolveApproval}
+          />
+        )}
+      </Panel>
+    </div>
+  )
+}
