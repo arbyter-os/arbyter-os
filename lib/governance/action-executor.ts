@@ -77,23 +77,74 @@ export async function executeGovernanceAction(
       }
     }
 
-    case "pause_agent":
+    case "pause_agent": {
+      if (!context.agentId) {
+        return {
+          success: false,
+          action: "pause_agent",
+          message: "Agent ID is required.",
+          requiresHuman: true,
+        }
+      }
+
+      const { error } = await supabase
+        .from("ai_agents")
+        .update({ status: "paused" })
+        .eq("id", context.agentId)
+        .eq("organization_id", context.organizationId)
+
+      if (error) {
+        return {
+          success: false,
+          action: "pause_agent",
+          message: error.message,
+          requiresHuman: true,
+        }
+      }
+
       return {
         success: true,
         action: "pause_agent",
-        message:
-          "Agent pause has been requested by governance.",
+        message: "Agent has been paused by governance.",
         requiresHuman: true,
       }
+    }
 
-    case "disable_tool":
+    case "disable_tool": {
+      if (!context.agentId || !context.tool) {
+        return {
+          success: false,
+          action: "disable_tool",
+          message:
+            "Agent ID and tool are required.",
+          requiresHuman: true,
+        }
+      }
+
+      const { error } = await supabase
+        .from("agent_permissions")
+        .update({ enabled: false })
+        .eq("agent_id", context.agentId)
+        .eq("organization_id", context.organizationId)
+        .eq("tool", context.tool)
+
+      if (error) {
+        return {
+          success: false,
+          action: "disable_tool",
+          message: error.message,
+          requiresHuman: true,
+        }
+      }
+
       return {
         success: true,
         action: "disable_tool",
         message:
-          "Tool access has been requested for disablement.",
+          "Tool access has been disabled for the agent.",
         requiresHuman: true,
       }
+    }
 
     case "modify_policy":
       return {
