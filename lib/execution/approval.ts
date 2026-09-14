@@ -1,4 +1,4 @@
-import { createApprovalRequest } from "@/lib/approval/approvals"
+import { createClient } from "@/lib/supabase/server"
 
 export type ExecutionApprovalInput = {
   organizationId: string
@@ -16,5 +16,36 @@ export type ExecutionApprovalInput = {
 export async function createExecutionApproval(
   input: ExecutionApprovalInput
 ) {
-  return createApprovalRequest(input)
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("approval_requests")
+    .insert({
+      organization_id: input.organizationId,
+      agent_id: input.agentId,
+      execution_id: input.executionId,
+      governance_decision_id:
+        input.governanceDecisionId ?? null,
+      requested_by:
+        input.requestedBy ?? null,
+      title: input.title,
+      description: input.description ?? null,
+      risk_level: input.riskLevel,
+      status: "pending",
+      requested_at: new Date().toISOString(),
+      metadata: {
+        ...(input.metadata ?? {}),
+        task_id: input.taskId ?? null,
+      },
+    })
+    .select()
+    .single()
+
+  if (error) {
+    throw new Error(
+      `Failed to create approval request: ${error.message}`
+    )
+  }
+
+  return data
 }
