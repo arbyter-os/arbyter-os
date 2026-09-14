@@ -1,46 +1,53 @@
-import { loadGovernanceRules } from "./rule-loader";
+import { loadGovernanceRules } from "./rule-loader"
 import {
   getApplicableRules,
   type GovernanceContext,
-} from "./applicability";
-import { getTriggeredRules } from "./evaluator";
-import { resolveConflicts } from "./conflict-resolver";
-import { calculateRisk } from "./risk-engine";
-import { makeGovernanceDecision } from "./decision-engine";
-import { generateRecommendations } from "./recommendation";
+} from "./applicability"
+import { getTriggeredRules } from "./evaluator"
+import { resolveConflicts } from "./conflict-resolver"
+import { analyzeConflicts } from "./conflict-analyzer"
+import { calculateRisk } from "./risk-engine"
+import { makeGovernanceDecision } from "./decision-engine"
+import { generateRecommendations } from "./recommendation"
 
 export async function evaluateGovernance(
   organizationId: string,
   context: GovernanceContext & Record<string, unknown>
 ) {
-  const rules = await loadGovernanceRules(organizationId);
+  const rules = await loadGovernanceRules(organizationId)
 
-  const applicableRules = getApplicableRules(rules, context);
+  const applicableRules = getApplicableRules(
+    rules,
+    context
+  )
 
   const triggeredRules = getTriggeredRules(
     applicableRules,
     context
-  );
+  )
 
-  const resolution = resolveConflicts(triggeredRules);
+  const conflicts = analyzeConflicts(triggeredRules)
 
-  const risk = calculateRisk(triggeredRules);
+  const resolution = resolveConflicts(triggeredRules)
+
+  const risk = calculateRisk(triggeredRules)
 
   const decision = makeGovernanceDecision(
     resolution,
     risk
-  );
+  )
 
   const recommendations = generateRecommendations(
     decision,
     resolution.rule
-  );
+  )
 
   return {
     decision,
     risk,
     applicableRules,
     triggeredRules,
+    conflicts,
     recommendations,
-  };
+  }
 }
