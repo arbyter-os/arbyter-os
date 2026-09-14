@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { executeConnectorAction } from "@/lib/connectors/runtime"
-import { getConnector } from "@/lib/connectors/registry"
+import { evaluateGovernance } from "@/lib/governance"
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -22,12 +21,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const taskId =
-      typeof body?.taskId === "string" ? body.taskId : ""
 
-    if (!taskId) {
+    if (!body?.action) {
       return NextResponse.json(
-        { error: "taskId is required." },
+        { error: "action is required." },
         { status: 400 }
       )
     }
@@ -50,201 +47,42 @@ export async function POST(request: Request) {
 
     const organizationId = userRecord.organization_id
 
-    const { data: task, error: taskError } = await supabase
-      .from("tasks")
-      .select("id, title, description, status, priority")
-      .eq("id", taskId)
-      .eq("organization_id", organizationId)
-      .maybeSingle()
-
-    if (taskError) throw taskError
-
-    if (!task) {
-      return NextResponse.json(
-        { error: "Task not found." },
-        { status: 404 }
-      )
+    const context = {
+      action: body.action,
+      tool: body.tool,
+      jurisdiction: body.jurisdiction,
+      country: body.country,
+      state: body.state,
+      sector: body.sector,
+      agent: body.agent,
+      task: body.task,
+      data: body.data,
+      environment: body.environment,
+      ...body.context,
     }
 
-    if (task.status === "completed") {
-      return NextResponse.json(
-        { error: "This task is already completed." },
-        { status: 409 }
-      )
-    }
-
-    const { data: assignment, error: assignmentError } =
-      await supabase
-        .from("agent_tasks")
-        .select("agent_id")
-        .eq("task_id", taskId)
-        .maybeSingle()
-
-    if (assignmentError) throw assignmentError
-
-    if (!assignment?.agent_id) {
-      return NextResponse.json(
-        { error: "This task has no assigned agent." },
-        { status: 400 }
-      )
-    }
-
-    const agentId = assignment.agent_id
-
-    const { data: agent, error: agentError } =
-      await supabase
-        .from("ai_agents")
-        .select("id, name, status")
-        .eq("id", agentId)
-        .eq("organization_id", organizationId)
-        .maybeSingle()
-
-    if (agentError) throw agentError
-
-    if (!agent) {
-      return NextResponse.json(
-        { error: "Assigned agent not found." },
-        { status: 404 }
-      )
-    }
-
-    const { data: connections, error: connectionError } =
-      await supabase
-        .from("agent_connections")
-        .select(
-          "id, provider, status, health_status, capabilities"
-        )
-        .eq("agent_id", agentId)
-        .eq("organization_id", organizationId)
-        .order("updated_at", { ascending: false })
-
-    if (connectionError) throw connectionError
-
-    const connection = (connections ?? []).find(
-      (item) =>
-        item.status === "connected" &&
-        item.health_status !== "unhealthy" &&
-        getConnector(item.provider) !== undefined
+    const result = await evaluateGovernance(
+      organizationId,
+      context
     )
-
-    if (!connection) {
-      return NextResponse.json(
-        {
-          error:
-            "The assigned agent has no usable connector connection.",
-        },
-        { status: 400 }
-      )
-    }
-
-    const connector = getConnector(connection.provider)
-
-    if (!connector) {
-      return NextResponse.json(
-        {
-          error:
-            "No connector is registered for this agent connection.",
-        },
-        { status: 400 }
-      )
-    }
-
-    const configuredCapabilities =
-      connection.capabilities &&
-      typeof connection.capabilities === "object" &&
-      !Array.isArray(connection.capabilities)
-        ? (connection.capabilities as Record<string, boolean>)
-        : {}
-
-    const action = connector.capabilities.find(
-      (capability) => configuredCapabilities[capability] === true
-    )
-
-    if (!action) {
-      return NextResponse.json(
-        {
-          error:
-            "The agent connection has no executable capability configured.",
-        },
-        { status: 400 }
-      )
-    }
-
-    const payload = {
-      taskId: task.id,
-      task: {
-        title: task.title,
-        description: task.description,
-        priority: task.priority,
-      },
-    }
-
-    const { error: runningError } = await supabase
-      .from("tasks")
-      .update({ status: "running" })
-      .eq("id", task.id)
-      .eq("organization_id", organizationId)
-
-    if (runningError) throw runningError
-
-    const result = await executeConnectorAction(
-      connection.provider,
-      {
-        action,
-        payload,
-      },
-      {
-        connectionId: connection.id,
-        agentId,
-        organizationId,
-      }
-    )
-
-    if (!result.success) {
-      await supabase
-        .from("tasks")
-        .update({ status: "blocked" })
-        .eq("id", task.id)
-        .eq("organization_id", organizationId)
-
-      return NextResponse.json(
-        {
-          error: result.error ?? "Task execution failed.",
-          taskId: task.id,
-          agentId,
-          provider: connection.provider,
-          action,
-        },
-        { status: 502 }
-      )
-    }
-
-    const { error: completedError } = await supabase
-      .from("tasks")
-      .update({ status: "completed" })
-      .eq("id", task.id)
-      .eq("organization_id", organizationId)
-
-    if (completedError) throw completedError
 
     return NextResponse.json({
       success: true,
-      taskId: task.id,
-      agentId,
-      agentName: agent.name,
-      provider: connection.provider,
-      action,
-      result: result.data ?? null,
+      decision: result.decision,
+      risk: result.risk,
+      applicableRules: result.applicableRules,
+      triggeredRules: result.triggeredRules,
+      recommendations: result.recommendations,
     })
   } catch (error) {
-    console.error("Task execution failed:", error)
+    console.error("Governance evaluation failed:", error)
 
     return NextResponse.json(
       {
         error:
           error instanceof Error
             ? error.message
-            : "Failed to execute task.",
+            : "Governance evaluation failed.",
       },
       { status: 500 }
     )
