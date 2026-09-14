@@ -9,12 +9,20 @@ import { analyzeConflicts } from "./conflict-analyzer"
 import { calculateRisk } from "./risk-engine"
 import { makeGovernanceDecision } from "./decision-engine"
 import { generateRecommendations } from "./recommendation"
+import { loadRegulatoryMappings } from "./regulatory-mapper"
 
 export async function evaluateGovernance(
   organizationId: string,
   context: GovernanceContext & Record<string, unknown>
 ) {
-  const rules = await loadGovernanceRules(organizationId)
+  const rules = await loadGovernanceRules(
+    organizationId
+  )
+
+  const regulatoryMappings =
+    await loadRegulatoryMappings(
+      organizationId
+    )
 
   const applicableRules = getApplicableRules(
     rules,
@@ -26,21 +34,28 @@ export async function evaluateGovernance(
     context
   )
 
-  const conflicts = analyzeConflicts(triggeredRules)
+  const conflicts = analyzeConflicts(
+    triggeredRules
+  )
 
-  const resolution = resolveConflicts(triggeredRules)
+  const resolution = resolveConflicts(
+    triggeredRules
+  )
 
-  const risk = calculateRisk(triggeredRules)
+  const risk = calculateRisk(
+    triggeredRules
+  )
 
   const decision = makeGovernanceDecision(
     resolution,
     risk
   )
 
-  const recommendations = generateRecommendations(
-    decision,
-    resolution.rule
-  )
+  const recommendations =
+    generateRecommendations(
+      decision,
+      resolution.rule
+    )
 
   return {
     decision,
@@ -48,6 +63,7 @@ export async function evaluateGovernance(
     applicableRules,
     triggeredRules,
     conflicts,
+    regulatoryMappings,
     recommendations,
   }
 }
