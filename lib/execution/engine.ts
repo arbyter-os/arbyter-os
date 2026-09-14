@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { evaluateGovernance } from "@/lib/governance"
 import { executeConnectorAction } from "@/lib/connectors/runtime"
 import { getConnector } from "@/lib/connectors/registry"
+import { recordExecutionAudit } from "./audit"
 
 export type ExecutionInput = {
   organizationId: string
@@ -20,7 +21,6 @@ export async function executeAgentTask(
   input: ExecutionInput
 ) {
   const supabase = await createClient()
-
   const startedAt = new Date().toISOString()
 
   const { data: agent, error: agentError } =
@@ -94,9 +94,6 @@ export async function executeAgentTask(
           "organization_id",
           input.organizationId
         )
-        .order("updated_at", {
-          ascending: false,
-        })
 
     if (error) throw error
 
@@ -128,8 +125,7 @@ export async function executeAgentTask(
 
   const capabilities =
     connection.capabilities &&
-    typeof connection.capabilities ===
-      "object" &&
+    typeof connection.capabilities === "object" &&
     !Array.isArray(connection.capabilities)
       ? (connection.capabilities as Record<
           string,
@@ -241,27 +237,29 @@ export async function executeAgentTask(
       governance.decision.decision ===
       "BLOCK"
     ) {
-      await supabase
-        .from("agent_executions")
-        .update({
+      const audit =
+        await recordExecutionAudit({
+          organizationId:
+            input.organizationId,
+          executionId: execution.id,
+          agentId: input.agentId,
+          taskId: input.taskId,
           status: "blocked",
-          risk_level: riskLevel,
-          output_data: {
+          riskLevel,
+          output: {
             governance,
           },
-          completed_at:
-            new Date().toISOString(),
-          error_message:
+          errorMessage:
             governance.decision.reason ??
             "Execution blocked by governance.",
         })
-        .eq("id", execution.id)
 
       return {
         success: false,
         executionId: execution.id,
         status: "blocked",
         governance,
+        audit,
       }
     }
 
@@ -271,30 +269,32 @@ export async function executeAgentTask(
       governance.decision.decision ===
         "FLAG"
     ) {
-      await supabase
-        .from("agent_executions")
-        .update({
-          status:
-            governance.decision.decision ===
-            "REQUIRE_APPROVAL"
-              ? "awaiting_approval"
-              : "flagged",
-          risk_level: riskLevel,
-          output_data: {
+      const status =
+        governance.decision.decision ===
+        "REQUIRE_APPROVAL"
+          ? "awaiting_approval"
+          : "flagged"
+
+      const audit =
+        await recordExecutionAudit({
+          organizationId:
+            input.organizationId,
+          executionId: execution.id,
+          agentId: input.agentId,
+          taskId: input.taskId,
+          status,
+          riskLevel,
+          output: {
             governance,
           },
         })
-        .eq("id", execution.id)
 
       return {
         success: false,
         executionId: execution.id,
-        status:
-          governance.decision.decision ===
-          "REQUIRE_APPROVAL"
-            ? "awaiting_approval"
-            : "flagged",
+        status,
         governance,
+        audit,
       }
     }
 
@@ -325,22 +325,23 @@ export async function executeAgentTask(
       )
 
     if (!result.success) {
-      await supabase
-        .from("agent_executions")
-        .update({
+      const audit =
+        await recordExecutionAudit({
+          organizationId:
+            input.organizationId,
+          executionId: execution.id,
+          agentId: input.agentId,
+          taskId: input.taskId,
           status: "failed",
-          risk_level: riskLevel,
-          output_data: {
+          riskLevel,
+          output: {
             governance,
             result,
           },
-          error_message:
+          errorMessage:
             result.error ??
             "Connector execution failed.",
-          completed_at:
-            new Date().toISOString(),
         })
-        .eq("id", execution.id)
 
       return {
         success: false,
@@ -348,22 +349,24 @@ export async function executeAgentTask(
         status: "failed",
         governance,
         result,
+        audit,
       }
     }
 
-    await supabase
-      .from("agent_executions")
-      .update({
+    const audit =
+      await recordExecutionAudit({
+        organizationId:
+          input.organizationId,
+        executionId: execution.id,
+        agentId: input.agentId,
+        taskId: input.taskId,
         status: "completed",
-        risk_level: riskLevel,
-        output_data: {
+        riskLevel,
+        output: {
           governance,
           result: result.data ?? null,
         },
-        completed_at:
-          new Date().toISOString(),
       })
-      .eq("id", execution.id)
 
     return {
       success: true,
@@ -371,6 +374,7 @@ export async function executeAgentTask(
       status: "completed",
       governance,
       result: result.data ?? null,
+      audit,
     }
   } catch (error) {
     const message =
@@ -378,16 +382,17 @@ export async function executeAgentTask(
         ? error.message
         : "Execution failed."
 
-    await supabase
-      .from("agent_executions")
-      .update({
-        status: "failed",
-        error_message: message,
-        output_data: {},
-        completed_at:
-          new Date().toISOString(),
-      })
-      .eq("id", execution.id)
+    await recordExecutionAudit({
+      organizationId:
+        input.organizationId,
+      executionId: execution.id,
+      agentId: input.agentId,
+      taskId: input.taskId,
+      status: "failed",
+      riskLevel: "high",
+      output: {},
+      errorMessage: message,
+    })
 
     throw error
   }
