@@ -1,110 +1,66 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { evaluateGovernance } from "@/lib/governance"
 
-export async function POST(request: Request) {
-  const supabase = await createClient()
-
+export async function POST() {
   try {
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    const supabase = await createClient()
 
-    if (authError) {
-      throw authError
+    const authResult = await supabase.auth.getUser()
+
+    if (authResult.error) {
+      return NextResponse.json({
+        stage: "auth",
+        error: authResult.error.message,
+      })
     }
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "You must be signed in." },
-        { status: 401 }
-      )
+    if (!authResult.data.user) {
+      return NextResponse.json({
+        stage: "auth",
+        error: "No authenticated user",
+      })
     }
 
-    const body = await request.json()
+    const userId = authResult.data.user.id
 
-    if (!body?.action) {
-      return NextResponse.json(
-        { error: "action is required." },
-        { status: 400 }
-      )
+    const userResult = await supabase
+      .from("users")
+      .select("organization_id")
+      .eq("id", userId)
+      .maybeSingle()
+
+    if (userResult.error) {
+      return NextResponse.json({
+        stage: "users_query",
+        error: userResult.error.message,
+        code: userResult.error.code,
+      })
     }
 
-    const { data: userRecord, error: userError } =
-      await supabase
-        .from("users")
-        .select("organization_id")
-        .eq("id", user.id)
-        .maybeSingle()
-
-    if (userError) {
-      throw userError
+    if (!userResult.data?.organization_id) {
+      return NextResponse.json({
+        stage: "organization",
+        error: "No organization found",
+      })
     }
-
-    if (!userRecord?.organization_id) {
-      return NextResponse.json(
-        {
-          error:
-            "No organization is associated with your account.",
-        },
-        { status: 403 }
-      )
-    }
-
-    const organizationId = userRecord.organization_id
-
-    const context = {
-      action: body.action,
-      tool: body.tool,
-      jurisdiction: body.jurisdiction,
-      country: body.country,
-      state: body.state,
-      sector: body.sector,
-      agent: body.agent,
-      task: body.task,
-      data: body.data,
-      environment: body.environment,
-      ...(
-        body.context &&
-        typeof body.context === "object" &&
-        !Array.isArray(body.context)
-          ? body.context
-          : {}
-      ),
-    }
-
-    const result = await evaluateGovernance(
-      organizationId,
-      context
-    )
 
     return NextResponse.json({
       success: true,
-      decision: result.decision,
-      risk: result.risk,
-      applicableRules: result.applicableRules,
-      triggeredRules: result.triggeredRules,
-      recommendations: result.recommendations,
+      stage: "supabase_connection",
+      userId,
+      organizationId: userResult.data.organization_id,
     })
   } catch (error) {
-    console.error(
-      "Governance evaluation failed:",
-      error
-    )
-
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Governance evaluation failed.",
-        stack:
-          error instanceof Error
-            ? error.stack
-            : undefined,
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({
+      stage: "unexpected",
+      error:
+        error instanceof Error
+          ? error.message
+          : String(error),
+      stack:
+        error instanceof Error
+          ? error.stack
+          : undefined,
+    })
   }
 }
