@@ -329,6 +329,36 @@ export async function executeAgentTask(
         status
       )
 
+      let approval = null
+
+      if (
+        governance.decision.decision ===
+        "REQUIRE_APPROVAL"
+      ) {
+        approval =
+          await createExecutionApproval({
+            organizationId:
+              input.organizationId,
+            agentId: input.agentId,
+            executionId: execution.id,
+            taskId: input.taskId,
+            riskLevel,
+            title:
+              task?.title ??
+              "Agent action requires approval.",
+            description:
+              task?.description ??
+              "Governance requires human approval before this agent action can continue.",
+            metadata: {
+              provider:
+                connection.provider,
+              action,
+              governanceDecision:
+                governance.decision,
+            },
+          })
+      }
+
       const audit =
         await recordExecutionAudit({
           organizationId:
@@ -340,6 +370,7 @@ export async function executeAgentTask(
           riskLevel,
           output: {
             governance,
+            approval,
           },
         })
 
@@ -348,6 +379,7 @@ export async function executeAgentTask(
         executionId: execution.id,
         status,
         governance,
+        approval,
         audit,
       }
     }
