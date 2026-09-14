@@ -1,161 +1,167 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import type { Approval } from '@/lib/approvals/types'
+import { useEffect, useState } from "react"
+import type { Approval } from "@/lib/approvals/types"
 
-type ApprovalListProps = {
+type Props = {
   approvals: Approval[]
-  loading?: boolean
-  onResolve?: (
-    approvalId: string,
-    decision: 'approved' | 'rejected'
-  ) => Promise<void>
+  onResolved?: () => void
 }
 
-function riskClass(risk: string) {
-  switch (risk.toLowerCase()) {
-    case 'critical':
-      return 'text-red-600'
-    case 'high':
-      return 'text-orange-600'
-    case 'medium':
-      return 'text-amber-600'
-    default:
-      return 'text-muted-foreground'
-  }
-}
-
-export function ApprovalList({
+export default function ApprovalList({
   approvals,
-  loading = false,
-  onResolve,
-}: ApprovalListProps) {
-  const [resolvingId, setResolvingId] =
-    React.useState<string | null>(null)
+  onResolved,
+}: Props) {
+  const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
-  async function resolve(
+  async function resolveApproval(
     approvalId: string,
-    decision: 'approved' | 'rejected'
+    approved: boolean
   ) {
-    if (!onResolve) return
+    setLoadingId(approvalId)
+    setMessage(null)
 
     try {
-      setResolvingId(approvalId)
-      await onResolve(approvalId, decision)
-    } finally {
-      setResolvingId(null)
-    }
-  }
+      const response = await fetch(
+        `/api/approvals/${approvalId}/resolve`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            approved,
+            decisionNote: approved
+              ? "Approved by administrator."
+              : "Rejected by administrator.",
+          }),
+        }
+      )
 
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((item) => (
-          <div
-            key={item}
-            className="h-20 animate-pulse rounded-xl border bg-muted/30"
-          />
-        ))}
-      </div>
-    )
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ?? "Failed to resolve approval."
+        )
+      }
+
+      if (approved) {
+        const resumeResponse = await fetch(
+          `/api/approvals/${approvalId}/resume`,
+          {
+            method: "POST",
+          }
+        )
+
+        const resumeData =
+          await resumeResponse.json()
+
+        if (!resumeResponse.ok) {
+          throw new Error(
+            resumeData?.error ??
+              "Approval was granted, but execution could not be resumed."
+          )
+        }
+
+        setMessage("Approved and execution resumed.")
+      } else {
+        setMessage("Approval rejected.")
+      }
+
+      onResolved?.()
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong."
+      )
+    } finally {
+      setLoadingId(null)
+    }
   }
 
   if (approvals.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-6 text-center">
-        <p className="text-sm font-medium">
-          No pending approvals
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Governance approvals will appear here when an agent
-          requires human authorization.
+      <div className="rounded-2xl border border-black/10 bg-white p-6">
+        <p className="text-sm text-black/50">
+          No pending approvals.
         </p>
       </div>
     )
   }
 
   return (
-    <div className="divide-y rounded-xl border">
-      {approvals.map((approval) => {
-        const resolving =
-          resolvingId === approval.id
+    <div className="space-y-3">
+      {message && (
+        <div className="rounded-xl border border-black/10 bg-black/[0.03] px-4 py-3 text-sm text-black/70">
+          {message}
+        </div>
+      )}
 
-        return (
-          <div
-            key={approval.id}
-            className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate text-sm font-semibold">
-                  {approval.title}
+      {approvals.map((approval) => (
+        <div
+          key={approval.id}
+          className="rounded-2xl border border-black/10 bg-white p-5"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-medium text-black">
+                {approval.title}
+              </h3>
+
+              {approval.agent && (
+                <p className="mt-1 text-sm text-black/50">
+                  Agent: {approval.agent.name}
                 </p>
-
-                <span
-                  className={`text-xs font-medium ${riskClass(
-                    approval.riskLevel
-                  )}`}
-                >
-                  {approval.riskLevel}
-                </span>
-              </div>
+              )}
 
               {approval.description && (
-                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                <p className="mt-3 text-sm leading-6 text-black/65">
                   {approval.description}
                 </p>
               )}
-
-              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {approval.agent && (
-                  <span>
-                    Agent: {approval.agent.name}
-                  </span>
-                )}
-
-                <span>
-                  {new Date(
-                    approval.requestedAt
-                  ).toLocaleString()}
-                </span>
-              </div>
             </div>
 
-            {approval.status === 'pending' &&
-              onResolve && (
-                <div className="flex shrink-0 gap-2">
-                  <button
-                    type="button"
-                    disabled={resolving}
-                    onClick={() =>
-                      resolve(
-                        approval.id,
-                        'rejected'
-                      )
-                    }
-                    className="rounded-lg border px-3 py-2 text-xs font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Reject
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={resolving}
-                    onClick={() =>
-                      resolve(
-                        approval.id,
-                        'approved'
-                      )
-                    }
-                    className="rounded-lg bg-foreground px-3 py-2 text-xs font-medium text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Approve
-                  </button>
-                </div>
-              )}
+            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+              {approval.riskLevel}
+            </span>
           </div>
-        )
-      })}
+
+          <div className="mt-5 flex gap-2">
+            <button
+              type="button"
+              disabled={loadingId === approval.id}
+              onClick={() =>
+                resolveApproval(
+                  approval.id,
+                  true
+                )
+              }
+              className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+            >
+              {loadingId === approval.id
+                ? "Processing..."
+                : "Approve → Resume"}
+            </button>
+
+            <button
+              type="button"
+              disabled={loadingId === approval.id}
+              onClick={() =>
+                resolveApproval(
+                  approval.id,
+                  false
+                )
+              }
+              className="rounded-xl border border-black/10 px-4 py-2 text-sm font-medium text-black disabled:opacity-40"
+            >
+              Reject
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   )
-} 
+}
