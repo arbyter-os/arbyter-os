@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Bot,
+  CheckCircle,
   FileText,
   HelpCircle,
   LayoutGrid,
@@ -34,6 +35,7 @@ export const navSections: NavSection[] = [
     items: [
       { label: 'Agents', href: '/agents', icon: Bot },
       { label: 'Tasks', href: '/tasks', icon: ListChecks },
+      { label: 'Approvals', href: '/approvals', icon: CheckCircle },
       { label: 'Policies', href: '/policies', icon: FileText },
       { label: 'Controls', href: '/controls', icon: SlidersHorizontal },
     ],
