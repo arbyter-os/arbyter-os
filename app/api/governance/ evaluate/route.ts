@@ -11,7 +11,9 @@ export async function POST(request: Request) {
       error: authError,
     } = await supabase.auth.getUser()
 
-    if (authError) throw authError
+    if (authError) {
+      throw authError
+    }
 
     if (!user) {
       return NextResponse.json(
@@ -36,11 +38,16 @@ export async function POST(request: Request) {
         .eq("id", user.id)
         .maybeSingle()
 
-    if (userError) throw userError
+    if (userError) {
+      throw userError
+    }
 
     if (!userRecord?.organization_id) {
       return NextResponse.json(
-        { error: "No organization is associated with your account." },
+        {
+          error:
+            "No organization is associated with your account.",
+        },
         { status: 403 }
       )
     }
@@ -58,7 +65,13 @@ export async function POST(request: Request) {
       task: body.task,
       data: body.data,
       environment: body.environment,
-      ...body.context,
+      ...(
+        body.context &&
+        typeof body.context === "object" &&
+        !Array.isArray(body.context)
+          ? body.context
+          : {}
+      ),
     }
 
     const result = await evaluateGovernance(
@@ -74,8 +87,11 @@ export async function POST(request: Request) {
       triggeredRules: result.triggeredRules,
       recommendations: result.recommendations,
     })
-    } catch (error) {
-    console.error("Governance evaluation failed:", error)
+  } catch (error) {
+    console.error(
+      "Governance evaluation failed:",
+      error
+    )
 
     return NextResponse.json(
       {
@@ -91,4 +107,4 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-    
+}
