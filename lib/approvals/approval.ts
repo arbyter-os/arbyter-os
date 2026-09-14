@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 
-export type ExecutionApprovalInput = {
+export type ApprovalRequest = {
   organizationId: string
   agentId: string
   executionId: string
@@ -13,8 +13,8 @@ export type ExecutionApprovalInput = {
   metadata?: Record<string, unknown>
 }
 
-export async function createExecutionApproval(
-  input: ExecutionApprovalInput
+export async function createApprovalRequest(
+  input: ApprovalRequest
 ) {
   const supabase = await createClient()
 
@@ -34,7 +34,10 @@ export async function createExecutionApproval(
       risk_level: input.riskLevel,
       status: "pending",
       requested_at: new Date().toISOString(),
-      metadata: input.metadata ?? {},
+      metadata: {
+        ...(input.metadata ?? {}),
+        taskId: input.taskId ?? null,
+      },
     })
     .select()
     .single()
@@ -46,4 +49,4 @@ export async function createExecutionApproval(
   }
 
   return data
-} 
+}
