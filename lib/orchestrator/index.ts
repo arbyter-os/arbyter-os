@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { evaluateGovernance } from './governance'
 import { resolveProviderRoute } from './provider-router'
+import { executeProvider } from './executor'
 import type {
   OrchestrationRequest,
   OrchestrationResult,
@@ -78,11 +79,8 @@ export async function orchestrate(
     }
   }
 
-  return {
-    success: false,
-    status: 'blocked',
+  return executeProvider(route, {
+    ...request,
     provider: route.provider,
-    error:
-      'Governance passed, but the execution provider is not connected yet.',
-  }
+  })
 }
