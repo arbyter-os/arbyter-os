@@ -10,6 +10,7 @@ import { calculateRisk } from "./risk-engine"
 import { makeGovernanceDecision } from "./decision-engine"
 import { generateRecommendations } from "./recommendation"
 import { loadRegulatoryMappings } from "./regulatory-mapper"
+import { generateActionRecommendations } from "./action-recommendations"
 
 export async function evaluateGovernance(
   organizationId: string,
@@ -57,6 +58,13 @@ export async function evaluateGovernance(
       resolution.rule
     )
 
+  const actions =
+    generateActionRecommendations(
+      decision,
+      recommendations,
+      conflicts
+    )
+
   return {
     decision,
     risk,
@@ -65,5 +73,6 @@ export async function evaluateGovernance(
     conflicts,
     regulatoryMappings,
     recommendations,
+    actions,
   }
 }
