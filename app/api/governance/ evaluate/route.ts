@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       triggeredRules: result.triggeredRules,
       recommendations: result.recommendations,
     })
-  } catch (error) {
+    } catch (error) {
     console.error("Governance evaluation failed:", error)
 
     return NextResponse.json(
@@ -83,8 +83,12 @@ export async function POST(request: Request) {
           error instanceof Error
             ? error.message
             : "Governance evaluation failed.",
+        stack:
+          error instanceof Error
+            ? error.stack
+            : undefined,
       },
       { status: 500 }
     )
   }
-}
+    
