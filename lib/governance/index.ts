@@ -11,6 +11,7 @@ import { makeGovernanceDecision } from "./decision-engine"
 import { generateRecommendations } from "./recommendation"
 import { loadRegulatoryMappings } from "./regulatory-mapper"
 import { generateActionRecommendations } from "./action-recommendations"
+import { persistGovernanceEvaluation } from "./audit"
 
 export async function evaluateGovernance(
   organizationId: string,
@@ -65,6 +66,35 @@ export async function evaluateGovernance(
       conflicts
     )
 
+  const auditContext = {
+    ...context,
+    agentId:
+      typeof context.agentId === "string"
+        ? context.agentId
+        : undefined,
+    taskId:
+      typeof context.taskId === "string"
+        ? context.taskId
+        : undefined,
+    executionId:
+      typeof context.executionId === "string"
+        ? context.executionId
+        : undefined,
+    agentConnectionId:
+      typeof context.agentConnectionId === "string"
+        ? context.agentConnectionId
+        : undefined,
+  }
+
+  const audit =
+    await persistGovernanceEvaluation(
+      organizationId,
+      decision,
+      applicableRules,
+      triggeredRules,
+      auditContext
+    )
+
   return {
     decision,
     risk,
@@ -74,5 +104,6 @@ export async function evaluateGovernance(
     regulatoryMappings,
     recommendations,
     actions,
+    audit,
   }
 }
