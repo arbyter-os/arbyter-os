@@ -17,6 +17,31 @@ export type ExecutionInput = {
   data?: Record<string, unknown>
 }
 
+async function updateTaskStatus(
+  organizationId: string,
+  taskId: string | undefined,
+  status: string
+) {
+  if (!taskId) {
+    return
+  }
+
+  const { error } = await createClient()
+    .from("tasks")
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", taskId)
+    .eq("organization_id", organizationId)
+
+  if (error) {
+    throw new Error(
+      `Failed to update task status: ${error.message}`
+    )
+  }
+}
+
 export async function executeAgentTask(
   input: ExecutionInput
 ) {
@@ -57,6 +82,12 @@ export async function executeAgentTask(
 
     if (!data) {
       throw new Error("Task not found.")
+    }
+
+    if (data.status === "completed") {
+      throw new Error(
+        "Task has already been completed."
+      )
     }
 
     task = data
@@ -153,15 +184,18 @@ export async function executeAgentTask(
           priority: task.priority,
         }
       : null,
+
     agent: {
       id: agent.id,
       name: agent.name,
       status: agent.status,
     },
+
     connection: {
       id: connection.id,
       provider: connection.provider,
     },
+
     data: input.data ?? {},
   }
 
@@ -190,12 +224,19 @@ export async function executeAgentTask(
   }
 
   try {
+    await updateTaskStatus(
+      input.organizationId,
+      input.taskId,
+      "running"
+    )
+
     const governance =
       await evaluateGovernance(
         input.organizationId,
         {
           action,
           tool: connection.provider,
+
           agentId: input.agentId,
           taskId: input.taskId,
           executionId: execution.id,
@@ -237,6 +278,12 @@ export async function executeAgentTask(
       governance.decision.decision ===
       "BLOCK"
     ) {
+      await updateTaskStatus(
+        input.organizationId,
+        input.taskId,
+        "blocked"
+      )
+
       const audit =
         await recordExecutionAudit({
           organizationId:
@@ -275,6 +322,12 @@ export async function executeAgentTask(
           ? "awaiting_approval"
           : "flagged"
 
+      await updateTaskStatus(
+        input.organizationId,
+        input.taskId,
+        status
+      )
+
       const audit =
         await recordExecutionAudit({
           organizationId:
@@ -305,6 +358,7 @@ export async function executeAgentTask(
           action,
           payload: {
             taskId: input.taskId,
+
             task: task
               ? {
                   title: task.title,
@@ -313,6 +367,7 @@ export async function executeAgentTask(
                   priority: task.priority,
                 }
               : null,
+
             data: input.data ?? {},
           },
         },
@@ -325,6 +380,12 @@ export async function executeAgentTask(
       )
 
     if (!result.success) {
+      await updateTaskStatus(
+        input.organizationId,
+        input.taskId,
+        "blocked"
+      )
+
       const audit =
         await recordExecutionAudit({
           organizationId:
@@ -352,6 +413,12 @@ export async function executeAgentTask(
         audit,
       }
     }
+
+    await updateTaskStatus(
+      input.organizationId,
+      input.taskId,
+      "completed"
+    )
 
     const audit =
       await recordExecutionAudit({
@@ -381,6 +448,12 @@ export async function executeAgentTask(
       error instanceof Error
         ? error.message
         : "Execution failed."
+
+    await updateTaskStatus(
+      input.organizationId,
+      input.taskId,
+      "blocked"
+    )
 
     await recordExecutionAudit({
       organizationId:
