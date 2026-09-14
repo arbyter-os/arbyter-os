@@ -8,8 +8,9 @@ export type ExecutionProvider =
 export type OrchestrationRequest = {
   taskId: string
   agentId: string
+  organizationId: string
   action: string
-  provider: ExecutionProvider
+  provider?: ExecutionProvider
   tool?: string
   input: Record<string, unknown>
 }
@@ -22,8 +23,12 @@ export type GovernanceContext = {
 
 export type OrchestrationResult = {
   success: boolean
-  status: 'completed' | 'blocked' | 'waiting_approval' | 'failed'
-  provider: ExecutionProvider
+  status:
+    | 'completed'
+    | 'blocked'
+    | 'waiting_approval'
+    | 'failed'
+  provider?: ExecutionProvider
   output?: unknown
   error?: string
 }
