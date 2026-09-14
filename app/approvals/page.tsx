@@ -4,7 +4,7 @@ import * as React from 'react'
 
 import { PageHeader } from '@/components/dashboard/page-header'
 import { Panel } from '@/components/dashboard/panel'
-import { ApprovalList } from '@/components/dashboard/approval-list'
+import ApprovalList from '@/components/dashboard/approval-list'
 import { loadPendingApprovals } from '@/lib/approvals/client'
 import type { Approval } from '@/lib/approvals/types'
 
@@ -45,40 +45,6 @@ export default function ApprovalsPage() {
     loadApprovals()
   }, [])
 
-  async function resolveApproval(
-    approvalId: string,
-    decision: 'approved' | 'rejected'
-  ) {
-    const response = await fetch(
-      `/api/approvals/${approvalId}/resolve`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          decision,
-        }),
-      }
-    )
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(
-        data?.error ??
-          'Failed to resolve approval.'
-      )
-    }
-
-    setApprovals((current) =>
-      current.filter(
-        (approval) =>
-          approval.id !== approvalId
-      )
-    )
-  }
-
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -96,15 +62,18 @@ export default function ApprovalsPage() {
         } waiting for review`}
         bodyClassName="pt-1"
       >
-        {error ? (
+        {loading ? (
+          <div className="rounded-xl border border-black/10 bg-black/[0.02] p-4 text-sm text-black/50">
+            Loading approvals...
+          </div>
+        ) : error ? (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         ) : (
           <ApprovalList
             approvals={approvals}
-            loading={loading}
-            onResolve={resolveApproval}
+            onResolved={loadApprovals}
           />
         )}
       </Panel>
