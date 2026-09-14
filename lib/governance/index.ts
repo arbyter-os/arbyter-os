@@ -7,7 +7,7 @@ import { getTriggeredRules } from "./evaluator";
 import { resolveConflicts } from "./conflict-resolver";
 import { calculateRisk } from "./risk-engine";
 import { makeGovernanceDecision } from "./decision-engine";
-import { generateRecommendations } from "./recommendations";
+import { generateRecommendations } from "./recommendation";
 
 export async function evaluateGovernance(
   organizationId: string,
