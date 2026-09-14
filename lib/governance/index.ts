@@ -10,6 +10,7 @@ import { calculateRisk } from "./risk-engine"
 import { makeGovernanceDecision } from "./decision-engine"
 import { generateRecommendations } from "./recommendation"
 import { loadRegulatoryMappings } from "./regulatory-mapper"
+import { loadRegulatoryLibrary } from "./regulatory-library"
 import { generateActionRecommendations } from "./action-recommendations"
 import { persistGovernanceEvaluation } from "./audit"
 
@@ -25,6 +26,29 @@ export async function evaluateGovernance(
     await loadRegulatoryMappings(
       organizationId
     )
+
+  const regulatoryLibrary =
+    await loadRegulatoryLibrary({
+      country:
+        typeof context.country === "string"
+          ? context.country
+          : undefined,
+
+      state:
+        typeof context.state === "string"
+          ? context.state
+          : undefined,
+
+      sector:
+        typeof context.sector === "string"
+          ? context.sector
+          : undefined,
+
+      jurisdiction:
+        typeof context.jurisdiction === "string"
+          ? context.jurisdiction
+          : undefined,
+    })
 
   const applicableRules = getApplicableRules(
     rules,
@@ -68,18 +92,22 @@ export async function evaluateGovernance(
 
   const auditContext = {
     ...context,
+
     agentId:
       typeof context.agentId === "string"
         ? context.agentId
         : undefined,
+
     taskId:
       typeof context.taskId === "string"
         ? context.taskId
         : undefined,
+
     executionId:
       typeof context.executionId === "string"
         ? context.executionId
         : undefined,
+
     agentConnectionId:
       typeof context.agentConnectionId === "string"
         ? context.agentConnectionId
@@ -102,6 +130,7 @@ export async function evaluateGovernance(
     triggeredRules,
     conflicts,
     regulatoryMappings,
+    regulatoryLibrary,
     recommendations,
     actions,
     audit,
