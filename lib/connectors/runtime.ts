@@ -1,3 +1,4 @@
+import { initializeConnectors } from "./index";
 import { getConnector } from "./registry";
 import type {
   ConnectorAction,
@@ -10,6 +11,8 @@ export async function executeConnectorAction(
   action: ConnectorAction,
   context: ConnectorContext
 ): Promise<ConnectorResult> {
+  initializeConnectors();
+
   const connector = getConnector(provider);
 
   if (!connector) {
