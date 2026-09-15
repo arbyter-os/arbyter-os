@@ -623,40 +623,13 @@ export default function Home() {
               <span />
             </div>
           )}
-
-          {/* ================================================
-             FORMATION
-          ================================================ */}
-
-          {introPhase >= 4 && introPhase < 5 && (
-            <div className="formation-beam">
-              <div className="formation-line" />
-
-              {formationPositions.map((position, index) => (
-                <div
-                  key={index}
-                  className="formation-node"
-                  style={
-                    {
-                      "--x": `${position.x}px`,
-                    } as React.CSSProperties
-                  }
-                >
-                  <span />
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* ================================================
              MECHANICAL LOGO
           ================================================ */}
 
           {introPhase >= 5 && (
             <div className="logo-assembly-stage">
-              <div className="assembly-field" />
-
-              <div className="mechanical-pieces">
+             
                 {logoPieces.map((piece, index) => (
                   <div
                     key={index}
