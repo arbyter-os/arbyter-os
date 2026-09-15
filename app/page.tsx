@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Intro from "@/components/intro";
+import Intro from "@/components/landing/intro";
 
 const demoSteps = [
   {
