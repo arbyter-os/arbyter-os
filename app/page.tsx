@@ -1,70 +1,560 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Intro from "@/components/landing/intro";
 
-const demoSteps = [
+type Agent = {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  x: number;
+  y: number;
+};
+
+const agents: Agent[] = [
+  { id: "sales", name: "Sales Agent", type: "CRM", color: "#1677ff", x: 13, y: 25 },
+  { id: "finance", name: "Finance Agent", type: "Finance", color: "#111111", x: 27, y: 72 },
+  { id: "support", name: "Support Agent", type: "Customer", color: "#1677ff", x: 50, y: 19 },
+  { id: "research", name: "Research Agent", type: "Knowledge", color: "#111111", x: 72, y: 72 },
+  { id: "ops", name: "Operations Agent", type: "Operations", color: "#1677ff", x: 87, y: 27 },
+];
+
+const demoStages = [
   {
-    number: "01",
-    title: "Agent",
-    text: "A registered AI agent enters the Arbyter control plane.",
+    label: "Agent",
+    eyebrow: "01 / INTENT",
+    title: "An agent wants to act.",
+    description:
+      "The Finance Agent receives a task and decides that a vendor payment should be initiated.",
+    detail: "finance.transfer",
   },
   {
-    number: "02",
-    title: "Task",
-    text: "The agent receives a defined task with boundaries and context.",
+    label: "Task",
+    eyebrow: "02 / CONTEXT",
+    title: "Arbyter understands the action.",
+    description:
+      "The requested action is connected to the task, agent identity, environment and operating context.",
+    detail: "Process vendor payment",
   },
   {
-    number: "03",
-    title: "Governance",
-    text: "Arbyter evaluates permissions, policies, risk, and compliance.",
+    label: "Governance",
+    eyebrow: "03 / CONTROL",
+    title: "The action meets the control plane.",
+    description:
+      "Arbyter evaluates permissions, policies, risk, scope and applicable governance requirements before execution.",
+    detail: "Policy evaluation",
   },
   {
-    number: "04",
-    title: "Approval",
-    text: "High-risk actions can pause and request human approval.",
+    label: "Approval",
+    eyebrow: "04 / HUMAN",
+    title: "Risk crosses the boundary.",
+    description:
+      "The action is consequential, so Arbyter pauses execution and asks an authorized human to decide.",
+    detail: "REQUIRE_APPROVAL",
   },
   {
-    number: "05",
-    title: "Execution",
-    text: "Only authorized actions reach the connected systems.",
+    label: "Execution",
+    eyebrow: "05 / ACTION",
+    title: "Only the authorized action proceeds.",
+    description:
+      "Once approved, the action travels through the permitted connector to the external system.",
+    detail: "Authorized execution",
   },
   {
-    number: "06",
-    title: "Audit",
-    text: "Every important decision and action becomes traceable evidence.",
+    label: "Audit",
+    eyebrow: "06 / EVIDENCE",
+    title: "The decision becomes evidence.",
+    description:
+      "The action, decision, policy, approval and result are preserved as a traceable record.",
+    detail: "Execution audit",
   },
 ];
 
+const traceItems = [
+  ["Agent", "Finance Agent"],
+  ["Task", "Process vendor payment"],
+  ["Requested action", "finance.transfer"],
+  ["Risk", "HIGH"],
+  ["Policy", "Financial actions above threshold"],
+  ["Decision", "REQUIRE_APPROVAL"],
+  ["Approval", "Administrator approved"],
+  ["Execution", "Completed"],
+];
+
+function Logo({ large = false }: { large?: boolean }) {
+  return (
+    <Image
+      src="/arbyter-os.logo.svg"
+      alt="Arbyter OS"
+      width={large ? 190 : 132}
+      height={large ? 52 : 38}
+      priority
+      className={large ? "h-12 w-auto" : "h-8 w-auto"}
+    />
+  );
+}
+
+function DotGrid() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 opacity-[0.32]"
+      style={{
+        backgroundImage:
+          "radial-gradient(circle, rgba(0,0,0,.18) 1px, transparent 1px)",
+        backgroundSize: "25px 25px",
+      }}
+    />
+  );
+}
+
+function SectionLabel({
+  children,
+  dark = false,
+}: {
+  children: React.ReactNode;
+  dark?: boolean;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.32em] ${
+        dark ? "text-white/35" : "text-black/35"
+      }`}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${
+          dark ? "bg-[#4d91ff]" : "bg-[#1677ff]"
+        }`}
+      />
+      {children}
+    </div>
+  );
+}
+
+function Connector({
+  x1,
+  y1,
+  x2,
+  y2,
+  active = false,
+}: {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  active?: boolean;
+}) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+
+  return (
+    <div
+      className="absolute origin-left transition-all duration-700"
+      style={{
+        left: `${x1}%`,
+        top: `${y1}%`,
+        width: `${length}%`,
+        transform: `rotate(${angle}deg)`,
+      }}
+    >
+      <div
+        className={`h-px w-full ${
+          active ? "bg-[#1677ff]" : "bg-black/[0.09]"
+        }`}
+      />
+      {active && (
+        <div className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-[#1677ff] shadow-[0_0_18px_rgba(22,119,255,.8)] animate-[flow_2.2s_linear_infinite]" />
+      )}
+    </div>
+  );
+}
+
+function NetworkNode({
+  agent,
+  active,
+  onClick,
+}: {
+  agent: Agent;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ${
+        active ? "scale-110" : "hover:scale-105"
+      }`}
+      style={{ left: `${agent.x}%`, top: `${agent.y}%` }}
+    >
+      <div
+        className={`flex h-14 w-14 items-center justify-center rounded-full border bg-white shadow-[0_12px_35px_rgba(0,0,0,.08)] transition-all ${
+          active ? "border-[#1677ff] shadow-[0_0_35px_rgba(22,119,255,.18)]" : "border-black/10"
+        }`}
+      >
+        <span
+          className="h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: agent.color }}
+        />
+      </div>
+
+      <div className="absolute left-1/2 top-full mt-3 -translate-x-1/2 whitespace-nowrap text-center">
+        <div className="text-[11px] font-semibold">{agent.name}</div>
+        <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-black/30">
+          {agent.type}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function ControlPlane({
+  activeAgent,
+  setActiveAgent,
+}: {
+  activeAgent: string;
+  setActiveAgent: (id: string) => void;
+}) {
+  const active = agents.find((agent) => agent.id === activeAgent);
+
+  return (
+    <div className="relative h-[620px] overflow-hidden rounded-[34px] border border-black/10 bg-[#f7f7f5]">
+      <DotGrid />
+
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(22,119,255,.07),transparent_32%)]" />
+
+      <Connector x1={13} y1={25} x2={50} y2={47} active={activeAgent === "sales"} />
+      <Connector x1={27} y1={72} x2={50} y2={53} active={activeAgent === "finance"} />
+      <Connector x1={50} y1={19} x2={50} y2={46} active={activeAgent === "support"} />
+      <Connector x1={72} y1={72} x2={50} y2={53} active={activeAgent === "research"} />
+      <Connector x1={87} y1={27} x2={50} y2={47} active={activeAgent === "ops"} />
+
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <div className="relative flex h-48 w-48 items-center justify-center rounded-full border border-black/15 bg-white shadow-[0_35px_100px_rgba(0,0,0,.11)]">
+          <div className="absolute inset-4 rounded-full border border-[#1677ff]/15" />
+          <div className="absolute inset-9 rounded-full border border-[#1677ff]/10" />
+
+          <div className="relative z-10 text-center">
+            <Logo large />
+            <div className="mt-3 text-[9px] font-semibold uppercase tracking-[0.32em] text-black/35">
+              Control plane
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {agents.map((agent) => (
+        <NetworkNode
+          key={agent.id}
+          agent={agent}
+          active={activeAgent === agent.id}
+          onClick={() => setActiveAgent(agent.id)}
+        />
+      ))}
+
+      <div className="absolute bottom-6 left-6 right-6 flex flex-col justify-between gap-4 rounded-2xl border border-black/10 bg-white/75 p-4 backdrop-blur-xl sm:flex-row sm:items-center">
+        <div>
+          <div className="text-[9px] uppercase tracking-[0.25em] text-black/30">
+            Selected agent
+          </div>
+          <div className="mt-1 text-sm font-semibold">
+            {active?.name}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-5 text-[10px] text-black/40">
+          <span>Identity verified</span>
+          <span>•</span>
+          <span>Healthy</span>
+          <span>•</span>
+          <span className="text-[#1677ff]">Governed</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DecisionSimulator() {
+  const [decision, setDecision] = useState<"idle" | "blocked" | "approved">(
+    "idle"
+  );
+
+  return (
+    <div className="rounded-[32px] border border-white/10 bg-[#0b0b0b] p-5 shadow-[0_40px_120px_rgba(0,0,0,.35)]">
+      <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-6 sm:p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[9px] uppercase tracking-[0.28em] text-white/30">
+              Live governance simulation
+            </div>
+            <div className="mt-3 text-xl font-medium">
+              Finance Agent
+            </div>
+          </div>
+
+          <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-white/40">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#1677ff]" />
+            Live
+          </span>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-white/10 bg-black/30 p-5">
+          <div className="text-[9px] uppercase tracking-[0.24em] text-white/25">
+            Requested action
+          </div>
+
+          <div className="mt-3 font-mono text-sm text-white/80">
+            finance.transfer
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/10 p-3">
+              <div className="text-[9px] uppercase tracking-[.2em] text-white/25">
+                Permission
+              </div>
+              <div className="mt-2 text-xs text-[#71a9ff]">Granted</div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 p-3">
+              <div className="text-[9px] uppercase tracking-[.2em] text-white/25">
+                Risk
+              </div>
+              <div className="mt-2 text-xs text-white">High</div>
+            </div>
+
+            <div className="rounded-xl border border-white/10 p-3">
+              <div className="text-[9px] uppercase tracking-[.2em] text-white/25">
+                Policy
+              </div>
+              <div className="mt-2 text-xs text-white">Approval</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="my-8 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-[9px] uppercase tracking-[.25em] text-white/25">
+            Arbyter decision
+          </span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <div
+          className={`rounded-2xl border p-5 transition-all duration-500 ${
+            decision === "blocked"
+              ? "border-red-400/30 bg-red-400/[0.06]"
+              : decision === "approved"
+                ? "border-[#1677ff]/30 bg-[#1677ff]/[0.06]"
+                : "border-[#1677ff]/20 bg-[#1677ff]/[0.035]"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[9px] uppercase tracking-[.25em] text-white/25">
+                Decision
+              </div>
+
+              <div className="mt-2 text-lg font-medium">
+                {decision === "blocked"
+                  ? "BLOCKED"
+                  : decision === "approved"
+                    ? "AUTHORIZED"
+                    : "REQUIRE_APPROVAL"}
+              </div>
+            </div>
+
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${
+                decision === "blocked"
+                  ? "bg-red-400"
+                  : decision === "approved"
+                    ? "bg-[#1677ff]"
+                    : "bg-amber-400"
+              }`}
+            />
+          </div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setDecision("approved")}
+            className="rounded-xl bg-white py-3 text-xs font-semibold text-black transition hover:bg-white/90"
+          >
+            Approve
+          </button>
+
+          <button
+            onClick={() => setDecision("blocked")}
+            className="rounded-xl border border-white/10 py-3 text-xs font-semibold text-white transition hover:bg-white/5"
+          >
+            Block
+          </button>
+        </div>
+
+        {decision !== "idle" && (
+          <button
+            onClick={() => setDecision("idle")}
+            className="mt-4 w-full text-[10px] uppercase tracking-[.2em] text-white/30 transition hover:text-white/60"
+          >
+            Reset simulation
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ComplianceMap() {
+  const nodes = [
+    { label: "Regulation", x: 8, y: 50 },
+    { label: "Requirement", x: 28, y: 28 },
+    { label: "Control", x: 50, y: 50 },
+    { label: "Policy", x: 72, y: 28 },
+    { label: "Agent action", x: 92, y: 50 },
+    { label: "Evidence", x: 72, y: 75 },
+    { label: "Audit", x: 50, y: 82 },
+  ];
+
+  return (
+    <div className="relative h-[500px] overflow-hidden rounded-[32px] border border-black/10 bg-[#fafafa]">
+      <DotGrid />
+
+      <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
+        <line x1="8%" y1="50%" x2="28%" y2="28%" stroke="rgba(0,0,0,.12)" />
+        <line x1="28%" y1="28%" x2="50%" y2="50%" stroke="rgba(0,0,0,.12)" />
+        <line x1="50%" y1="50%" x2="72%" y2="28%" stroke="rgba(0,0,0,.12)" />
+        <line x1="72%" y1="28%" x2="92%" y2="50%" stroke="#1677ff" strokeOpacity=".35" />
+        <line x1="92%" y1="50%" x2="72%" y2="75%" stroke="#1677ff" strokeOpacity=".25" />
+        <line x1="72%" y1="75%" x2="50%" y2="82%" stroke="rgba(0,0,0,.12)" />
+      </svg>
+
+      {nodes.map((node, index) => (
+        <div
+          key={node.label}
+          className="absolute -translate-x-1/2 -translate-y-1/2"
+          style={{ left: `${node.x}%`, top: `${node.y}%` }}
+        >
+          <div
+            className={`flex h-16 min-w-16 items-center justify-center rounded-full border px-4 text-center shadow-sm ${
+              index === 2 || index === 4
+                ? "border-[#1677ff] bg-white"
+                : "border-black/10 bg-white"
+            }`}
+          >
+            <span className="text-[10px] font-semibold whitespace-nowrap">
+              {node.label}
+            </span>
+          </div>
+
+          <div className="mt-3 text-center text-[8px] uppercase tracking-[.2em] text-black/25">
+            {String(index + 1).padStart(2, "0")}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AuditTimeline() {
+  return (
+    <div className="relative">
+      <div className="absolute bottom-0 left-[7px] top-0 w-px bg-black/10" />
+
+      <div className="space-y-7">
+        {[
+          ["10:42:01", "Agent requested action", "Intent captured"],
+          ["10:42:02", "Policy evaluated", "Financial threshold"],
+          ["10:42:02", "Risk classified", "HIGH"],
+          ["10:42:02", "Approval requested", "Human decision"],
+          ["10:43:17", "Approval received", "Administrator"],
+          ["10:43:18", "Execution completed", "External system"],
+          ["10:43:19", "Evidence recorded", "Audit trail"],
+        ].map(([time, title, detail], index) => (
+          <div key={time} className="relative flex gap-7">
+            <div
+              className={`relative z-10 mt-1.5 h-3.5 w-3.5 rounded-full border-4 border-white ${
+                index === 2 ? "bg-amber-400" : "bg-[#1677ff]"
+              }`}
+            />
+
+            <div className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-sm font-medium">{title}</div>
+                <div className="mt-1 text-xs text-black/35">{detail}</div>
+              </div>
+
+              <div className="font-mono text-[10px] text-black/30">
+                {time}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [introDone, setIntroDone] = useState(false);
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeAgent, setActiveAgent] = useState("finance");
+  const [demoStage, setDemoStage] = useState(0);
+  const [agentCount, setAgentCount] = useState(3);
+  const [cursor, setCursor] = useState({ x: 50, y: 50 });
+
+  const heroRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handlePointer = (event: PointerEvent) => {
+      if (!heroRef.current) return;
+
+      const rect = heroRef.current.getBoundingClientRect();
+
+      setCursor({
+        x: ((event.clientX - rect.left) / rect.width) * 100,
+        y: ((event.clientY - rect.top) / rect.height) * 100,
+      });
+    };
+
+    window.addEventListener("pointermove", handlePointer);
+
+    return () => window.removeEventListener("pointermove", handlePointer);
+  }, []);
+
+  const simulatedAgents = useMemo(() => {
+    const count = Math.min(agentCount, 100);
+
+    return Array.from({ length: count }, (_, index) => {
+      const angle = (index / count) * Math.PI * 2;
+      const radius = 30 + ((index * 7) % 12);
+
+      return {
+        x: 50 + Math.cos(angle) * radius,
+        y: 50 + Math.sin(angle) * radius,
+      };
+    });
+  }, [agentCount]);
 
   return (
     <>
       {!introDone && <Intro onComplete={() => setIntroDone(true)} />}
 
-      <main className="min-h-screen bg-white text-black">
-        {/* Navigation */}
-        <nav className="fixed left-0 right-0 top-0 z-50 border-b border-black/[0.06] bg-white/80 backdrop-blur-xl">
-          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-10">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="relative flex h-8 w-8 items-center justify-center">
-                <span className="text-[29px] font-black leading-none tracking-[-0.12em]">
-                  A
-                </span>
-                <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[#1677ff]" />
-              </div>
-
-              <span className="text-sm font-semibold tracking-[0.22em]">
-                ARBYTER
-              </span>
+      <main className="min-h-screen overflow-hidden bg-white text-black selection:bg-[#1677ff] selection:text-white">
+        {/* NAV */}
+        <nav className="fixed inset-x-0 top-0 z-50 border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
+          <div className="mx-auto flex h-[68px] max-w-[1440px] items-center justify-between px-6 lg:px-10">
+            <Link href="/" className="flex items-center">
+              <Logo />
             </Link>
 
-            <div className="hidden items-center gap-8 text-sm text-neutral-500 md:flex">
-              <a href="#platform" className="transition hover:text-black">
-                Platform
+            <div className="hidden items-center gap-8 text-[11px] font-medium uppercase tracking-[.16em] text-black/45 lg:flex">
+              <a href="#problem" className="transition hover:text-black">
+                Problem
+              </a>
+              <a href="#control" className="transition hover:text-black">
+                Control
               </a>
               <a href="#governance" className="transition hover:text-black">
                 Governance
@@ -79,539 +569,143 @@ export default function HomePage() {
 
             <a
               href="mailto:hello@arbyter.ai"
-              className="rounded-full bg-black px-5 py-2.5 text-xs font-medium text-white transition hover:bg-neutral-800"
+              className="rounded-full bg-black px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[.16em] text-white transition hover:bg-[#1677ff]"
             >
               Talk to us
             </a>
           </div>
         </nav>
 
-        {/* Hero */}
-        <section className="relative overflow-hidden px-6 pb-28 pt-40 lg:px-10 lg:pb-36 lg:pt-48">
-          <div className="pointer-events-none absolute inset-0 opacity-40">
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage:
-                  "radial-gradient(#d4d4d4 0.7px, transparent 0.7px)",
-                backgroundSize: "28px 28px",
-              }}
-            />
-          </div>
+        {/* HERO / VISUAL HOOK */}
+        <section
+          ref={heroRef}
+          className="relative flex min-h-screen items-center overflow-hidden px-6 pb-24 pt-32 lg:px-10"
+        >
+          <DotGrid />
 
-          <div className="relative mx-auto max-w-7xl">
-            <div className="max-w-4xl">
-              <div className="mb-7 flex items-center gap-3 text-xs font-medium uppercase tracking-[0.28em] text-neutral-400">
-                <span className="h-2 w-2 rounded-full bg-[#1677ff]" />
-                AI control plane
-              </div>
+          <div
+            className="pointer-events-none absolute h-[520px] w-[520px] rounded-full bg-[#1677ff]/[0.07] blur-3xl transition-all duration-700"
+            style={{
+              left: `${cursor.x}%`,
+              top: `${cursor.y}%`,
+              transform: "translate(-50%, -50%)",
+            }}
+          />
 
-              <h1 className="text-6xl font-semibold tracking-[-0.065em] sm:text-7xl lg:text-[104px] lg:leading-[0.92]">
-                AI,
+          <div className="relative mx-auto w-full max-w-[1440px]">
+            <div className="max-w-5xl">
+              <SectionLabel>THE AGE OF ACTION-TAKING AI</SectionLabel>
+
+              <h1 className="mt-8 max-w-5xl text-[58px] font-medium leading-[0.92] tracking-[-0.065em] sm:text-7xl lg:text-[112px]">
+                AI can act.
                 <br />
-                <span className="text-neutral-300">under control.</span>
+                <span className="text-black/20">Who controls it?</span>
               </h1>
 
-              <p className="mt-9 max-w-2xl text-lg leading-8 text-neutral-500 sm:text-xl">
-                Arbyter gives companies a control plane for AI agents —
-                governing what agents can access, what they can do, what
-                requires approval, and why.
+              <p className="mt-9 max-w-2xl text-lg leading-8 text-black/50 sm:text-xl">
+                Agents are gaining access to the systems that run companies.
+                They can read data, call tools, make decisions and execute
+                actions.
               </p>
-
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-                <a
-                  href="#demo"
-                  className="rounded-full bg-black px-7 py-3.5 text-sm font-medium text-white transition hover:bg-neutral-800"
-                >
-                  See how it works
-                </a>
-
-                <a
-                  href="mailto:hello@arbyter.ai"
-                  className="rounded-full border border-black/10 px-7 py-3.5 text-sm font-medium transition hover:bg-neutral-50"
-                >
-                  Request a conversation
-                </a>
-              </div>
             </div>
 
-            {/* Hero control plane visual */}
-            <div className="relative mt-24 h-[390px] overflow-hidden rounded-[32px] border border-black/10 bg-[#fafafa] lg:mt-32">
-              <div className="absolute left-1/2 top-1/2 h-px w-[72%] -translate-x-1/2 bg-black/10" />
-              <div className="absolute left-1/2 top-1/2 h-[72%] w-px -translate-y-1/2 bg-black/10" />
+            {/* Problem visualization */}
+            <div className="relative mt-16 h-[430px] overflow-hidden rounded-[32px] border border-black/10 bg-[#f8f8f6] lg:mt-24">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(22,119,255,.05),transparent_35%)]" />
 
-              <div className="absolute left-1/2 top-1/2 flex h-36 w-36 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-black bg-white shadow-[0_20px_70px_rgba(0,0,0,0.08)]">
-                <div className="text-center">
-                  <div className="relative mx-auto flex h-10 w-10 items-center justify-center">
-                    <span className="text-4xl font-black tracking-[-0.12em]">
-                      A
-                    </span>
-                    <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-[#1677ff]" />
-                  </div>
-                  <div className="mt-2 text-[9px] font-semibold uppercase tracking-[0.3em]">
-                    Arbyter
+              <div className="absolute left-1/2 top-1/2 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center">
+                <div className="flex h-28 w-28 items-center justify-center rounded-full border border-black/15 bg-white shadow-[0_25px_80px_rgba(0,0,0,.1)]">
+                  <div className="text-center">
+                    <div className="text-[10px] font-semibold uppercase tracking-[.2em]">
+                      Your
+                    </div>
+                    <div className="mt-1 text-lg font-medium">Company</div>
                   </div>
                 </div>
               </div>
 
               {[
-                ["Agents", "left-[8%] top-[18%]"],
-                ["Tools", "right-[10%] top-[18%]"],
-                ["Data", "left-[10%] bottom-[18%]"],
-                ["Systems", "right-[8%] bottom-[18%]"],
-              ].map(([label, position]) => (
+                ["CRM", "top-[13%] left-[13%]"],
+                ["Email", "top-[25%] right-[12%]"],
+                ["Finance", "bottom-[16%] left-[17%]"],
+                ["Database", "bottom-[14%] right-[16%]"],
+                ["HR", "top-[54%] left-[4%]"],
+                ["Cloud", "top-[55%] right-[4%]"],
+              ].map(([label, position], index) => (
                 <div
                   key={label}
-                  className={`absolute ${position} flex items-center gap-3`}
+                  className={`absolute ${position} z-10`}
                 >
-                  <span className="h-2 w-2 rounded-full bg-[#1677ff]" />
-                  <span className="text-xs font-medium uppercase tracking-[0.2em] text-neutral-500">
-                    {label}
-                  </span>
-                </div>
-              ))}
-
-              <div className="absolute left-1/2 top-[10%] -translate-x-1/2 text-[9px] font-medium uppercase tracking-[0.35em] text-neutral-300">
-                Control
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Thesis */}
-        <section className="border-t border-black/10 px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto grid max-w-7xl gap-16 lg:grid-cols-[0.8fr_1.2fr]">
-            <div>
-              <span className="text-xs font-medium uppercase tracking-[0.3em] text-neutral-400">
-                The shift
-              </span>
-            </div>
-
-            <div>
-              <h2 className="max-w-4xl text-4xl font-medium leading-tight tracking-[-0.04em] sm:text-5xl lg:text-6xl">
-                AI is moving from answering questions to taking actions.
-              </h2>
-
-              <p className="mt-8 max-w-2xl text-lg leading-8 text-neutral-500">
-                Agents can now access tools, move data, make decisions and
-                execute workflows. The challenge is no longer simply making
-                agents capable.
-              </p>
-
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-neutral-500">
-                It is making them controllable.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Platform */}
-        <section
-          id="platform"
-          className="bg-[#fafafa] px-6 py-28 lg:px-10 lg:py-40"
-        >
-          <div className="mx-auto max-w-7xl">
-            <div className="max-w-3xl">
-              <span className="text-xs font-medium uppercase tracking-[0.3em] text-neutral-400">
-                One control plane
-              </span>
-
-              <h2 className="mt-6 text-4xl font-medium tracking-[-0.045em] sm:text-5xl lg:text-6xl">
-                Every agent.
-                <br />
-                Every action.
-                <br />
-                One layer of control.
-              </h2>
-            </div>
-
-            <div className="mt-20 grid gap-px overflow-hidden rounded-[28px] border border-black/10 bg-black/10 md:grid-cols-3">
-              {[
-                {
-                  title: "Visibility",
-                  text: "Know what agents are doing, what they accessed, what they decided and where they failed.",
-                },
-                {
-                  title: "Governance",
-                  text: "Define boundaries, permissions, policies and approval requirements before actions happen.",
-                },
-                {
-                  title: "Control",
-                  text: "Allow, block, flag, pause or require human approval for consequential actions.",
-                },
-              ].map((item) => (
-                <div key={item.title} className="bg-white p-8 lg:p-10">
-                  <div className="mb-12 h-2 w-2 rounded-full bg-[#1677ff]" />
-                  <h3 className="text-xl font-medium">{item.title}</h3>
-                  <p className="mt-4 leading-7 text-neutral-500">
-                    {item.text}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Governance */}
-        <section
-          id="governance"
-          className="px-6 py-28 lg:px-10 lg:py-40"
-        >
-          <div className="mx-auto grid max-w-7xl gap-20 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-            <div>
-              <span className="text-xs font-medium uppercase tracking-[0.3em] text-neutral-400">
-                Governance
-              </span>
-
-              <h2 className="mt-6 text-4xl font-medium tracking-[-0.045em] sm:text-5xl">
-                Decisions happen before actions.
-              </h2>
-
-              <p className="mt-7 max-w-xl text-lg leading-8 text-neutral-500">
-                Arbyter evaluates an agent&apos;s intended action against
-                permissions, policies, risk and compliance before execution.
-              </p>
-            </div>
-
-            <div className="rounded-[28px] border border-black/10 bg-[#fafafa] p-5 shadow-[0_30px_100px_rgba(0,0,0,0.05)]">
-              <div className="rounded-2xl border border-black/10 bg-white p-6">
-                <div className="flex items-center justify-between border-b border-black/10 pb-5">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.2em] text-neutral-400">
-                      Governance decision
-                    </div>
-                    <div className="mt-2 text-lg font-medium">
-                      Financial transfer
-                    </div>
-                  </div>
-
-                  <span className="rounded-full bg-[#fff4e5] px-3 py-1.5 text-xs font-medium text-[#a15c00]">
-                    Review required
-                  </span>
-                </div>
-
-                <div className="space-y-5 pt-6 text-sm">
-                  <div className="flex justify-between gap-6">
-                    <span className="text-neutral-400">Agent</span>
-                    <span className="font-medium">Finance Agent</span>
-                  </div>
-
-                  <div className="flex justify-between gap-6">
-                    <span className="text-neutral-400">Action</span>
-                    <span className="font-medium">finance.transfer</span>
-                  </div>
-
-                  <div className="flex justify-between gap-6">
-                    <span className="text-neutral-400">Risk</span>
-                    <span className="font-medium">High</span>
-                  </div>
-
-                  <div className="flex justify-between gap-6">
-                    <span className="text-neutral-400">Policy</span>
-                    <span className="font-medium">
-                      Human approval required
-                    </span>
-                  </div>
-                </div>
-
-                <div className="mt-7 grid grid-cols-2 gap-3">
-                  <button className="rounded-xl bg-black py-3 text-sm font-medium text-white">
-                    Approve
-                  </button>
-                  <button className="rounded-xl border border-black/10 py-3 text-sm font-medium">
-                    Block
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Compliance */}
-        <section
-          id="compliance"
-          className="bg-black px-6 py-28 text-white lg:px-10 lg:py-40"
-        >
-          <div className="mx-auto max-w-7xl">
-            <span className="text-xs font-medium uppercase tracking-[0.3em] text-white/40">
-              Compliance
-            </span>
-
-            <h2 className="mt-6 max-w-4xl text-4xl font-medium tracking-[-0.045em] sm:text-5xl lg:text-6xl">
-              Turn regulations into controls.
-            </h2>
-
-            <div className="mt-20 grid gap-4 md:grid-cols-4">
-              {[
-                "Regulation",
-                "Requirement",
-                "Control",
-                "Agent action",
-              ].map((item, index) => (
-                <div
-                  key={item}
-                  className="relative rounded-2xl border border-white/10 bg-white/[0.04] p-7"
-                >
-                  <div className="text-[10px] uppercase tracking-[0.3em] text-white/35">
-                    0{index + 1}
-                  </div>
-
-                  <div className="mt-12 text-lg font-medium">{item}</div>
-
-                  {index < 3 && (
-                    <div className="absolute -right-2 top-1/2 hidden h-4 w-4 -translate-y-1/2 rotate-45 border-r border-t border-white/20 bg-black md:block" />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <p className="mt-10 max-w-2xl text-lg leading-8 text-white/45">
-              Connect regulatory requirements to machine-checkable governance
-              rules, agent actions and audit evidence.
-            </p>
-          </div>
-        </section>
-
-        {/* Interactive demo */}
-        <section id="demo" className="px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto max-w-7xl">
-            <div className="max-w-3xl">
-              <span className="text-xs font-medium uppercase tracking-[0.3em] text-neutral-400">
-                See it in action
-              </span>
-
-              <h2 className="mt-6 text-4xl font-medium tracking-[-0.045em] sm:text-5xl lg:text-6xl">
-                From intention to execution.
-                <br />
-                Under control.
-              </h2>
-            </div>
-
-            <div className="mt-16 overflow-hidden rounded-[30px] border border-black/10 bg-[#fafafa]">
-              <div className="grid lg:grid-cols-[0.75fr_1.25fr]">
-                <div className="border-b border-black/10 p-5 lg:border-b-0 lg:border-r">
-                  {demoSteps.map((step, index) => (
-                    <button
-                      key={step.number}
-                      onClick={() => setActiveStep(index)}
-                      className={`flex w-full items-center gap-4 rounded-xl p-4 text-left transition ${
-                        activeStep === index
-                          ? "bg-black text-white"
-                          : "hover:bg-black/[0.04]"
+                  <div className="flex items-center gap-3 rounded-full border border-black/10 bg-white px-4 py-2.5 shadow-sm">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        index === 2 || index === 3
+                          ? "bg-red-400"
+                          : "bg-[#1677ff]"
                       }`}
-                    >
-                      <span
-                        className={`text-[10px] font-medium ${
-                          activeStep === index
-                            ? "text-white/40"
-                            : "text-neutral-400"
-                        }`}
-                      >
-                        {step.number}
-                      </span>
-
-                      <span className="text-sm font-medium">{step.title}</span>
-
-                      {activeStep === index && (
-                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#1677ff]" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="min-h-[350px] p-8 lg:p-12">
-                  <div className="flex items-center gap-3 text-xs uppercase tracking-[0.25em] text-neutral-400">
-                    <span className="h-2 w-2 rounded-full bg-[#1677ff]" />
-                    Step {demoSteps[activeStep].number}
-                  </div>
-
-                  <h3 className="mt-7 text-3xl font-medium tracking-[-0.035em]">
-                    {demoSteps[activeStep].title}
-                  </h3>
-
-                  <p className="mt-5 max-w-xl text-lg leading-8 text-neutral-500">
-                    {demoSteps[activeStep].text}
-                  </p>
-
-                  <div className="mt-12 rounded-2xl border border-black/10 bg-white p-5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-neutral-400">
-                        Arbyter control plane
-                      </span>
-
-                      <span className="flex items-center gap-2 text-xs font-medium">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#1677ff]" />
-                        Active
-                      </span>
-                    </div>
-
-                    <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-                      <div
-                        className="h-full rounded-full bg-black transition-all duration-500"
-                        style={{
-                          width: `${((activeStep + 1) / demoSteps.length) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() =>
-                      setActiveStep((activeStep + 1) % demoSteps.length)
-                    }
-                    className="mt-7 rounded-full bg-black px-6 py-3 text-sm font-medium text-white transition hover:bg-neutral-800"
-                  >
-                    Next step →
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Human approval */}
-        <section className="bg-[#f5f5f5] px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto grid max-w-7xl gap-16 lg:grid-cols-2 lg:items-center">
-            <div>
-              <span className="text-xs font-medium uppercase tracking-[0.3em] text-neutral-400">
-                Human control
-              </span>
-
-              <h2 className="mt-6 text-4xl font-medium tracking-[-0.045em] sm:text-5xl">
-                Autonomy where it is safe.
-                <br />
-                Humans where it matters.
-              </h2>
-
-              <p className="mt-7 max-w-xl text-lg leading-8 text-neutral-500">
-                High-impact actions can stop at the boundary and wait for a
-                human decision before the agent continues.
-              </p>
-            </div>
-
-            <div className="rounded-[28px] border border-black/10 bg-white p-7">
-              <div className="flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#1677ff]" />
-                <span className="text-sm font-medium">
-                  Approval required
-                </span>
-              </div>
-
-              <div className="mt-8 border-t border-black/10 pt-7">
-                <div className="text-xs uppercase tracking-[0.2em] text-neutral-400">
-                  Agent wants to
-                </div>
-
-                <div className="mt-3 text-2xl font-medium tracking-[-0.03em]">
-                  Transfer ₹250,000
-                </div>
-
-                <p className="mt-3 text-sm leading-6 text-neutral-500">
-                  This action exceeds the organization&apos;s autonomous
-                  execution threshold.
-                </p>
-              </div>
-
-              <div className="mt-8 grid grid-cols-2 gap-3">
-                <button className="rounded-xl bg-black py-3 text-sm font-medium text-white">
-                  Approve
-                </button>
-                <button className="rounded-xl border border-black/10 py-3 text-sm font-medium">
-                  Reject
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Audit */}
-        <section className="px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto max-w-7xl">
-            <div className="grid gap-16 lg:grid-cols-[0.8fr_1.2fr]">
-              <div>
-                <span className="text-xs font-medium uppercase tracking-[0.3em] text-neutral-400">
-                  Evidence
-                </span>
-
-                <h2 className="mt-6 text-4xl font-medium tracking-[-0.045em] sm:text-5xl">
-                  Every consequential action leaves a trail.
-                </h2>
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  ["Agent", "Finance Agent"],
-                  ["Task", "Process vendor payment"],
-                  ["Decision", "REQUIRE_APPROVAL"],
-                  ["Policy", "Financial actions above threshold"],
-                  ["Approval", "Approved by administrator"],
-                  ["Execution", "Completed"],
-                ].map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between gap-8 border-b border-black/10 py-5"
-                  >
-                    <span className="text-sm text-neutral-400">{key}</span>
-                    <span className="text-right text-sm font-medium">
-                      {value}
+                    />
+                    <span className="text-[10px] font-semibold uppercase tracking-[.18em]">
+                      {label}
                     </span>
                   </div>
-                ))}
+                </div>
+              ))}
+
+              <svg className="absolute inset-0 h-full w-full">
+                <line x1="18%" y1="18%" x2="47%" y2="48%" stroke="rgba(0,0,0,.09)" />
+                <line x1="82%" y1="29%" x2="53%" y2="48%" stroke="rgba(0,0,0,.09)" />
+                <line x1="23%" y1="84%" x2="47%" y2="54%" stroke="rgba(0,0,0,.09)" />
+                <line x1="78%" y1="84%" x2="53%" y2="54%" stroke="rgba(0,0,0,.09)" />
+                <line x1="6%" y1="59%" x2="44%" y2="51%" stroke="rgba(0,0,0,.09)" />
+                <line x1="94%" y1="59%" x2="56%" y2="51%" stroke="rgba(0,0,0,.09)" />
+              </svg>
+
+              <div className="absolute bottom-5 left-5 rounded-xl border border-black/10 bg-white/80 px-4 py-3 backdrop-blur-xl">
+                <div className="text-[9px] uppercase tracking-[.22em] text-black/30">
+                  The problem
+                </div>
+                <div className="mt-1 text-xs font-medium">
+                  Agents are touching everything.
+                </div>
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* Scale */}
-        <section className="border-y border-black/10 bg-[#fafafa] px-6 py-28 lg:px-10 lg:py-36">
-          <div className="mx-auto max-w-7xl text-center">
-            <span className="text-xs font-medium uppercase tracking-[0.3em] text-neutral-400">
-              Built for scale
-            </span>
-
-            <h2 className="mx-auto mt-6 max-w-4xl text-4xl font-medium tracking-[-0.045em] sm:text-5xl lg:text-7xl">
-              From three agents
-              <br />
-              to thousands.
-            </h2>
-
-            <p className="mx-auto mt-8 max-w-2xl text-lg leading-8 text-neutral-500">
-              One governance layer across your agents, tasks, tools, systems,
-              environments and decisions.
-            </p>
-          </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="px-6 py-32 lg:px-10 lg:py-48">
-          <div className="mx-auto max-w-5xl text-center">
-            <h2 className="text-5xl font-medium tracking-[-0.055em] sm:text-6xl lg:text-8xl lg:leading-[0.95]">
-              Your agents are already making decisions.
-            </h2>
-
-            <p className="mx-auto mt-8 max-w-2xl text-lg leading-8 text-neutral-500 sm:text-xl">
-              Give those decisions a control plane.
-            </p>
-
-            <a
-              href="mailto:hello@arbyter.ai"
-              className="mt-10 inline-flex rounded-full bg-black px-8 py-4 text-sm font-medium text-white transition hover:bg-neutral-800"
-            >
-              Talk to Arbyter
-            </a>
-          </div>
-        </section>
-
-        {/* Footer */}
-        <footer className="border-t border-black/10 px-6 py-10 lg:px-10">
-          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-5 text-xs text-neutral-400 sm:flex-row">
-            <div>© 2026 Arbyter OS</div>
-            <div className="uppercase tracking-[0.2em]">
-              Orchestrate · Govern · Secure
+            <div className="mt-10 flex items-center gap-3 text-xs text-black/35">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+              Data
+              <span className="ml-4 h-1.5 w-1.5 rounded-full bg-[#1677ff]" />
+              Systems
+              <span className="ml-4 h-1.5 w-1.5 rounded-full bg-black" />
+              Agents
             </div>
           </div>
-        </footer>
-      </main>
-    </>
-  );
-} 
+        </section>
+
+        {/* PROBLEM */}
+        <section
+          id="problem"
+          className="border-t border-black/10 px-6 py-28 lg:px-10 lg:py-40"
+        >
+          <div className="mx-auto max-w-[1440px]">
+            <div className="grid gap-20 lg:grid-cols-[.7fr_1.3fr]">
+              <div>
+                <SectionLabel>The control gap</SectionLabel>
+              </div>
+
+              <div>
+                <h2 className="max-w-5xl text-4xl font-medium leading-[1.03] tracking-[-.05em] sm:text-5xl lg:text-7xl">
+                  The more capable agents become, the harder they become to
+                  govern.
+                </h2>
+
+                <p className="mt-10 max-w-3xl text-lg leading-8 text-black/45">
+                  A company can have one agent today and thousands tomorrow.
+                  Each agent can interact with tools, data, APIs, employees,
+                  customers and critical systems.
+                </p>
+
+                <div className="mt-16 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ["ACCESS", "What can it see?"],
+                    ["ACTION", "What can it do?"],
+                    ["DECISION", "Why did
