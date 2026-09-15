@@ -1,364 +1,518 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import {
-  ShieldCheck,
-  FileCheck,
-  AlertTriangle,
-  Bot,
-  ChevronRight,
-  Plus,
-} from 'lucide-react'
+import { useEffect, useState } from "react"
 
-type GovernanceItem = {
-  id: number
+type Policy = {
+  id: string
   name: string
-  type: 'Policy' | 'Control'
-  description: string
-  owner: string
-  status: 'Active' | 'Needs Review' | 'Draft'
-  coverage: string
-  linkedAgents: number
+  description: string | null
+  policy_type: string
+  status: string
+  version: string
+  effective_date: string | null
+  review_date: string | null
+  authority: string | null
+  jurisdiction: string | null
+  sector: string | null
+  source_type: string | null
+  created_at: string
 }
 
-const governanceItems: GovernanceItem[] = [
-  {
-    id: 1,
-    name: 'Human Oversight Policy',
-    type: 'Policy',
-    description:
-      'Defines when human approval is required before an AI agent can make or execute a decision.',
-    owner: 'AI Governance',
-    status: 'Active',
-    coverage: '94%',
-    linkedAgents: 8,
-  },
-  {
-    id: 2,
-    name: 'Sensitive Data Handling',
-    type: 'Policy',
-    description:
-      'Controls how AI agents access, process, retain, and transmit sensitive information.',
-    owner: 'Security Team',
-    status: 'Active',
-    coverage: '91%',
-    linkedAgents: 12,
-  },
-  {
-    id: 3,
-    name: 'AI Decision Logging',
-    type: 'Control',
-    description:
-      'Ensures important AI decisions are recorded with sufficient context for later review.',
-    owner: 'Compliance Team',
-    status: 'Active',
-    coverage: '88%',
-    linkedAgents: 15,
-  },
-  {
-    id: 4,
-    name: 'Model Performance Monitoring',
-    type: 'Control',
-    description:
-      'Monitors model performance and identifies potential drift or unexpected behavior.',
-    owner: 'Risk Team',
-    status: 'Needs Review',
-    coverage: '76%',
-    linkedAgents: 6,
-  },
-  {
-    id: 5,
-    name: 'External AI Usage',
-    type: 'Policy',
-    description:
-      'Defines requirements for employees and agents using external AI services.',
-    owner: 'Security Team',
-    status: 'Active',
-    coverage: '83%',
-    linkedAgents: 10,
-  },
-  {
-    id: 6,
-    name: 'AI Incident Response',
-    type: 'Control',
-    description:
-      'Provides a standardized process for detecting, escalating, investigating, and resolving AI incidents.',
-    owner: 'Risk Team',
-    status: 'Draft',
-    coverage: '62%',
-    linkedAgents: 4,
-  },
-]
-
-function statusClass(status: GovernanceItem['status']) {
-  switch (status) {
-    case 'Active':
-      return 'bg-green-50 text-green-700'
-    case 'Needs Review':
-      return 'bg-yellow-50 text-yellow-700'
-    default:
-      return 'bg-gray-100 text-gray-600'
-  }
+type Rule = {
+  id: string
+  policy_id: string
+  name: string
+  description: string | null
+  rule_type: string
+  effect: string
+  priority: number
+  enabled: boolean
 }
 
 export default function GovernancePage() {
-  const [filter, setFilter] = React.useState<'All' | 'Policy' | 'Control'>(
-    'All'
-  )
+  const [policies, setPolicies] = useState<Policy[]>([])
+  const [rules, setRules] = useState<Rule[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filteredItems =
-    filter === 'All'
-      ? governanceItems
-      : governanceItems.filter((item) => item.type === filter)
+  const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
-  const active = governanceItems.filter(
-    (item) => item.status === 'Active'
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [policyType, setPolicyType] = useState("company")
+  const [jurisdiction, setJurisdiction] = useState("")
+  const [sector, setSector] = useState("")
+
+  async function loadGovernance() {
+    try {
+      setLoading(true)
+
+      const response = await fetch(
+        "/api/governance/policies",
+        {
+          cache: "no-store",
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(
+          "Failed to load governance policies."
+        )
+      }
+
+      const data = await response.json()
+
+      setPolicies(data.policies ?? [])
+      setRules(data.rules ?? [])
+    } catch (error) {
+      console.error(
+        "Failed to load governance:",
+        error
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadGovernance()
+  }, [])
+
+  async function createPolicy() {
+    if (!name.trim()) {
+      setCreateError("Policy name is required.")
+      return
+    }
+
+    try {
+      setCreating(true)
+      setCreateError(null)
+
+      const response = await fetch(
+        "/api/governance/policies/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: name.trim(),
+            description:
+              description.trim() || null,
+            policyType,
+            jurisdiction:
+              jurisdiction.trim() || null,
+            sector:
+              sector.trim() || null,
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ??
+            "Failed to create governance policy."
+        )
+      }
+
+      setName("")
+      setDescription("")
+      setPolicyType("company")
+      setJurisdiction("")
+      setSector("")
+      setShowCreate(false)
+
+      await loadGovernance()
+    } catch (error) {
+      setCreateError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create governance policy."
+      )
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const enabledRules = rules.filter(
+    (rule) => rule.enabled
   ).length
-
-  const needsReview = governanceItems.filter(
-    (item) => item.status === 'Needs Review'
-  ).length
-
-  const totalAgents = governanceItems.reduce(
-    (sum, item) => sum + item.linkedAgents,
-    0
-  )
 
   return (
-    <main className="flex flex-col gap-6">
-      {/* Header */}
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">
-            AI Governance
-          </p>
-
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+    <main className="min-h-screen bg-[#f7f7f5] px-6 py-8 text-black md:px-10 lg:px-14">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-10">
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.18em] text-black/40">
             Governance
-          </h1>
-
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Define policies, enforce controls, and govern how AI agents operate across your organization.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          Create Policy
-        </button>
-      </section>
-
-      {/* Summary */}
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Policies & Controls
-            </p>
-
-            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {governanceItems.length}
           </p>
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Governance requirements
-          </p>
-        </div>
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <div>
+              <h1 className="text-4xl font-semibold tracking-[-0.04em] md:text-5xl">
+                Govern every agent action.
+              </h1>
 
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Active
-            </p>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-black/55">
+                Define the rules, policies, permissions and
+                regulatory controls that govern how your AI
+                agents operate.
+              </p>
+            </div>
 
-            <FileCheck className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {active}
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            Currently enforced
-          </p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Needs Review
-            </p>
-
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {needsReview}
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            Governance items requiring attention
-          </p>
-        </div>
-
-        <div className="rounded-xl border bg-card p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Agent Coverage
-            </p>
-
-            <Bot className="h-4 w-4 text-muted-foreground" />
-          </div>
-
-          <p className="mt-2 text-2xl font-semibold">
-            {totalAgents}
-          </p>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            Policy-linked agent relationships
-          </p>
-        </div>
-      </section>
-
-      {/* Governance flow */}
-      <section className="rounded-xl border bg-card p-5">
-        <div>
-          <h2 className="font-semibold">
-            Governance Architecture
-          </h2>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            How Arbyter connects governance requirements to AI operations.
-          </p>
-        </div>
-
-        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-5">
-          {[
-            ['Agents', 'AI systems and autonomous workers'],
-            ['Policies', 'Rules governing AI behavior'],
-            ['Controls', 'Enforcement mechanisms'],
-            ['Risks', 'Detected exposure and issues'],
-            ['Evidence', 'Traceable governance record'],
-          ].map(([title, description], index) => (
-            <React.Fragment key={title}>
-              <div className="rounded-xl border bg-background p-4">
-                <p className="text-sm font-semibold">
-                  {title}
-                </p>
-
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {description}
-                </p>
-              </div>
-
-              {index < 4 && (
-                <div className="hidden items-center justify-center md:flex">
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-      </section>
-
-      {/* Filters */}
-      <section className="flex flex-wrap gap-2">
-        {(['All', 'Policy', 'Control'] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setFilter(value)}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
-              filter === value
-                ? 'bg-foreground text-background'
-                : 'bg-background hover:bg-muted'
-            }`}
-          >
-            {value === 'All' ? 'All' : `${value}s`}
-          </button>
-        ))}
-      </section>
-
-      {/* Governance list */}
-      <section className="overflow-hidden rounded-xl border bg-card">
-        <div className="border-b p-5">
-          <h2 className="font-semibold">
-            Policies & Controls
-          </h2>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Governance requirements currently configured in Arbyter.
-          </p>
-        </div>
-
-        <div className="divide-y">
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col gap-4 p-5 transition hover:bg-muted/20 md:flex-row md:items-center"
+            <button
+              type="button"
+              onClick={() => {
+                setCreateError(null)
+                setShowCreate(true)
+              }}
+              className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white transition-opacity hover:opacity-80"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background">
-                {item.type === 'Policy' ? (
-                  <ShieldCheck className="h-4 w-4" />
-                ) : (
-                  <FileCheck className="h-4 w-4" />
-                )}
-              </div>
+              + New Policy
+            </button>
+          </div>
+        </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-medium">
-                    {item.name}
-                  </h3>
+        <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-black/10 bg-white p-6">
+            <p className="text-sm text-black/45">
+              Policies
+            </p>
 
-                  <span className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground">
-                    {item.type}
-                  </span>
+            <p className="mt-2 text-3xl font-semibold tracking-tight">
+              {loading ? "—" : policies.length}
+            </p>
+          </div>
 
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusClass(
-                      item.status
-                    )}`}
+          <div className="rounded-2xl border border-black/10 bg-white p-6">
+            <p className="text-sm text-black/45">
+              Active Rules
+            </p>
+
+            <p className="mt-2 text-3xl font-semibold tracking-tight">
+              {loading ? "—" : enabledRules}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-black/10 bg-white p-6">
+            <p className="text-sm text-black/45">
+              Governance State
+            </p>
+
+            <p className="mt-2 text-3xl font-semibold tracking-tight">
+              {loading ? "—" : "Active"}
+            </p>
+          </div>
+        </div>
+
+        <section className="rounded-2xl border border-black/10 bg-white">
+          <div className="border-b border-black/10 px-6 py-5">
+            <h2 className="text-lg font-semibold tracking-tight">
+              Policies
+            </h2>
+
+            <p className="mt-1 text-sm text-black/45">
+              Company and regulatory policies controlling agent behavior.
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="px-6 py-10 text-sm text-black/45">
+              Loading governance policies...
+            </div>
+          ) : policies.length === 0 ? (
+            <div className="px-6 py-12 text-center">
+              <p className="text-base font-medium">
+                No governance policies yet.
+              </p>
+
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-black/45">
+                Create your first policy to define what agents
+                can do, what requires approval, and what must
+                be blocked.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-black/10">
+              {policies.map((policy) => {
+                const policyRules = rules.filter(
+                  (rule) =>
+                    rule.policy_id === policy.id
+                )
+
+                return (
+                  <div
+                    key={policy.id}
+                    className="px-6 py-6"
                   >
-                    {item.status}
-                  </span>
-                </div>
+                    <div className="flex flex-col justify-between gap-5 md:flex-row md:items-start">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-medium">
+                            {policy.name}
+                          </h3>
 
-                <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-                  {item.description}
+                          <span className="rounded-full bg-black/[0.05] px-2.5 py-1 text-[11px] font-medium text-black/60">
+                            v{policy.version}
+                          </span>
+
+                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
+                            {policy.status}
+                          </span>
+                        </div>
+
+                        {policy.description && (
+                          <p className="mt-2 max-w-2xl text-sm leading-6 text-black/50">
+                            {policy.description}
+                          </p>
+                        )}
+
+                        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-black/40">
+                          {policy.authority && (
+                            <span>
+                              Authority: {policy.authority}
+                            </span>
+                          )}
+
+                          {policy.jurisdiction && (
+                            <span>
+                              Jurisdiction:{" "}
+                              {policy.jurisdiction}
+                            </span>
+                          )}
+
+                          {policy.sector && (
+                            <span>
+                              Sector: {policy.sector}
+                            </span>
+                          )}
+
+                          {policy.source_type && (
+                            <span>
+                              Source:{" "}
+                              {policy.source_type}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className="text-xs text-black/40">
+                        {policyRules.length}{" "}
+                        {policyRules.length === 1
+                          ? "rule"
+                          : "rules"}
+                      </span>
+                    </div>
+
+                    {policyRules.length > 0 && (
+                      <div className="mt-5 space-y-2">
+                        {policyRules.map((rule) => (
+                          <div
+                            key={rule.id}
+                            className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3"
+                          >
+                            <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {rule.name}
+                                </p>
+
+                                {rule.description && (
+                                  <p className="mt-1 text-xs leading-5 text-black/45">
+                                    {rule.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-black/[0.05] px-2.5 py-1 text-[11px] text-black/55">
+                                  {rule.rule_type}
+                                </span>
+
+                                <span className="rounded-full bg-black/[0.05] px-2.5 py-1 text-[11px] font-medium">
+                                  {rule.effect}
+                                </span>
+
+                                <span
+                                  className={
+                                    rule.enabled
+                                      ? "text-xs text-emerald-600"
+                                      : "text-xs text-black/30"
+                                  }
+                                >
+                                  {rule.enabled
+                                    ? "Enabled"
+                                    : "Disabled"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">
+                  New Governance Policy
+                </h2>
+
+                <p className="mt-1 text-sm text-black/45">
+                  Define a policy that will govern your agents.
                 </p>
-
-                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-                  <span>
-                    Owner: {item.owner}
-                  </span>
-
-                  <span>
-                    Coverage: {item.coverage}
-                  </span>
-
-                  <span>
-                    Linked agents: {item.linkedAgents}
-                  </span>
-                </div>
               </div>
 
               <button
                 type="button"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                onClick={() => setShowCreate(false)}
+                className="text-xl text-black/35 hover:text-black"
               >
-                <ChevronRight className="h-4 w-4" />
+                ×
               </button>
             </div>
-          ))}
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Policy name
+                </label>
+
+                <input
+                  value={name}
+                  onChange={(event) =>
+                    setName(event.target.value)
+                  }
+                  placeholder="e.g. Customer Data Protection"
+                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Description
+                </label>
+
+                <textarea
+                  value={description}
+                  onChange={(event) =>
+                    setDescription(
+                      event.target.value
+                    )
+                  }
+                  placeholder="What does this policy control?"
+                  rows={3}
+                  className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Policy type
+                </label>
+
+                <select
+                  value={policyType}
+                  onChange={(event) =>
+                    setPolicyType(
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                >
+                  <option value="company">
+                    Company
+                  </option>
+
+                  <option value="regulatory">
+                    Regulatory
+                  </option>
+
+                  <option value="security">
+                    Security
+                  </option>
+
+                  <option value="framework">
+                    Framework
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Jurisdiction
+                </label>
+
+                <input
+                  value={jurisdiction}
+                  onChange={(event) =>
+                    setJurisdiction(
+                      event.target.value
+                    )
+                  }
+                  placeholder="e.g. India, EU, California"
+                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Sector
+                </label>
+
+                <input
+                  value={sector}
+                  onChange={(event) =>
+                    setSector(event.target.value)
+                  }
+                  placeholder="e.g. Finance, Healthcare, General"
+                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              {createError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {createError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowCreate(false)
+                  }
+                  className="rounded-xl border border-black/10 px-4 py-3 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={creating}
+                  onClick={createPolicy}
+                  className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  {creating
+                    ? "Creating..."
+                    : "Create Policy"}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
+      )}
     </main>
   )
 }
