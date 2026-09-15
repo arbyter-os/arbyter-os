@@ -34,6 +34,35 @@ export default function GovernancePage() {
   const [rules, setRules] = useState<Rule[]>([])
   const [loading, setLoading] = useState(true)
 
+  const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] =
+    useState<string | null>(null)
+
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [policyType, setPolicyType] = useState("company")
+  const [jurisdiction, setJurisdiction] = useState("")
+  const [sector, setSector] = useState("")
+
+  const [rulePolicyId, setRulePolicyId] =
+    useState<string | null>(null)
+  const [ruleName, setRuleName] = useState("")
+  const [ruleDescription, setRuleDescription] =
+    useState("")
+  const [ruleType, setRuleType] =
+    useState("governance")
+  const [ruleEffect, setRuleEffect] =
+    useState("flag")
+  const [rulePriority, setRulePriority] =
+    useState("100")
+  const [ruleAction, setRuleAction] =
+    useState("messages.send")
+  const [ruleCreating, setRuleCreating] =
+    useState(false)
+  const [ruleError, setRuleError] =
+    useState<string | null>(null)
+
   async function loadGovernance() {
     try {
       setLoading(true)
@@ -46,7 +75,9 @@ export default function GovernancePage() {
       )
 
       if (!response.ok) {
-        throw new Error("Failed to load governance policies.")
+        throw new Error(
+          "Failed to load governance policies."
+        )
       }
 
       const data = await response.json()
@@ -54,7 +85,10 @@ export default function GovernancePage() {
       setPolicies(data.policies ?? [])
       setRules(data.rules ?? [])
     } catch (error) {
-      console.error("Failed to load governance:", error)
+      console.error(
+        "Failed to load governance:",
+        error
+      )
     } finally {
       setLoading(false)
     }
@@ -63,6 +97,132 @@ export default function GovernancePage() {
   useEffect(() => {
     loadGovernance()
   }, [])
+
+  async function createPolicy() {
+    if (!name.trim()) {
+      setCreateError("Policy name is required.")
+      return
+    }
+
+    try {
+      setCreating(true)
+      setCreateError(null)
+
+      const response = await fetch(
+        "/api/governance/policies/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: name.trim(),
+            description:
+              description.trim() || null,
+            policyType,
+            jurisdiction:
+              jurisdiction.trim() || null,
+            sector:
+              sector.trim() || null,
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ??
+            "Failed to create governance policy."
+        )
+      }
+
+      setName("")
+      setDescription("")
+      setPolicyType("company")
+      setJurisdiction("")
+      setSector("")
+      setShowCreate(false)
+
+      await loadGovernance()
+    } catch (error) {
+      setCreateError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create governance policy."
+      )
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  async function createRule() {
+    if (!rulePolicyId) {
+      setRuleError("Policy is required.")
+      return
+    }
+
+    if (!ruleName.trim()) {
+      setRuleError("Rule name is required.")
+      return
+    }
+
+    try {
+      setRuleCreating(true)
+      setRuleError(null)
+
+      const response = await fetch(
+        "/api/governance/rules/create",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            policyId: rulePolicyId,
+            name: ruleName.trim(),
+            description:
+              ruleDescription.trim() || null,
+            ruleType,
+            effect: ruleEffect,
+            priority:
+              Number(rulePriority) || 100,
+            enabled: true,
+            conditions: {
+              action: ruleAction,
+            },
+          }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ??
+            "Failed to create governance rule."
+        )
+      }
+
+      setRuleName("")
+      setRuleDescription("")
+      setRuleType("governance")
+      setRuleEffect("flag")
+      setRulePriority("100")
+      setRuleAction("messages.send")
+      setRulePolicyId(null)
+
+      await loadGovernance()
+    } catch (error) {
+      setRuleError(
+        error instanceof Error
+          ? error.message
+          : "Failed to create governance rule."
+      )
+    } finally {
+      setRuleCreating(false)
+    }
+  }
 
   const enabledRules = rules.filter(
     (rule) => rule.enabled
@@ -91,6 +251,10 @@ export default function GovernancePage() {
 
             <button
               type="button"
+              onClick={() => {
+                setCreateError(null)
+                setShowCreate(true)
+              }}
               className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white transition-opacity hover:opacity-80"
             >
               + New Policy
@@ -103,6 +267,7 @@ export default function GovernancePage() {
             <p className="text-sm text-black/45">
               Policies
             </p>
+
             <p className="mt-2 text-3xl font-semibold tracking-tight">
               {loading ? "—" : policies.length}
             </p>
@@ -112,6 +277,7 @@ export default function GovernancePage() {
             <p className="text-sm text-black/45">
               Active Rules
             </p>
+
             <p className="mt-2 text-3xl font-semibold tracking-tight">
               {loading ? "—" : enabledRules}
             </p>
@@ -121,6 +287,7 @@ export default function GovernancePage() {
             <p className="text-sm text-black/45">
               Governance State
             </p>
+
             <p className="mt-2 text-3xl font-semibold tracking-tight">
               {loading ? "—" : "Active"}
             </p>
@@ -198,7 +365,8 @@ export default function GovernancePage() {
 
                           {policy.jurisdiction && (
                             <span>
-                              Jurisdiction: {policy.jurisdiction}
+                              Jurisdiction:{" "}
+                              {policy.jurisdiction}
                             </span>
                           )}
 
@@ -210,18 +378,23 @@ export default function GovernancePage() {
 
                           {policy.source_type && (
                             <span>
-                              Source: {policy.source_type}
+                              Source:{" "}
+                              {policy.source_type}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <span className="text-xs text-black/40">
-                        {policyRules.length}{" "}
-                        {policyRules.length === 1
-                          ? "rule"
-                          : "rules"}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRulePolicyId(policy.id)
+                          setRuleError(null)
+                        }}
+                        className="rounded-xl border border-black/10 px-4 py-2 text-sm font-medium hover:bg-black/[0.03]"
+                      >
+                        + Add Rule
+                      </button>
                     </div>
 
                     {policyRules.length > 0 && (
@@ -277,6 +450,319 @@ export default function GovernancePage() {
           )}
         </section>
       </div>
+
+      {showCreate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">
+                  New Governance Policy
+                </h2>
+
+                <p className="mt-1 text-sm text-black/45">
+                  Define a policy that will govern your agents.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                className="text-xl text-black/35 hover:text-black"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Policy name
+                </label>
+
+                <input
+                  value={name}
+                  onChange={(event) =>
+                    setName(event.target.value)
+                  }
+                  placeholder="e.g. Customer Data Protection"
+                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Description
+                </label>
+
+                <textarea
+                  value={description}
+                  onChange={(event) =>
+                    setDescription(event.target.value)
+                  }
+                  placeholder="What does this policy control?"
+                  rows={3}
+                  className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Policy type
+                </label>
+
+                <select
+                  value={policyType}
+                  onChange={(event) =>
+                    setPolicyType(event.target.value)
+                  }
+                  className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                >
+                  <option value="company">
+                    Company
+                  </option>
+
+                  <option value="regulatory">
+                    Regulatory
+                  </option>
+
+                  <option value="security">
+                    Security
+                  </option>
+
+                  <option value="framework">
+                    Framework
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Jurisdiction
+                </label>
+
+                <input
+                  value={jurisdiction}
+                  onChange={(event) =>
+                    setJurisdiction(event.target.value)
+                  }
+                  placeholder="e.g. India, EU, California"
+                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Sector
+                </label>
+
+                <input
+                  value={sector}
+                  onChange={(event) =>
+                    setSector(event.target.value)
+                  }
+                  placeholder="e.g. Finance, Healthcare, General"
+                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              {createError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {createError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreate(false)}
+                  className="rounded-xl border border-black/10 px-4 py-3 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={creating}
+                  onClick={createPolicy}
+                  className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  {creating
+                    ? "Creating..."
+                    : "Create Policy"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rulePolicyId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">
+                  Add Governance Rule
+                </h2>
+
+                <p className="mt-1 text-sm text-black/45">
+                  Define how Arbyter should handle a specific agent action.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setRulePolicyId(null)}
+                className="text-xl text-black/35 hover:text-black"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Rule name
+                </label>
+
+                <input
+                  value={ruleName}
+                  onChange={(event) =>
+                    setRuleName(event.target.value)
+                  }
+                  placeholder="e.g. Email requires approval"
+                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Description
+                </label>
+
+                <textarea
+                  value={ruleDescription}
+                  onChange={(event) =>
+                    setRuleDescription(event.target.value)
+                  }
+                  placeholder="Describe what this rule controls."
+                  rows={3}
+                  className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Action
+                </label>
+
+                <select
+                  value={ruleAction}
+                  onChange={(event) =>
+                    setRuleAction(event.target.value)
+                  }
+                  className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                >
+                  <option value="messages.send">
+                    Send message
+                  </option>
+
+                  <option value="messages.read">
+                    Read message
+                  </option>
+
+                  <option value="messages.reply">
+                    Reply to message
+                  </option>
+
+                  <option value="data.access">
+                    Access data
+                  </option>
+
+                  <option value="finance.transfer">
+                    Financial transfer
+                  </option>
+                </select>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Effect
+                  </label>
+
+                  <select
+                    value={ruleEffect}
+                    onChange={(event) =>
+                      setRuleEffect(event.target.value)
+                    }
+                    className="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="allow">
+                      Allow
+                    </option>
+
+                    <option value="flag">
+                      Flag
+                    </option>
+
+                    <option value="require_approval">
+                      Require approval
+                    </option>
+
+                    <option value="block">
+                      Block
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Priority
+                  </label>
+
+                  <input
+                    type="number"
+                    value={rulePriority}
+                    onChange={(event) =>
+                      setRulePriority(event.target.value)
+                    }
+                    className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                  />
+                </div>
+              </div>
+
+              {ruleError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {ruleError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRulePolicyId(null)}
+                  className="rounded-xl border border-black/10 px-4 py-3 text-sm font-medium"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={ruleCreating}
+                  onClick={createRule}
+                  className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  {ruleCreating
+                    ? "Creating..."
+                    : "Create Rule"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
