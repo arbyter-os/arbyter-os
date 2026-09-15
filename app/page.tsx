@@ -73,17 +73,6 @@ const demoStages = [
   },
 ];
 
-const traceItems = [
-  ["Agent", "Finance Agent"],
-  ["Task", "Process vendor payment"],
-  ["Requested action", "finance.transfer"],
-  ["Risk", "HIGH"],
-  ["Policy", "Financial actions above threshold"],
-  ["Decision", "REQUIRE_APPROVAL"],
-  ["Approval", "Administrator approved"],
-  ["Execution", "Completed"],
-];
-
 function Logo({ large = false }: { large?: boolean }) {
   return (
     <Image
@@ -91,7 +80,7 @@ function Logo({ large = false }: { large?: boolean }) {
       alt="Arbyter OS"
       width={large ? 190 : 132}
       height={large ? 52 : 38}
-      priority
+      priority={large}
       className={large ? "h-12 w-auto" : "h-8 w-auto"}
     />
   );
@@ -184,6 +173,7 @@ function NetworkNode({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ${
         active ? "scale-110" : "hover:scale-105"
@@ -191,8 +181,10 @@ function NetworkNode({
       style={{ left: `${agent.x}%`, top: `${agent.y}%` }}
     >
       <div
-        className={`flex h-14 w-14 items-center justify-center rounded-full border bg-white shadow-[0_12px_35px_rgba(0,0,0,.08)] transition-all ${
-          active ? "border-[#1677ff] shadow-[0_0_35px_rgba(22,119,255,.18)]" : "border-black/10"
+        className={`flex h-14 w-14 items-center justify-center rounded-full border bg-white shadow-[0_12px_35px_rgba(0,0,0,.08)] ${
+          active
+            ? "border-[#1677ff] shadow-[0_0_35px_rgba(22,119,255,.18)]"
+            : "border-black/10"
         }`}
       >
         <span
@@ -260,12 +252,10 @@ function ControlPlane({
           <div className="text-[9px] uppercase tracking-[0.25em] text-black/30">
             Selected agent
           </div>
-          <div className="mt-1 text-sm font-semibold">
-            {active?.name}
-          </div>
+          <div className="mt-1 text-sm font-semibold">{active?.name}</div>
         </div>
 
-        <div className="flex items-center gap-5 text-[10px] text-black/40">
+        <div className="flex flex-wrap items-center gap-4 text-[10px] text-black/40">
           <span>Identity verified</span>
           <span>•</span>
           <span>Healthy</span>
@@ -290,9 +280,7 @@ function DecisionSimulator() {
             <div className="text-[9px] uppercase tracking-[0.28em] text-white/30">
               Live governance simulation
             </div>
-            <div className="mt-3 text-xl font-medium">
-              Finance Agent
-            </div>
+            <div className="mt-3 text-xl font-medium">Finance Agent</div>
           </div>
 
           <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-white/40">
@@ -380,6 +368,7 @@ function DecisionSimulator() {
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
+            type="button"
             onClick={() => setDecision("approved")}
             className="rounded-xl bg-white py-3 text-xs font-semibold text-black transition hover:bg-white/90"
           >
@@ -387,6 +376,7 @@ function DecisionSimulator() {
           </button>
 
           <button
+            type="button"
             onClick={() => setDecision("blocked")}
             className="rounded-xl border border-white/10 py-3 text-xs font-semibold text-white transition hover:bg-white/5"
           >
@@ -396,6 +386,7 @@ function DecisionSimulator() {
 
         {decision !== "idle" && (
           <button
+            type="button"
             onClick={() => setDecision("idle")}
             className="mt-4 w-full text-[10px] uppercase tracking-[.2em] text-white/30 transition hover:text-white/60"
           >
@@ -444,7 +435,7 @@ function ComplianceMap() {
                 : "border-black/10 bg-white"
             }`}
           >
-            <span className="text-[10px] font-semibold whitespace-nowrap">
+            <span className="whitespace-nowrap text-[10px] font-semibold">
               {node.label}
             </span>
           </div>
@@ -459,21 +450,23 @@ function ComplianceMap() {
 }
 
 function AuditTimeline() {
+  const events = [
+    ["10:42:01", "Agent requested action", "Intent captured"],
+    ["10:42:02", "Policy evaluated", "Financial threshold"],
+    ["10:42:02", "Risk classified", "HIGH"],
+    ["10:42:02", "Approval requested", "Human decision"],
+    ["10:43:17", "Approval received", "Administrator"],
+    ["10:43:18", "Execution completed", "External system"],
+    ["10:43:19", "Evidence recorded", "Audit trail"],
+  ];
+
   return (
     <div className="relative">
       <div className="absolute bottom-0 left-[7px] top-0 w-px bg-black/10" />
 
       <div className="space-y-7">
-        {[
-          ["10:42:01", "Agent requested action", "Intent captured"],
-          ["10:42:02", "Policy evaluated", "Financial threshold"],
-          ["10:42:02", "Risk classified", "HIGH"],
-          ["10:42:02", "Approval requested", "Human decision"],
-          ["10:43:17", "Approval received", "Administrator"],
-          ["10:43:18", "Execution completed", "External system"],
-          ["10:43:19", "Evidence recorded", "Audit trail"],
-        ].map(([time, title, detail], index) => (
-          <div key={time} className="relative flex gap-7">
+        {events.map(([time, title, detail], index) => (
+          <div key={`${time}-${title}`} className="relative flex gap-7">
             <div
               className={`relative z-10 mt-1.5 h-3.5 w-3.5 rounded-full border-4 border-white ${
                 index === 2 ? "bg-amber-400" : "bg-[#1677ff]"
@@ -542,7 +535,6 @@ export default function HomePage() {
       {!introDone && <Intro onComplete={() => setIntroDone(true)} />}
 
       <main className="min-h-screen overflow-hidden bg-white text-black selection:bg-[#1677ff] selection:text-white">
-        {/* NAV */}
         <nav className="fixed inset-x-0 top-0 z-50 border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
           <div className="mx-auto flex h-[68px] max-w-[1440px] items-center justify-between px-6 lg:px-10">
             <Link href="/" className="flex items-center">
@@ -576,7 +568,6 @@ export default function HomePage() {
           </div>
         </nav>
 
-        {/* HERO / VISUAL HOOK */}
         <section
           ref={heroRef}
           className="relative flex min-h-screen items-center overflow-hidden px-6 pb-24 pt-32 lg:px-10"
@@ -609,7 +600,6 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Problem visualization */}
             <div className="relative mt-16 h-[430px] overflow-hidden rounded-[32px] border border-black/10 bg-[#f8f8f6] lg:mt-24">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(22,119,255,.05),transparent_35%)]" />
 
@@ -632,10 +622,7 @@ export default function HomePage() {
                 ["HR", "top-[54%] left-[4%]"],
                 ["Cloud", "top-[55%] right-[4%]"],
               ].map(([label, position], index) => (
-                <div
-                  key={label}
-                  className={`absolute ${position} z-10`}
-                >
+                <div key={label} className={`absolute ${position} z-10`}>
                   <div className="flex items-center gap-3 rounded-full border border-black/10 bg-white px-4 py-2.5 shadow-sm">
                     <span
                       className={`h-2 w-2 rounded-full ${
@@ -681,7 +668,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* PROBLEM */}
         <section
           id="problem"
           className="border-t border-black/10 px-6 py-28 lg:px-10 lg:py-40"
@@ -708,4 +694,535 @@ export default function HomePage() {
                   {[
                     ["ACCESS", "What can it see?"],
                     ["ACTION", "What can it do?"],
-                    ["DECISION", "Why did
+                    ["DECISION", "Why did it do it?"],
+                    ["RISK", "What happens if it is wrong?"],
+                  ].map(([title, text]) => (
+                    <div
+                      key={title}
+                      className="rounded-2xl border border-black/10 bg-[#fafafa] p-6"
+                    >
+                      <div className="text-[9px] font-semibold tracking-[.24em] text-black/30">
+                        {title}
+                      </div>
+                      <div className="mt-8 text-sm font-medium">{text}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden bg-[#050505] px-6 py-32 text-white lg:px-10 lg:py-48">
+          <div className="absolute inset-0 opacity-20">
+            <DotGrid />
+          </div>
+
+          <div className="relative mx-auto max-w-[1440px]">
+            <SectionLabel dark>The missing layer</SectionLabel>
+
+            <div className="mt-16 flex flex-col items-center">
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                {["Agents", "Tasks"].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-full border border-white/10 bg-white/[.04] px-6 py-3 text-xs text-white/50"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+
+              <div className="my-8 h-16 w-px bg-gradient-to-b from-white/20 to-[#1677ff]" />
+
+              <div className="relative flex h-44 w-44 items-center justify-center rounded-full border border-[#1677ff]/50 bg-[#1677ff]/[.06] shadow-[0_0_100px_rgba(22,119,255,.12)]">
+                <div className="absolute inset-5 rounded-full border border-[#1677ff]/20" />
+                <Logo large />
+              </div>
+
+              <div className="my-8 h-16 w-px bg-gradient-to-b from-[#1677ff] to-white/20" />
+
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                {["Tools", "Data", "Systems"].map((item) => (
+                  <div
+                    key={item}
+                    className="rounded-full border border-white/10 bg-white/[.04] px-6 py-3 text-xs text-white/50"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+
+              <h2 className="mt-24 text-center text-5xl font-medium tracking-[-.06em] sm:text-6xl lg:text-8xl">
+                The missing layer
+                <br />
+                is <span className="text-[#4d91ff]">control.</span>
+              </h2>
+            </div>
+          </div>
+        </section>
+
+        <section id="control" className="px-6 py-28 lg:px-10 lg:py-40">
+          <div className="mx-auto max-w-[1440px]">
+            <div className="grid gap-16 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
+              <div>
+                <SectionLabel>Meet Arbyter OS</SectionLabel>
+
+                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
+                  One control plane.
+                  <br />
+                  Every agent.
+                </h2>
+              </div>
+
+              <p className="max-w-2xl text-lg leading-8 text-black/45">
+                Arbyter sits between your AI agents and the systems they
+                interact with — providing identity, permissions, governance,
+                risk controls, human approval, execution and audit.
+              </p>
+            </div>
+
+            <div className="mt-20">
+              <ControlPlane
+                activeAgent={activeAgent}
+                setActiveAgent={setActiveAgent}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#f7f7f5] px-6 py-28 lg:px-10 lg:py-40">
+          <div className="mx-auto max-w-[1440px]">
+            <SectionLabel>The agent lifecycle</SectionLabel>
+
+            <h2 className="mt-7 max-w-4xl text-4xl font-medium tracking-[-.05em] sm:text-5xl lg:text-7xl">
+              From intention
+              <br />
+              to evidence.
+            </h2>
+
+            <div className="relative mt-24 overflow-hidden rounded-[32px] border border-black/10 bg-white p-6 lg:p-10">
+              <div className="absolute left-[7%] right-[7%] top-[88px] hidden h-px bg-black/10 lg:block" />
+
+              <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-7">
+                {[
+                  "Agent",
+                  "Task",
+                  "Understand",
+                  "Govern",
+                  "Authorize",
+                  "Execute",
+                  "Audit",
+                ].map((item, index) => (
+                  <div key={item} className="relative z-10">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-black/10 bg-white text-[10px] font-semibold">
+                      {String(index + 1).padStart(2, "0")}
+                    </div>
+
+                    <div className="mt-6 text-sm font-semibold">{item}</div>
+
+                    <div className="mt-2 text-xs leading-5 text-black/35">
+                      {[
+                        "Identity",
+                        "Intent",
+                        "Context",
+                        "Policy",
+                        "Permission",
+                        "Action",
+                        "Evidence",
+                      ][index]}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="governance"
+          className="bg-black px-6 py-28 text-white lg:px-10 lg:py-40"
+        >
+          <div className="mx-auto max-w-[1440px]">
+            <div className="grid gap-16 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+              <div>
+                <SectionLabel dark>Live governance</SectionLabel>
+
+                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
+                  Watch a decision
+                  <br />
+                  happen.
+                </h2>
+
+                <p className="mt-8 max-w-xl text-lg leading-8 text-white/40">
+                  This is what happens when an agent attempts a consequential
+                  action inside Arbyter.
+                </p>
+
+                <div className="mt-10 flex flex-wrap gap-2">
+                  {demoStages.map((stage, index) => (
+                    <button
+                      type="button"
+                      key={stage.label}
+                      onClick={() => setDemoStage(index)}
+                      className={`rounded-full px-4 py-2 text-[10px] font-semibold uppercase tracking-[.15em] transition ${
+                        demoStage === index
+                          ? "bg-white text-black"
+                          : "border border-white/10 text-white/35 hover:text-white"
+                      }`}
+                    >
+                      {stage.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <DecisionSimulator />
+
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/[.03] p-6">
+                  <div className="text-[9px] uppercase tracking-[.25em] text-white/25">
+                    {demoStages[demoStage].eyebrow}
+                  </div>
+
+                  <div className="mt-3 text-xl font-medium">
+                    {demoStages[demoStage].title}
+                  </div>
+
+                  <p className="mt-3 text-sm leading-7 text-white/40">
+                    {demoStages[demoStage].description}
+                  </p>
+
+                  <div className="mt-5 font-mono text-[10px] text-[#4d91ff]">
+                    {demoStages[demoStage].detail}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="px-6 py-28 lg:px-10 lg:py-40">
+          <div className="mx-auto max-w-[1440px]">
+            <div className="grid gap-16 lg:grid-cols-[.65fr_1.35fr]">
+              <div>
+                <SectionLabel>Visibility</SectionLabel>
+
+                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl">
+                  See the system
+                  <br />
+                  thinking.
+                </h2>
+              </div>
+
+              <div className="relative min-h-[600px] overflow-hidden rounded-[34px] border border-black/10 bg-[#fafafa]">
+                <DotGrid />
+
+                <div className="absolute left-1/2 top-1/2 flex h-32 w-32 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#1677ff]/30 bg-white shadow-xl">
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold">AI</div>
+                    <div className="mt-1 text-[8px] uppercase tracking-[.2em] text-black/30">
+                      action
+                    </div>
+                  </div>
+                </div>
+
+                {[
+                  ["DATA", "Sensitive customer records"],
+                  ["TOOL", "CRM.write"],
+                  ["POLICY", "Customer data boundary"],
+                  ["RISK", "Medium"],
+                  ["DECISION", "FLAG"],
+                  ["SYSTEM", "Production CRM"],
+                  ["TASK", "Update account"],
+                  ["RESULT", "Completed"],
+                ].map(([label, value], index) => {
+                  const positions = [
+                    "left-[8%] top-[9%]",
+                    "right-[8%] top-[13%]",
+                    "left-[5%] top-[42%]",
+                    "right-[7%] top-[44%]",
+                    "left-[10%] bottom-[12%]",
+                    "right-[7%] bottom-[11%]",
+                    "left-[39%] top-[8%]",
+                    "left-[39%] bottom-[8%]",
+                  ];
+
+                  return (
+                    <div
+                      key={label}
+                      className={`absolute ${positions[index]} rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm`}
+                    >
+                      <div className="text-[8px] font-semibold tracking-[.2em] text-black/30">
+                        {label}
+                      </div>
+                      <div className="mt-1 text-[10px] font-medium">
+                        {value}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="compliance"
+          className="bg-[#f7f7f5] px-6 py-28 lg:px-10 lg:py-40"
+        >
+          <div className="mx-auto max-w-[1440px]">
+            <div className="max-w-4xl">
+              <SectionLabel>Regulatory intelligence</SectionLabel>
+
+              <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
+                Turn regulations
+                <br />
+                into controls.
+              </h2>
+
+              <p className="mt-8 max-w-2xl text-lg leading-8 text-black/45">
+                Regulations should not live in PDFs that nobody connects to
+                execution. Arbyter maps requirements to controls, policies,
+                agents and evidence.
+              </p>
+            </div>
+
+            <div className="mt-20">
+              <ComplianceMap />
+            </div>
+          </div>
+        </section>
+
+        <section className="px-6 py-28 lg:px-10 lg:py-40">
+          <div className="mx-auto max-w-[1440px]">
+            <div className="grid gap-16 lg:grid-cols-[1fr_.8fr] lg:items-start">
+              <div>
+                <SectionLabel>Investigation</SectionLabel>
+
+                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
+                  When something
+                  <br />
+                  goes wrong,
+                  <br />
+                  trace it.
+                </h2>
+
+                <p className="mt-8 max-w-xl text-lg leading-8 text-black/45">
+                  Arbyter connects the chain between an agent, its task,
+                  decision, policy, tool, data and final execution.
+                </p>
+              </div>
+
+              <div className="rounded-[30px] border border-black/10 bg-[#fafafa] p-5">
+                {[
+                  ["Agent", "Finance Agent"],
+                  ["Task", "Process vendor payment"],
+                  ["Decision", "REQUIRE_APPROVAL"],
+                  ["Policy", "Financial threshold"],
+                  ["Risk", "HIGH"],
+                  ["Tool", "finance.transfer"],
+                  ["Execution", "Blocked pending approval"],
+                ].map(([key, value], index) => (
+                  <div
+                    key={key}
+                    className="relative flex items-center gap-5 border-b border-black/10 py-5 last:border-0"
+                  >
+                    <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-[9px] font-semibold">
+                      {String(index + 1).padStart(2, "0")}
+                    </div>
+
+                    {index < 6 && (
+                      <div className="absolute bottom-[-20px] left-[17px] top-[56px] w-px bg-black/10" />
+                    )}
+
+                    <div className="flex flex-1 items-center justify-between gap-5">
+                      <span className="text-xs text-black/35">{key}</span>
+                      <span className="text-right text-xs font-semibold">
+                        {value}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#fafafa] px-6 py-28 lg:px-10 lg:py-40">
+          <div className="mx-auto max-w-[1440px]">
+            <div className="grid gap-16 lg:grid-cols-[.7fr_1.3fr]">
+              <div>
+                <SectionLabel>Audit</SectionLabel>
+
+                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl">
+                  Every consequential
+                  <br />
+                  action leaves
+                  <br />
+                  evidence.
+                </h2>
+              </div>
+
+              <div className="rounded-[30px] border border-black/10 bg-white p-8 lg:p-12">
+                <AuditTimeline />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden bg-black px-6 py-32 text-white lg:px-10 lg:py-48">
+          <div className="absolute inset-0 opacity-15">
+            <DotGrid />
+          </div>
+
+          <div className="relative mx-auto max-w-[1440px]">
+            <div className="grid gap-16 lg:grid-cols-[.7fr_1.3fr]">
+              <div>
+                <SectionLabel dark>Scale</SectionLabel>
+
+                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
+                  More agents.
+                  <br />
+                  Same control.
+                </h2>
+              </div>
+
+              <div>
+                <div className="flex items-end justify-between">
+                  <div>
+                    <div className="font-mono text-6xl font-medium tracking-[-.06em]">
+                      {agentCount}
+                    </div>
+                    <div className="mt-2 text-[9px] uppercase tracking-[.25em] text-white/30">
+                      agents governed
+                    </div>
+                  </div>
+
+                  <div className="text-right text-xs text-white/30">
+                    Move the control
+                    <br />
+                    plane through scale.
+                  </div>
+                </div>
+
+                <input
+                  type="range"
+                  min="3"
+                  max="100"
+                  value={agentCount}
+                  onChange={(event) =>
+                    setAgentCount(Number(event.target.value))
+                  }
+                  className="mt-10 w-full accent-[#1677ff]"
+                />
+
+                <div className="relative mt-16 h-[430px] overflow-hidden rounded-[30px] border border-white/10 bg-white/[.025]">
+                  <div className="absolute left-1/2 top-1/2 z-20 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#1677ff]/40 bg-black shadow-[0_0_80px_rgba(22,119,255,.15)]">
+                    <Logo />
+                  </div>
+
+                  {simulatedAgents.map((node, index) => (
+                    <div
+                      key={index}
+                      className="absolute h-1.5 w-1.5 rounded-full bg-[#1677ff]/70 transition-all duration-700"
+                      style={{
+                        left: `${node.x}%`,
+                        top: `${node.y}%`,
+                      }}
+                    />
+                  ))}
+
+                  <div className="absolute bottom-5 left-5 text-[9px] uppercase tracking-[.25em] text-white/25">
+                    Agent network
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="demo" className="relative overflow-hidden px-6 py-36 lg:px-10 lg:py-56">
+          <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1677ff]/[.05] blur-3xl" />
+
+          <div className="relative mx-auto max-w-5xl text-center">
+            <Logo large />
+
+            <h2 className="mt-14 text-5xl font-medium leading-[.95] tracking-[-.065em] sm:text-6xl lg:text-8xl">
+              Your agents are
+              <br />
+              already making
+              <br />
+              decisions.
+            </h2>
+
+            <p className="mx-auto mt-9 max-w-2xl text-lg leading-8 text-black/45 sm:text-xl">
+              Give those decisions a control plane.
+            </p>
+
+            <div className="mt-11 flex flex-col justify-center gap-3 sm:flex-row">
+              <a
+                href="mailto:hello@arbyter.ai"
+                className="rounded-full bg-black px-8 py-4 text-xs font-semibold uppercase tracking-[.18em] text-white transition hover:bg-[#1677ff]"
+              >
+                Talk to Arbyter
+              </a>
+
+              <a
+                href="#governance"
+                className="rounded-full border border-black/10 px-8 py-4 text-xs font-semibold uppercase tracking-[.18em] transition hover:bg-black/[.03]"
+              >
+                Run the demo
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <footer className="border-t border-black/10 px-6 py-10 lg:px-10">
+          <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-6 sm:flex-row sm:items-center">
+            <Logo />
+
+            <div className="text-[9px] uppercase tracking-[.25em] text-black/30">
+              Orchestrate · Govern · Secure
+            </div>
+
+            <div className="text-[10px] text-black/30">
+              © 2026 Arbyter OS
+            </div>
+          </div>
+        </footer>
+      </main>
+
+      <style jsx global>{`
+        @keyframes flow {
+          0% {
+            transform: translateX(0) translateY(-50%);
+            opacity: 0;
+          }
+
+          15% {
+            opacity: 1;
+          }
+
+          85% {
+            opacity: 1;
+          }
+
+          100% {
+            transform: translateX(100%) translateY(-50%);
+            opacity: 0;
+          }
+        }
+
+        html {
+          scroll-behavior: smooth;
+        }
+
+        ::selection {
+          background: #1677ff;
+          color: white;
+        }
+      `}</style>
+    </>
+  );
+}
