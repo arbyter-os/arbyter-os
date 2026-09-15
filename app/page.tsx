@@ -172,7 +172,7 @@ export default function Home() {
         if (current >= 4) return current
         return current + 1
       })
-    }, 1900)
+    }, 2600)
 
     return () => window.clearInterval(timer)
   }, [])
@@ -235,24 +235,33 @@ export default function Home() {
       </nav>
 
       {/* ========================================================= */}
-      {/* LAYER 01 — CINEMATIC CHAOS */}
+      {/* LAYER 01 — MOVIE INTRO */}
       {/* ========================================================= */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden border-b border-black/10 bg-[#f8f9fc] pt-20">
-        <div className="absolute inset-0 hero-grid opacity-70" />
+      <section className="relative flex min-h-screen items-center justify-center overflow-hidden border-b border-black/10 bg-[#f8f9fc]">
+        <div className="absolute inset-0 hero-grid opacity-60" />
 
-        {/* atmospheric blue field */}
-        <div className="absolute left-1/2 top-1/2 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1300BA]/[0.035] blur-3xl" />
-
-        {/* CHAOTIC AGENTS */}
         <div
-          className={`absolute inset-0 transition-all duration-1000 ${
-            phase >= 2 ? "agents-captured" : ""
+          className={`absolute left-1/2 top-1/2 h-[650px] w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1300BA]/[0.025] blur-3xl transition-all duration-[1800ms] ${
+            phase >= 2 ? "scale-[1.7] bg-[#1300BA]/[0.08]" : ""
+          }`}
+        />
+
+        {/* CHAOS FIELD */}
+        <div
+          className={`absolute inset-0 transition-all duration-[1600ms] ${
+            phase >= 2
+              ? "scale-[0.75] opacity-0"
+              : phase === 1
+                ? "scale-[1.08]"
+                : "scale-100"
           }`}
         >
           {shuffledAgents.map((agent, index) => (
             <div
               key={agent.name}
-              className="chaos-agent"
+              className={`movie-agent ${
+                phase === 1 ? "movie-agent-chaos" : ""
+              }`}
               style={{
                 left: agent.x,
                 top: agent.y,
@@ -260,104 +269,107 @@ export default function Home() {
                 animationDuration: agent.duration,
               }}
             >
-              <div className="agent-core">
-                <span className="agent-dot" />
-                <span>{agent.name}</span>
+              <div className="movie-agent-body">
+                <span className="movie-agent-core" />
+                <span className="movie-agent-label">{agent.name}</span>
               </div>
-              <div className="agent-trail" />
+
+              <div className="movie-agent-trail" />
             </div>
           ))}
         </div>
 
-        {/* chaos lines */}
+        {/* CHAOS MOTION */}
         <div
-          className={`pointer-events-none absolute inset-0 transition-opacity duration-1000 ${
-            phase >= 2 ? "opacity-0" : "opacity-100"
+          className={`pointer-events-none absolute inset-0 transition-all duration-1000 ${
+            phase >= 2 ? "opacity-0 scale-125" : "opacity-100"
           }`}
         >
-          <div className="chaos-line line-a" />
-          <div className="chaos-line line-b" />
-          <div className="chaos-line line-c" />
-          <div className="chaos-line line-d" />
+          <div className="movie-motion motion-1" />
+          <div className="movie-motion motion-2" />
+          <div className="movie-motion motion-3" />
+          <div className="movie-motion motion-4" />
+          <div className="movie-motion motion-5" />
+          <div className="movie-motion motion-6" />
         </div>
 
-        {/* CHAOS COPY */}
+        {/* FLASH */}
         <div
-          className={`relative z-10 max-w-[1000px] px-6 text-center transition-all duration-1000 ${
-            phase >= 2
-              ? "translate-y-[-180px] scale-90 opacity-0"
-              : "translate-y-0 scale-100 opacity-100"
+          className={`pointer-events-none absolute inset-0 z-20 ${
+            phase === 2 ? "movie-flash-active" : "opacity-0"
           }`}
         >
-          <div className="mb-7 text-[10px] font-bold tracking-[0.38em] text-black/40">
-            THE AGENTIC ENTERPRISE
-          </div>
+          <div className="movie-white-flash" />
 
-          <h1 className="text-[clamp(48px,9vw,128px)] font-bold leading-[0.82] tracking-[-0.075em]">
-            Your agents
-            <br />
-            are everywhere.
-          </h1>
-
-          <p className="mx-auto mt-8 max-w-xl text-sm leading-7 text-black/50 md:text-base">
-            Autonomous systems are moving through your business.
-            <br />
-            Acting. Deciding. Connecting. Changing things.
-          </p>
-
-          <div className="mt-10 flex items-center justify-center gap-3">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#1300BA]" />
-            <span className="text-[10px] font-bold tracking-[0.25em] text-black/40">
-              UNCONTROLLED INTELLIGENCE DETECTED
-            </span>
-          </div>
-        </div>
-
-        {/* LIGHTNING STRIKE */}
-        <div
-          className={`pointer-events-none absolute inset-0 z-20 transition-opacity duration-300 ${
-            phase === 2 ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          <div className="lightning-flash" />
-          <div className="lightning-beam">
+          <div className="central-strike">
+            <span />
+            <span />
             <span />
             <span />
             <span />
           </div>
         </div>
 
-        {/* ARBYTER CAPTURE */}
+        {/* CAPTURE FIELD */}
         <div
-          className={`pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ${
+          className={`pointer-events-none absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center transition-all duration-[1400ms] ${
             phase >= 2
               ? "scale-100 opacity-100"
-              : "scale-[0.05] opacity-0"
+              : "scale-[0.01] opacity-0"
           }`}
         >
-          <div className="capture-ring ring-one" />
-          <div className="capture-ring ring-two" />
-          <div className="capture-ring ring-three" />
+          <div className="capture-orbit orbit-a" />
+          <div className="capture-orbit orbit-b" />
+          <div className="capture-orbit orbit-c" />
+          <div className="capture-orbit orbit-d" />
 
-          <div className="relative flex h-40 w-40 items-center justify-center rounded-full border border-[#1300BA]/30 bg-white/90 shadow-[0_0_100px_rgba(19,0,186,0.22)] backdrop-blur-xl md:h-52 md:w-52">
-            <Logo className="h-20 w-24 md:h-28 md:w-32" />
+          <div className="capture-core">
+            <div className="capture-core-inner">
+              <div className="capture-energy" />
+            </div>
           </div>
         </div>
 
-        {/* SCENE STATUS */}
-        <div className="absolute bottom-10 left-1/2 z-40 -translate-x-1/2 text-center">
-          <div
-            className={`transition-all duration-700 ${
-              phase >= 2 ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <div className="text-[10px] font-bold tracking-[0.35em] text-[#1300BA]">
-              ARBYTER
-            </div>
-            <div className="mt-2 text-xs font-medium text-black/40">
-              AGENTS CAPTURED · SYSTEM INITIALIZING
-            </div>
+        {/* CAPTURED PARTICLES */}
+        <div
+          className={`pointer-events-none absolute inset-0 z-25 ${
+            phase >= 2 ? "captured-particles-active" : ""
+          }`}
+        >
+          {Array.from({ length: 18 }).map((_, index) => (
+            <span
+              key={index}
+              className={`captured-particle particle-${index + 1}`}
+            />
+          ))}
+        </div>
+
+        {/* LOGO ASSEMBLY */}
+        <div
+          className={`pointer-events-none absolute left-1/2 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2 transition-all duration-[1600ms] ${
+            phase >= 3
+              ? "logo-arrival"
+              : "scale-[0.15] rotate-[-18deg] opacity-0"
+          }`}
+        >
+          <div className="logo-energy-ring ring-main" />
+          <div className="logo-energy-ring ring-secondary" />
+
+          <div className="movie-logo">
+            <Logo className="h-[130px] w-[146px] md:h-[190px] md:w-[214px]" />
           </div>
+        </div>
+
+        {/* CLEAN LOGO HOLD */}
+        <div
+          className={`pointer-events-none absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 transition-all duration-[1200ms] ${
+            phase >= 4
+              ? "scale-100 opacity-100"
+              : "scale-90 opacity-0"
+          }`}
+        >
+          <div className="logo-hold-glow" />
+          <Logo className="relative h-[120px] w-[136px] md:h-[175px] md:w-[198px]" />
         </div>
       </section>
 
@@ -374,11 +386,13 @@ export default function Home() {
             }`}
           >
             <SectionLabel>ARBYTER OS</SectionLabel>
+
             <h2 className="mx-auto max-w-4xl text-[clamp(42px,7vw,92px)] font-bold leading-[0.88] tracking-[-0.07em]">
               From scattered agents
               <br />
               to one governed system.
             </h2>
+
             <p className="mx-auto mt-7 max-w-2xl text-sm leading-7 text-black/50 md:text-base">
               Arbyter doesn't replace your agents.
               <br />
@@ -394,7 +408,6 @@ export default function Home() {
                 : "scale-[0.35] opacity-0"
             }`}
           >
-            {/* orbiting pieces */}
             <div className="fortress-piece piece-1">CONTROL</div>
             <div className="fortress-piece piece-2">AUDIT</div>
             <div className="fortress-piece piece-3">SECURITY</div>
@@ -402,7 +415,6 @@ export default function Home() {
             <div className="fortress-piece piece-5">VISIBILITY</div>
             <div className="fortress-piece piece-6">GOVERNANCE</div>
 
-            {/* fortress */}
             <div className="absolute left-1/2 top-1/2 w-full max-w-[950px] -translate-x-1/2 -translate-y-1/2">
               {/* ROOF */}
               <div className="fortress-roof relative mx-auto flex h-[120px] max-w-[720px] items-center justify-center">
@@ -411,10 +423,12 @@ export default function Home() {
 
                 <div className="relative z-10 flex items-center gap-5 rounded-2xl border border-black/10 bg-white px-8 py-5 shadow-xl">
                   <Logo className="h-12 w-14" />
+
                   <div>
                     <div className="text-[10px] font-bold tracking-[0.3em] text-[#1300BA]">
                       ARBYTER OS
                     </div>
+
                     <div className="mt-1 text-xl font-bold tracking-[-0.04em]">
                       ORCHESTRATE · GOVERN · SECURE
                     </div>
@@ -441,6 +455,7 @@ export default function Home() {
                         <span className="text-[9px] font-bold tracking-[0.25em] text-[#1300BA]">
                           {pillar.eyebrow}
                         </span>
+
                         <span className="text-black/20 transition group-hover:text-[#1300BA]">
                           ↗
                         </span>
@@ -472,6 +487,7 @@ export default function Home() {
                       <div className="text-[9px] font-bold tracking-[0.3em] text-[#8d88ff]">
                         THE FOUNDATION
                       </div>
+
                       <div className="mt-1 text-lg font-bold tracking-[-0.03em] text-white">
                         YOUR AI AGENTS
                       </div>
@@ -481,6 +497,7 @@ export default function Home() {
                       <div className="text-[9px] font-bold tracking-[0.2em] text-white/35">
                         CONNECT
                       </div>
+
                       <div className="mt-1 text-xs text-white/60">
                         ANY AGENT · ANY STACK
                       </div>
@@ -550,9 +567,11 @@ export default function Home() {
                   <span className="text-xs font-bold text-[#1300BA]">
                     {number}
                   </span>
+
                   <span className="text-[11px] font-bold tracking-[0.18em]">
                     {title}
                   </span>
+
                   <span className="text-xs leading-5 text-black/45">
                     {description}
                   </span>
@@ -579,6 +598,7 @@ export default function Home() {
                 <div className="text-[9px] font-bold tracking-[0.25em] text-black/35">
                   ENTERPRISE
                 </div>
+
                 <div className="mt-5 text-2xl font-bold tracking-[-0.05em]">
                   People
                   <br />
@@ -588,21 +608,28 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="hidden text-2xl text-[#1300BA] md:block">→</div>
+              <div className="hidden text-2xl text-[#1300BA] md:block">
+                →
+              </div>
 
               {/* ARBYTER */}
               <div className="relative border-2 border-[#1300BA]/30 bg-white p-8 shadow-[0_25px_70px_rgba(19,0,186,0.12)]">
                 <div className="absolute right-5 top-5 h-2 w-2 rounded-full bg-[#1300BA]" />
+
                 <Logo className="h-16 w-18" />
+
                 <div className="mt-6 text-[9px] font-bold tracking-[0.3em] text-[#1300BA]">
                   GOVERNANCE LAYER
                 </div>
+
                 <div className="mt-2 text-2xl font-bold tracking-[-0.05em]">
                   ARBYTER OS
                 </div>
               </div>
 
-              <div className="hidden text-2xl text-[#1300BA] md:block">→</div>
+              <div className="hidden text-2xl text-[#1300BA] md:block">
+                →
+              </div>
 
               {/* AGENTS */}
               <div className="border border-black/10 bg-white p-7 shadow-sm">
@@ -678,6 +705,7 @@ export default function Home() {
         <div className="mx-auto flex max-w-[1400px] flex-col gap-5 text-xs text-black/40 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <Logo className="h-6 w-7" />
+
             <span className="font-bold tracking-[-0.03em] text-black">
               ARBYTER OS
             </span>
@@ -735,7 +763,10 @@ export default function Home() {
                   <span className="text-[10px] font-bold text-[#1300BA]">
                     0{index + 1}
                   </span>
-                  <span className="text-sm font-medium">{detail}</span>
+
+                  <span className="text-sm font-medium">
+                    {detail}
+                  </span>
                 </div>
               ))}
             </div>
@@ -765,7 +796,11 @@ export default function Home() {
             linear-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px),
             linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px);
           background-size: 44px 44px;
-          mask-image: radial-gradient(circle at center, black 20%, transparent 85%);
+          mask-image: radial-gradient(
+            circle at center,
+            black 15%,
+            transparent 85%
+          );
         }
 
         .blueprint-grid {
@@ -779,256 +814,664 @@ export default function Home() {
           position: absolute;
           inset: 0;
           background-image:
-            linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+            linear-gradient(
+              rgba(255, 255, 255, 0.12) 1px,
+              transparent 1px
+            ),
+            linear-gradient(
+              90deg,
+              rgba(255, 255, 255, 0.12) 1px,
+              transparent 1px
+            );
           background-size: 32px 32px;
         }
 
-        .chaos-agent {
+        /* ========================================================= */
+        /* MOVIE INTRO */
+        /* ========================================================= */
+
+        .movie-agent {
           position: absolute;
-          z-index: 4;
-          animation: agentMove linear infinite;
+          z-index: 5;
           transform-origin: center;
-          transition:
-            opacity 1.2s ease,
-            transform 1.2s cubic-bezier(0.7, 0, 0.2, 1);
+          animation: movieAgentMove linear infinite;
         }
 
-        .agents-captured .chaos-agent {
-          opacity: 0;
-          transform: translate(
-              calc(50vw - var(--agent-x, 0px)),
-              calc(50vh - var(--agent-y, 0px))
-            )
-            scale(0.1);
+        .movie-agent-chaos {
+          animation-name: movieAgentChaos;
+          animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95);
         }
 
-        .agent-core {
+        .movie-agent-body {
           display: flex;
           align-items: center;
           gap: 7px;
-          padding: 7px 10px;
-          border: 1px solid rgba(0, 0, 0, 0.13);
-          background: rgba(255, 255, 255, 0.82);
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
-          backdrop-filter: blur(10px);
-          font-size: 9px;
-          font-weight: 700;
-          letter-spacing: 0.08em;
-          color: rgba(0, 0, 0, 0.5);
+          padding: 7px 11px;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          background: rgba(255, 255, 255, 0.86);
+          box-shadow:
+            0 8px 30px rgba(0, 0, 0, 0.06),
+            0 0 25px rgba(19, 0, 186, 0.035);
+          backdrop-filter: blur(12px);
+          font-size: 8px;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+          color: rgba(0, 0, 0, 0.46);
+          white-space: nowrap;
         }
 
-        .agent-dot {
+        .movie-agent-core {
           display: block;
-          height: 5px;
           width: 5px;
+          height: 5px;
           border-radius: 999px;
           background: #1300ba;
-          box-shadow: 0 0 10px rgba(19, 0, 186, 0.5);
+          box-shadow:
+            0 0 8px rgba(19, 0, 186, 0.8),
+            0 0 18px rgba(19, 0, 186, 0.35);
         }
 
-        .agent-trail {
+        .movie-agent-trail {
           position: absolute;
-          left: 10%;
-          right: 10%;
+          left: -80%;
           top: 50%;
-          z-index: -1;
-          height: 1px;
-          background: linear-gradient(
-            90deg,
-            rgba(19, 0, 186, 0),
-            rgba(19, 0, 186, 0.25),
-            rgba(19, 0, 186, 0)
-          );
-          transform: translateY(-50%);
-        }
-
-        @keyframes agentMove {
-          0% {
-            transform: translate(0, 0) rotate(0deg);
-          }
-          25% {
-            transform: translate(80px, -45px) rotate(7deg);
-          }
-          50% {
-            transform: translate(-65px, 70px) rotate(-8deg);
-          }
-          75% {
-            transform: translate(55px, 35px) rotate(5deg);
-          }
-          100% {
-            transform: translate(0, 0) rotate(0deg);
-          }
-        }
-
-        .chaos-line {
-          position: absolute;
+          width: 180%;
           height: 1px;
           background: linear-gradient(
             90deg,
             transparent,
-            rgba(19, 0, 186, 0.22),
+            rgba(19, 0, 186, 0.18),
             transparent
           );
-          transform-origin: center;
-          animation: chaosLine 4s ease-in-out infinite;
+          transform: translateY(-50%);
+          z-index: -1;
         }
 
-        .line-a {
-          left: 3%;
-          top: 35%;
-          width: 45%;
+        @keyframes movieAgentMove {
+          0% {
+            transform: translate3d(0, 0, 0) rotate(0deg);
+          }
+
+          25% {
+            transform: translate3d(55px, -35px, 0) rotate(5deg);
+          }
+
+          50% {
+            transform: translate3d(-45px, 55px, 0) rotate(-6deg);
+          }
+
+          75% {
+            transform: translate3d(65px, 20px, 0) rotate(4deg);
+          }
+
+          100% {
+            transform: translate3d(0, 0, 0) rotate(0deg);
+          }
+        }
+
+        @keyframes movieAgentChaos {
+          0% {
+            transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+          }
+
+          20% {
+            transform: translate3d(
+                calc(50px + 2vw),
+                calc(-45px - 2vh),
+                0
+              )
+              rotate(13deg)
+              scale(1.03);
+          }
+
+          40% {
+            transform: translate3d(
+                calc(-65px - 2vw),
+                calc(65px + 2vh),
+                0
+              )
+              rotate(-16deg)
+              scale(0.96);
+          }
+
+          60% {
+            transform: translate3d(
+                calc(75px + 3vw),
+                calc(20px + 2vh),
+                0
+              )
+              rotate(10deg)
+              scale(1.05);
+          }
+
+          80% {
+            transform: translate3d(
+                calc(-45px - 2vw),
+                calc(-55px - 2vh),
+                0
+              )
+              rotate(-12deg)
+              scale(0.98);
+          }
+
+          100% {
+            transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+          }
+        }
+
+        .movie-motion {
+          position: absolute;
+          height: 1px;
+          transform-origin: center;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(19, 0, 186, 0.2),
+            transparent
+          );
+          animation: motionSweep 2.7s ease-in-out infinite;
+        }
+
+        .motion-1 {
+          left: -5%;
+          top: 22%;
+          width: 42%;
           transform: rotate(17deg);
         }
 
-        .line-b {
-          right: 0;
-          top: 44%;
+        .motion-2 {
+          right: -3%;
+          top: 29%;
           width: 40%;
-          transform: rotate(-23deg);
-          animation-delay: -1s;
+          transform: rotate(-21deg);
+          animation-delay: -0.8s;
         }
 
-        .line-c {
-          left: 8%;
-          top: 70%;
-          width: 35%;
-          transform: rotate(-12deg);
+        .motion-3 {
+          left: 4%;
+          top: 57%;
+          width: 38%;
+          transform: rotate(-13deg);
+          animation-delay: -1.4s;
+        }
+
+        .motion-4 {
+          right: 0;
+          top: 64%;
+          width: 43%;
+          transform: rotate(14deg);
           animation-delay: -2s;
         }
 
-        .line-d {
-          right: 5%;
-          top: 67%;
-          width: 42%;
-          transform: rotate(14deg);
-          animation-delay: -3s;
+        .motion-5 {
+          left: 25%;
+          top: 14%;
+          width: 24%;
+          transform: rotate(-7deg);
+          animation-delay: -0.4s;
         }
 
-        @keyframes chaosLine {
+        .motion-6 {
+          right: 22%;
+          bottom: 17%;
+          width: 26%;
+          transform: rotate(8deg);
+          animation-delay: -1.8s;
+        }
+
+        @keyframes motionSweep {
           0%,
           100% {
-            opacity: 0.25;
-            transform: scaleX(0.7) rotate(15deg);
+            opacity: 0.12;
+            transform: scaleX(0.65) rotate(15deg);
           }
+
           50% {
-            opacity: 0.7;
-            transform: scaleX(1.1) rotate(-10deg);
+            opacity: 0.65;
+            transform: scaleX(1.15) rotate(-12deg);
           }
         }
 
-        .lightning-flash {
+        /* FLASH */
+
+        .movie-flash-active {
+          animation: flashContainer 0.8s ease-out forwards;
+        }
+
+        .movie-white-flash {
           position: absolute;
           inset: 0;
           background: white;
-          animation: flash 0.65s ease-out forwards;
+          opacity: 0;
+          animation: whiteFlash 0.8s ease-out forwards;
         }
 
-        @keyframes flash {
+        @keyframes flashContainer {
+          0% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 1;
+          }
+        }
+
+        @keyframes whiteFlash {
           0% {
             opacity: 0;
           }
-          20% {
+
+          12% {
             opacity: 0.95;
           }
-          30% {
-            opacity: 0.1;
+
+          24% {
+            opacity: 0.15;
           }
-          45% {
-            opacity: 0.75;
+
+          38% {
+            opacity: 0.9;
           }
+
+          58% {
+            opacity: 0.05;
+          }
+
           100% {
             opacity: 0;
           }
         }
 
-        .lightning-beam {
+        .central-strike {
           position: absolute;
           left: 50%;
-          top: -10%;
-          height: 120%;
-          width: 6px;
-          transform: translateX(-50%) rotate(7deg);
-          filter: drop-shadow(0 0 14px rgba(19, 0, 186, 0.9));
+          top: -15%;
+          width: 180px;
+          height: 130%;
+          transform: translateX(-50%);
+          filter: drop-shadow(0 0 12px rgba(19, 0, 186, 0.9));
         }
 
-        .lightning-beam span {
+        .central-strike span {
           position: absolute;
           left: 50%;
+          top: 0;
           width: 3px;
+          height: 100%;
           background: #1300ba;
-          transform-origin: top;
-          animation: strike 0.6s ease-out forwards;
+          transform-origin: center;
+          animation: lightningStrike 0.65s cubic-bezier(0.2, 0.8, 0.2, 1)
+            forwards;
         }
 
-        .lightning-beam span:nth-child(1) {
-          height: 42%;
-          transform: translateX(-50%) rotate(4deg);
+        .central-strike span:nth-child(1) {
+          transform: translateX(-50%) rotate(2deg);
         }
 
-        .lightning-beam span:nth-child(2) {
-          height: 25%;
-          top: 32%;
-          transform: translateX(-50%) rotate(-8deg);
+        .central-strike span:nth-child(2) {
+          transform: translateX(-50%) rotate(9deg);
+          width: 2px;
         }
 
-        .lightning-beam span:nth-child(3) {
-          height: 25%;
-          top: 57%;
-          transform: translateX(-50%) rotate(5deg);
+        .central-strike span:nth-child(3) {
+          transform: translateX(-50%) rotate(-7deg);
+          width: 4px;
         }
 
-        @keyframes strike {
-          from {
+        .central-strike span:nth-child(4) {
+          transform: translateX(-50%) rotate(17deg);
+          width: 1px;
+        }
+
+        .central-strike span:nth-child(5) {
+          transform: translateX(-50%) rotate(-16deg);
+          width: 1px;
+        }
+
+        @keyframes lightningStrike {
+          0% {
             opacity: 0;
-            transform: translateX(-50%) scaleY(0);
+            clip-path: inset(0 0 100% 0);
           }
-          to {
+
+          25% {
             opacity: 1;
-            transform: translateX(-50%) scaleY(1);
+          }
+
+          100% {
+            opacity: 0.85;
+            clip-path: inset(0 0 0 0);
           }
         }
 
-        .capture-ring {
+        /* CAPTURE */
+
+        .capture-orbit {
           position: absolute;
           left: 50%;
           top: 50%;
           border: 1px solid rgba(19, 0, 186, 0.25);
           border-radius: 999px;
           transform: translate(-50%, -50%);
-          animation: capturePulse 2.2s ease-out infinite;
+          animation: captureOrbit 2.2s ease-out infinite;
         }
 
-        .ring-one {
-          height: 240px;
-          width: 240px;
+        .orbit-a {
+          width: 180px;
+          height: 180px;
         }
 
-        .ring-two {
-          height: 340px;
-          width: 340px;
+        .orbit-b {
+          width: 290px;
+          height: 290px;
+          animation-delay: 0.15s;
+        }
+
+        .orbit-c {
+          width: 430px;
+          height: 430px;
           animation-delay: 0.3s;
         }
 
-        .ring-three {
-          height: 460px;
-          width: 460px;
-          animation-delay: 0.6s;
+        .orbit-d {
+          width: 590px;
+          height: 590px;
+          animation-delay: 0.45s;
         }
 
-        @keyframes capturePulse {
+        @keyframes captureOrbit {
           0% {
             opacity: 0;
-            transform: translate(-50%, -50%) scale(0.7);
+            transform: translate(-50%, -50%) scale(0.55);
           }
-          30% {
-            opacity: 1;
+
+          20% {
+            opacity: 0.9;
           }
+
           100% {
             opacity: 0;
+            transform: translate(-50%, -50%) scale(1.12);
+          }
+        }
+
+        .capture-core {
+          position: relative;
+          display: flex;
+          height: 170px;
+          width: 170px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(19, 0, 186, 0.3);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.82);
+          box-shadow:
+            0 0 60px rgba(19, 0, 186, 0.15),
+            0 0 140px rgba(19, 0, 186, 0.08);
+          backdrop-filter: blur(20px);
+        }
+
+        .capture-core-inner {
+          position: relative;
+          height: 65px;
+          width: 65px;
+          border-radius: 999px;
+          background: #1300ba;
+          box-shadow:
+            0 0 25px rgba(19, 0, 186, 0.8),
+            0 0 70px rgba(19, 0, 186, 0.4);
+          animation: corePulse 1.2s ease-in-out infinite;
+        }
+
+        .capture-energy {
+          position: absolute;
+          inset: 10px;
+          border-radius: 999px;
+          background: white;
+          box-shadow: 0 0 20px white;
+        }
+
+        @keyframes corePulse {
+          0%,
+          100% {
+            transform: scale(0.85);
+          }
+
+          50% {
+            transform: scale(1.1);
+          }
+        }
+
+        /* PARTICLES */
+
+        .captured-particle {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 5px;
+          height: 5px;
+          border-radius: 999px;
+          background: #1300ba;
+          opacity: 0;
+          box-shadow: 0 0 12px rgba(19, 0, 186, 0.75);
+        }
+
+        .captured-particles-active .captured-particle {
+          animation: particleCapture 1.4s cubic-bezier(0.2, 0.85, 0.25, 1)
+            forwards;
+        }
+
+        .particle-1 {
+          --start-x: -42vw;
+          --start-y: -25vh;
+        }
+
+        .particle-2 {
+          --start-x: 38vw;
+          --start-y: -30vh;
+        }
+
+        .particle-3 {
+          --start-x: -35vw;
+          --start-y: 25vh;
+        }
+
+        .particle-4 {
+          --start-x: 42vw;
+          --start-y: 30vh;
+        }
+
+        .particle-5 {
+          --start-x: -25vw;
+          --start-y: -35vh;
+        }
+
+        .particle-6 {
+          --start-x: 25vw;
+          --start-y: 35vh;
+        }
+
+        .particle-7 {
+          --start-x: -45vw;
+          --start-y: 5vh;
+        }
+
+        .particle-8 {
+          --start-x: 45vw;
+          --start-y: -5vh;
+        }
+
+        .particle-9 {
+          --start-x: -15vw;
+          --start-y: 40vh;
+        }
+
+        .particle-10 {
+          --start-x: 15vw;
+          --start-y: -40vh;
+        }
+
+        .particle-11 {
+          --start-x: -40vw;
+          --start-y: -5vh;
+        }
+
+        .particle-12 {
+          --start-x: 40vw;
+          --start-y: 5vh;
+        }
+
+        .particle-13 {
+          --start-x: -20vw;
+          --start-y: -28vh;
+        }
+
+        .particle-14 {
+          --start-x: 20vw;
+          --start-y: 28vh;
+        }
+
+        .particle-15 {
+          --start-x: -32vw;
+          --start-y: 12vh;
+        }
+
+        .particle-16 {
+          --start-x: 32vw;
+          --start-y: -12vh;
+        }
+
+        .particle-17 {
+          --start-x: -8vw;
+          --start-y: 32vh;
+        }
+
+        .particle-18 {
+          --start-x: 8vw;
+          --start-y: -32vh;
+        }
+
+        @keyframes particleCapture {
+          0% {
+            opacity: 0;
+            transform: translate(var(--start-x), var(--start-y)) scale(1.4);
+          }
+
+          15% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform: translate(0, 0) scale(0.1);
+          }
+        }
+
+        /* LOGO */
+
+        .logo-energy-ring {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          border: 1px solid rgba(19, 0, 186, 0.22);
+          border-radius: 999px;
+          transform: translate(-50%, -50%);
+          animation: logoRing 2.2s ease-out infinite;
+        }
+
+        .ring-main {
+          width: 260px;
+          height: 260px;
+        }
+
+        .ring-secondary {
+          width: 380px;
+          height: 380px;
+          animation-delay: 0.25s;
+        }
+
+        @keyframes logoRing {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.7) rotate(0deg);
+          }
+
+          25% {
+            opacity: 0.8;
+          }
+
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1.12) rotate(90deg);
+          }
+        }
+
+        .movie-logo {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          animation: logoMaterialize 1.6s cubic-bezier(0.16, 1, 0.3, 1)
+            forwards;
+        }
+
+        @keyframes logoMaterialize {
+          0% {
+            opacity: 0;
+            filter: blur(18px);
+            transform: scale(0.25) rotate(-15deg);
+          }
+
+          45% {
+            opacity: 1;
+            filter: blur(3px);
+          }
+
+          75% {
+            filter: blur(0);
+          }
+
+          100% {
+            opacity: 1;
+            filter: blur(0);
+            transform: scale(1) rotate(0deg);
+          }
+        }
+
+        .logo-arrival {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1) rotate(0deg);
+        }
+
+        .logo-hold-glow {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 230px;
+          height: 230px;
+          transform: translate(-50%, -50%);
+          border-radius: 999px;
+          background: rgba(19, 0, 186, 0.05);
+          filter: blur(35px);
+          animation: holdGlow 2.5s ease-in-out infinite;
+        }
+
+        @keyframes holdGlow {
+          0%,
+          100% {
+            opacity: 0.5;
+            transform: translate(-50%, -50%) scale(0.9);
+          }
+
+          50% {
+            opacity: 1;
             transform: translate(-50%, -50%) scale(1.15);
           }
         }
+
+        /* ========================================================= */
+        /* FORTRESS */
+        /* ========================================================= */
 
         .fortress-roof {
           clip-path: polygon(
@@ -1072,8 +1515,8 @@ export default function Home() {
           font-weight: 800;
           letter-spacing: 0.18em;
           color: rgba(19, 0, 186, 0.7);
-          animation: pieceAssemble 1.8s cubic-bezier(0.2, 0.8, 0.2, 1)
-            forwards;
+          animation: pieceAssemble 1.8s
+            cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
         }
 
         .piece-1 {
@@ -1123,9 +1566,11 @@ export default function Home() {
             opacity: 0;
             transform: translate(var(--tx), var(--ty)) rotate(25deg);
           }
+
           60% {
             opacity: 1;
           }
+
           to {
             opacity: 0.25;
             transform: translate(0, 0) rotate(0);
@@ -1137,9 +1582,42 @@ export default function Home() {
             display: none;
           }
 
-          .ring-three {
-            height: 340px;
+          .orbit-d {
             width: 340px;
+            height: 340px;
+          }
+
+          .ring-secondary {
+            width: 300px;
+            height: 300px;
+          }
+
+          .capture-core {
+            height: 135px;
+            width: 135px;
+          }
+
+          .movie-agent-body {
+            padding: 6px 8px;
+            font-size: 7px;
+          }
+
+          .movie-agent-trail {
+            left: -55%;
+            width: 150%;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .movie-agent,
+          .movie-motion,
+          .capture-orbit,
+          .captured-particle,
+          .movie-logo,
+          .logo-energy-ring,
+          .logo-hold-glow,
+          .central-strike span {
+            animation: none !important;
           }
         }
       `}</style>
