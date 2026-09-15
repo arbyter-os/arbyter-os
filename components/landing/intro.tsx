@@ -1,90 +1,84 @@
-'use client'
+"use client";
 
-import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
-export function Intro() {
-  const [visible, setVisible] = useState(true)
+type IntroProps = {
+  onComplete?: () => void;
+};
+
+export default function Intro({ onComplete }: IntroProps) {
+  const [visible, setVisible] = useState(true);
+  const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
-    const seen = localStorage.getItem('arbyter-intro-seen')
+    const exitTimer = window.setTimeout(() => {
+      setExiting(true);
+    }, 1800);
 
-    if (seen) {
-      setVisible(false)
-      return
-    }
+    const completeTimer = window.setTimeout(() => {
+      setVisible(false);
+      onComplete?.();
+    }, 2300);
 
-    const timer = setTimeout(() => {
-      localStorage.setItem('arbyter-intro-seen', 'true')
-      setVisible(false)
-    }, 2800)
+    return () => {
+      window.clearTimeout(exitTimer);
+      window.clearTimeout(completeTimer);
+    };
+  }, [onComplete]);
 
-    return () => clearTimeout(timer)
-  }, [])
-
-  if (!visible) return null
+  if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white">
-      <div className="flex flex-col items-center text-center">
-        <div className="animate-[introLogo_0.8s_ease-out_forwards] opacity-0">
-          <Image
-            src="/arbyter-logo.svg"
-            alt="Arbyter OS"
-            width={72}
-            height={72}
-            priority
-            className="h-[72px] w-[72px] object-contain"
+    <div
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-500 ${
+        exiting ? "opacity-0" : "opacity-100"
+      }`}
+    >
+      <div className="flex flex-col items-center">
+        {/* Arbyter mark */}
+        <div
+          className={`relative flex h-20 w-20 items-center justify-center transition-all duration-700 ${
+            exiting
+              ? "scale-95 opacity-0"
+              : "scale-100 opacity-100"
+          }`}
+        >
+          <span
+            className="font-sans text-[72px] font-black leading-none tracking-[-0.12em] text-black"
+            aria-hidden="true"
+          >
+            A
+          </span>
+
+          {/* Blue control point */}
+          <span
+            className="absolute right-[3px] top-[8px] h-3 w-3 rounded-full bg-[#1677ff]"
+            aria-hidden="true"
           />
         </div>
 
-        <div className="mt-6 overflow-hidden">
-          <div className="animate-[introText_0.7s_0.5s_ease-out_forwards] translate-y-full opacity-0 text-2xl font-semibold tracking-[-0.04em]">
-            ARBYTER OS
-          </div>
+        {/* Wordmark */}
+        <div
+          className={`mt-5 text-[13px] font-medium uppercase tracking-[0.42em] text-black transition-all duration-700 ${
+            exiting
+              ? "translate-y-2 opacity-0"
+              : "translate-y-0 opacity-100"
+          }`}
+        >
+          ARBYTER
         </div>
 
-        <div className="mt-2 overflow-hidden">
-          <div className="animate-[introTagline_0.7s_1s_ease-out_forwards] translate-y-full opacity-0 text-[10px] font-medium uppercase tracking-[0.3em] text-neutral-400">
-            Orchestrate · Govern · Secure
-          </div>
+        {/* Tagline */}
+        <div
+          className={`mt-3 text-[10px] font-medium uppercase tracking-[0.3em] text-neutral-400 transition-all duration-700 ${
+            exiting
+              ? "translate-y-2 opacity-0"
+              : "translate-y-0 opacity-100"
+          }`}
+        >
+          ORCHESTRATE · GOVERN · SECURE
         </div>
       </div>
-
-      <style jsx global>{`
-        @keyframes introLogo {
-          0% {
-            opacity: 0;
-            transform: scale(0.92);
-          }
-          100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        @keyframes introText {
-          0% {
-            opacity: 0;
-            transform: translateY(100%);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes introTagline {
-          0% {
-            opacity: 0;
-            transform: translateY(100%);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
-  )
+  );
 }
