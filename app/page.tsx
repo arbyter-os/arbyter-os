@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 
 const BLUE = "#1300BA"
@@ -162,25 +162,204 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export default function Home() {
-  const [phase, setPhase] = useState(0)
+  const [introDone, setIntroDone] = useState(false)
+  const [introPhase, setIntroPhase] = useState(0)
   const [selectedPillar, setSelectedPillar] = useState<Pillar | null>(null)
   const [scrolled, setScrolled] = useState(false)
+  const [soundEnabled, setSoundEnabled] = useState(false)
+
+  const audioContextRef = useRef<AudioContext | null>(null)
+
+  /*
+   * ------------------------------------------------------------
+   * CINEMATIC SOUND ENGINE
+   * ------------------------------------------------------------
+   */
+
+  const startAudio = () => {
+    if (typeof window === "undefined") return
+
+    const AudioCtx =
+      window.AudioContext ||
+      (window as typeof window & {
+        webkitAudioContext?: typeof AudioContext
+      }).webkitAudioContext
+
+    if (!AudioCtx) return
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioCtx()
+    }
+
+    if (audioContextRef.current.state === "suspended") {
+      audioContextRef.current.resume()
+    }
+
+    setSoundEnabled(true)
+  }
+
+  const playSound = (type: "whoosh" | "capture" | "assemble" | "impact") => {
+    const ctx = audioContextRef.current
+
+    if (!ctx || ctx.state !== "running") return
+
+    const now = ctx.currentTime
+
+    if (type === "whoosh") {
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+      const filter = ctx.createBiquadFilter()
+
+      oscillator.type = "sawtooth"
+      oscillator.frequency.setValueAtTime(120, now)
+      oscillator.frequency.exponentialRampToValueAtTime(900, now + 0.45)
+
+      filter.type = "lowpass"
+      filter.frequency.setValueAtTime(900, now)
+      filter.frequency.exponentialRampToValueAtTime(4200, now + 0.4)
+
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.08, now + 0.04)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.48)
+
+      oscillator.connect(filter)
+      filter.connect(gain)
+      gain.connect(ctx.destination)
+
+      oscillator.start(now)
+      oscillator.stop(now + 0.5)
+    }
+
+    if (type === "capture") {
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      oscillator.type = "triangle"
+      oscillator.frequency.setValueAtTime(110, now)
+      oscillator.frequency.exponentialRampToValueAtTime(48, now + 0.22)
+
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.025)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28)
+
+      oscillator.connect(gain)
+      gain.connect(ctx.destination)
+
+      oscillator.start(now)
+      oscillator.stop(now + 0.3)
+    }
+
+    if (type === "impact") {
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      oscillator.type = "square"
+      oscillator.frequency.setValueAtTime(70, now)
+      oscillator.frequency.exponentialRampToValueAtTime(25, now + 0.35)
+
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.015)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4)
+
+      oscillator.connect(gain)
+      gain.connect(ctx.destination)
+
+      oscillator.start(now)
+      oscillator.stop(now + 0.42)
+    }
+
+    if (type === "assemble") {
+      const oscillator = ctx.createOscillator()
+      const gain = ctx.createGain()
+
+      oscillator.type = "sine"
+      oscillator.frequency.setValueAtTime(180, now)
+      oscillator.frequency.exponentialRampToValueAtTime(900, now + 0.65)
+
+      gain.gain.setValueAtTime(0.0001, now)
+      gain.gain.exponentialRampToValueAtTime(0.1, now + 0.08)
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8)
+
+      oscillator.connect(gain)
+      gain.connect(ctx.destination)
+
+      oscillator.start(now)
+      oscillator.stop(now + 0.85)
+    }
+  }
+
+  /*
+   * ------------------------------------------------------------
+   * INTRO SEQUENCE
+   * ------------------------------------------------------------
+   *
+   * 0    - 1.8s  : agents appear
+   * 1.8  - 4.2s  : POV chaos / chase
+   * 4.2  - 7.8s  : Arbyter lightning hunts agents
+   * 7.8  - 9.8s  : captured energy forms the A
+   * 9.8  - 12.8s : logo assembles
+   * 12.8 - 14s   : clean logo hold
+   */
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      setPhase((current) => {
-        if (current >= 4) return current
-        return current + 1
-      })
-    }, 2600)
+    const sequence = [
+      window.setTimeout(() => {
+        setIntroPhase(1)
+        playSound("whoosh")
+      }, 1800),
 
-    return () => window.clearInterval(timer)
+      window.setTimeout(() => {
+        setIntroPhase(2)
+        playSound("whoosh")
+      }, 4200),
+
+      window.setTimeout(() => {
+        setIntroPhase(3)
+        playSound("capture")
+      }, 7800),
+
+      window.setTimeout(() => {
+        setIntroPhase(4)
+        playSound("assemble")
+      }, 9800),
+
+      window.setTimeout(() => {
+        setIntroPhase(5)
+        playSound("impact")
+      }, 11600),
+
+      window.setTimeout(() => {
+        setIntroPhase(6)
+      }, 12800),
+
+      window.setTimeout(() => {
+        setIntroDone(true)
+      }, 14300),
+    ]
+
+    return () => {
+      sequence.forEach((timer) => window.clearTimeout(timer))
+    }
   }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30)
+
     window.addEventListener("scroll", onScroll)
+
     return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      startAudio()
+    }
+
+    window.addEventListener("pointerdown", unlockAudio, { once: true })
+
+    return () => {
+      window.removeEventListener("pointerdown", unlockAudio)
+    }
   }, [])
 
   const shuffledAgents = useMemo(
@@ -197,7 +376,165 @@ export default function Home() {
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#f8f9fc] text-[#09090b] selection:bg-[#1300BA] selection:text-white">
+      {/* ========================================================= */}
+      {/* FULL SCREEN CINEMATIC INTRO */}
+      {/* ========================================================= */}
+
+      {!introDone && (
+        <section
+          className={`cinematic-intro fixed inset-0 z-[200] overflow-hidden bg-[#f8f9fc] ${
+            introPhase >= 6 ? "intro-finished" : ""
+          }`}
+          onPointerDown={startAudio}
+        >
+          {/* CAMERA GRID */}
+          <div className="absolute inset-0 cinematic-grid" />
+
+          {/* MOVING LIGHT */}
+          <div
+            className={`camera-light ${
+              introPhase >= 2 ? "camera-light-fast" : ""
+            }`}
+          />
+
+          {/* AGENTS */}
+          <div
+            className={`intro-agents ${
+              introPhase >= 2 ? "intro-agents-chaos" : ""
+            } ${introPhase >= 3 ? "intro-agents-captured" : ""}`}
+          >
+            {shuffledAgents.map((agent, index) => (
+              <div
+                key={agent.name}
+                className={`intro-agent agent-${index + 1}`}
+                style={{
+                  left: agent.x,
+                  top: agent.y,
+                  animationDelay: agent.delay,
+                  animationDuration: agent.duration,
+                }}
+              >
+                <div className="intro-agent-core">
+                  <span className="intro-agent-dot" />
+                  <span>{agent.name}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* FAST CAMERA MOTION */}
+          <div
+            className={`speed-lines ${
+              introPhase >= 2 ? "speed-lines-active" : ""
+            }`}
+          >
+            {Array.from({ length: 18 }).map((_, index) => (
+              <span
+                key={index}
+                style={{
+                  ["--i" as string]: index,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* ARBYTER HUNTER */}
+          <div
+            className={`arb-hunter ${
+              introPhase >= 2 ? "arb-hunter-active" : ""
+            } ${introPhase >= 3 ? "arb-hunter-finished" : ""}`}
+          >
+            <div className="hunter-core" />
+
+            <div className="hunter-tail tail-1" />
+            <div className="hunter-tail tail-2" />
+            <div className="hunter-tail tail-3" />
+
+            <div className="hunter-glow" />
+          </div>
+
+          {/* CAPTURE BURSTS */}
+          <div
+            className={`capture-field ${
+              introPhase >= 3 ? "capture-field-active" : ""
+            }`}
+          >
+            {Array.from({ length: 14 }).map((_, index) => (
+              <span
+                key={index}
+                className={`capture-particle particle-${index + 1}`}
+              />
+            ))}
+          </div>
+
+          {/* ENERGY LINE */}
+          <div
+            className={`energy-line ${
+              introPhase >= 3 ? "energy-line-active" : ""
+            }`}
+          >
+            <span />
+          </div>
+
+          {/* TRANSFORMER-STYLE LOGO ASSEMBLY */}
+          <div
+            className={`transform-logo ${
+              introPhase >= 4 ? "transform-logo-active" : ""
+            } ${introPhase >= 5 ? "transform-logo-final" : ""}`}
+          >
+            <div className="logo-energy-ring ring-a" />
+            <div className="logo-energy-ring ring-b" />
+
+            <div className="logo-piece logo-piece-left">
+              <div />
+            </div>
+
+            <div className="logo-piece logo-piece-right">
+              <div />
+            </div>
+
+            <div className="logo-piece logo-piece-bottom">
+              <div />
+            </div>
+
+            <div className="logo-piece logo-piece-inner">
+              <div />
+            </div>
+
+            <div className="logo-dot-piece" />
+
+            <Logo className="assembled-logo" />
+          </div>
+
+          {/* FINAL LIGHT */}
+          <div
+            className={`final-logo-light ${
+              introPhase >= 5 ? "final-logo-light-active" : ""
+            }`}
+          />
+
+          {/* AUDIO BUTTON */}
+          <button
+            onClick={(event) => {
+              event.stopPropagation()
+              startAudio()
+            }}
+            className="absolute bottom-6 right-6 z-[30] flex items-center gap-2 rounded-full border border-black/10 bg-white/70 px-4 py-2 text-[9px] font-bold tracking-[0.2em] text-black/45 backdrop-blur-xl"
+          >
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${
+                soundEnabled ? "bg-[#1300BA]" : "bg-black/20"
+              }`}
+            />
+            {soundEnabled ? "SOUND ON" : "ENABLE SOUND"}
+          </button>
+        </section>
+      )}
+
+      {/* ========================================================= */}
       {/* NAV */}
+      {/* ========================================================= */}
+
       <nav
         className={`fixed left-0 right-0 top-0 z-50 transition-all duration-500 ${
           scrolled
@@ -208,6 +545,7 @@ export default function Home() {
         <div className="mx-auto flex h-[76px] max-w-[1400px] items-center justify-between px-5 md:px-8">
           <a href="#" className="flex items-center gap-3">
             <Logo className="h-8 w-9" />
+
             <span className="text-[17px] font-bold tracking-[-0.04em]">
               ARBYTER
             </span>
@@ -217,9 +555,11 @@ export default function Home() {
             <a href="#system" className="transition hover:text-black">
               SYSTEM
             </a>
+
             <a href="#capabilities" className="transition hover:text-black">
               CAPABILITIES
             </a>
+
             <a href="#contact" className="transition hover:text-black">
               CONTACT
             </a>
@@ -235,156 +575,14 @@ export default function Home() {
       </nav>
 
       {/* ========================================================= */}
-      {/* LAYER 01 — MOVIE INTRO */}
-      {/* ========================================================= */}
-      <section className="relative flex min-h-screen items-center justify-center overflow-hidden border-b border-black/10 bg-[#f8f9fc]">
-        <div className="absolute inset-0 hero-grid opacity-60" />
-
-        <div
-          className={`absolute left-1/2 top-1/2 h-[650px] w-[650px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1300BA]/[0.025] blur-3xl transition-all duration-[1800ms] ${
-            phase >= 2 ? "scale-[1.7] bg-[#1300BA]/[0.08]" : ""
-          }`}
-        />
-
-        {/* CHAOS FIELD */}
-        <div
-          className={`absolute inset-0 transition-all duration-[1600ms] ${
-            phase >= 2
-              ? "scale-[0.75] opacity-0"
-              : phase === 1
-                ? "scale-[1.08]"
-                : "scale-100"
-          }`}
-        >
-          {shuffledAgents.map((agent, index) => (
-            <div
-              key={agent.name}
-              className={`movie-agent ${
-                phase === 1 ? "movie-agent-chaos" : ""
-              }`}
-              style={{
-                left: agent.x,
-                top: agent.y,
-                animationDelay: agent.delay,
-                animationDuration: agent.duration,
-              }}
-            >
-              <div className="movie-agent-body">
-                <span className="movie-agent-core" />
-                <span className="movie-agent-label">{agent.name}</span>
-              </div>
-
-              <div className="movie-agent-trail" />
-            </div>
-          ))}
-        </div>
-
-        {/* CHAOS MOTION */}
-        <div
-          className={`pointer-events-none absolute inset-0 transition-all duration-1000 ${
-            phase >= 2 ? "opacity-0 scale-125" : "opacity-100"
-          }`}
-        >
-          <div className="movie-motion motion-1" />
-          <div className="movie-motion motion-2" />
-          <div className="movie-motion motion-3" />
-          <div className="movie-motion motion-4" />
-          <div className="movie-motion motion-5" />
-          <div className="movie-motion motion-6" />
-        </div>
-
-        {/* FLASH */}
-        <div
-          className={`pointer-events-none absolute inset-0 z-20 ${
-            phase === 2 ? "movie-flash-active" : "opacity-0"
-          }`}
-        >
-          <div className="movie-white-flash" />
-
-          <div className="central-strike">
-            <span />
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-        </div>
-
-        {/* CAPTURE FIELD */}
-        <div
-          className={`pointer-events-none absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center transition-all duration-[1400ms] ${
-            phase >= 2
-              ? "scale-100 opacity-100"
-              : "scale-[0.01] opacity-0"
-          }`}
-        >
-          <div className="capture-orbit orbit-a" />
-          <div className="capture-orbit orbit-b" />
-          <div className="capture-orbit orbit-c" />
-          <div className="capture-orbit orbit-d" />
-
-          <div className="capture-core">
-            <div className="capture-core-inner">
-              <div className="capture-energy" />
-            </div>
-          </div>
-        </div>
-
-        {/* CAPTURED PARTICLES */}
-        <div
-          className={`pointer-events-none absolute inset-0 z-25 ${
-            phase >= 2 ? "captured-particles-active" : ""
-          }`}
-        >
-          {Array.from({ length: 18 }).map((_, index) => (
-            <span
-              key={index}
-              className={`captured-particle particle-${index + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* LOGO ASSEMBLY */}
-        <div
-          className={`pointer-events-none absolute left-1/2 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2 transition-all duration-[1600ms] ${
-            phase >= 3
-              ? "logo-arrival"
-              : "scale-[0.15] rotate-[-18deg] opacity-0"
-          }`}
-        >
-          <div className="logo-energy-ring ring-main" />
-          <div className="logo-energy-ring ring-secondary" />
-
-          <div className="movie-logo">
-            <Logo className="h-[130px] w-[146px] md:h-[190px] md:w-[214px]" />
-          </div>
-        </div>
-
-        {/* CLEAN LOGO HOLD */}
-        <div
-          className={`pointer-events-none absolute left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2 transition-all duration-[1200ms] ${
-            phase >= 4
-              ? "scale-100 opacity-100"
-              : "scale-90 opacity-0"
-          }`}
-        >
-          <div className="logo-hold-glow" />
-          <Logo className="relative h-[120px] w-[136px] md:h-[175px] md:w-[198px]" />
-        </div>
-      </section>
-
-      {/* ========================================================= */}
       {/* LAYER 02 — THE REASSEMBLY */}
       {/* ========================================================= */}
+
       <section className="relative flex min-h-[850px] items-center justify-center overflow-hidden bg-white">
         <div className="absolute inset-0 blueprint-grid" />
 
         <div className="relative z-10 w-full max-w-[1250px] px-5 md:px-8">
-          <div
-            className={`text-center transition-all duration-1000 ${
-              phase >= 3 ? "opacity-100" : "opacity-0"
-            }`}
-          >
+          <div className="text-center">
             <SectionLabel>ARBYTER OS</SectionLabel>
 
             <h2 className="mx-auto max-w-4xl text-[clamp(42px,7vw,92px)] font-bold leading-[0.88] tracking-[-0.07em]">
@@ -401,13 +599,8 @@ export default function Home() {
           </div>
 
           {/* ASSEMBLING FORTRESS */}
-          <div
-            className={`relative mx-auto mt-14 h-[500px] max-w-[1050px] transition-all duration-[1600ms] ${
-              phase >= 3
-                ? "scale-100 opacity-100"
-                : "scale-[0.35] opacity-0"
-            }`}
-          >
+
+          <div className="relative mx-auto mt-14 h-[500px] max-w-[1050px]">
             <div className="fortress-piece piece-1">CONTROL</div>
             <div className="fortress-piece piece-2">AUDIT</div>
             <div className="fortress-piece piece-3">SECURITY</div>
@@ -417,6 +610,7 @@ export default function Home() {
 
             <div className="absolute left-1/2 top-1/2 w-full max-w-[950px] -translate-x-1/2 -translate-y-1/2">
               {/* ROOF */}
+
               <div className="fortress-roof relative mx-auto flex h-[120px] max-w-[720px] items-center justify-center">
                 <div className="absolute inset-x-0 top-1/2 h-[1px] bg-black/20" />
                 <div className="absolute inset-x-[8%] top-[25%] h-[1px] bg-[#1300BA]/25" />
@@ -437,6 +631,7 @@ export default function Home() {
               </div>
 
               {/* PILLARS */}
+
               <div
                 id="capabilities"
                 className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3"
@@ -475,7 +670,8 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* FOUNDATION = AGENTS */}
+              {/* FOUNDATION */}
+
               <div className="relative mt-3 overflow-hidden border border-black/10 bg-[#111114] px-5 py-6 shadow-2xl md:px-8">
                 <div className="absolute inset-0 opacity-20">
                   <div className="foundation-grid" />
@@ -522,8 +718,9 @@ export default function Home() {
       </section>
 
       {/* ========================================================= */}
-      {/* LAYER 03 — WHAT ARBYTER ACTUALLY DOES */}
+      {/* LAYER 03 */}
       {/* ========================================================= */}
+
       <section
         id="system"
         className="relative overflow-hidden border-y border-black/10 bg-[#f1f3f8] py-32"
@@ -554,11 +751,31 @@ export default function Home() {
 
             <div className="space-y-3">
               {[
-                ["01", "CONNECT", "Bring your existing AI agents into one layer."],
-                ["02", "OBSERVE", "See activity, tools, data, decisions and interactions."],
-                ["03", "GOVERN", "Apply policies, permissions, boundaries and controls."],
-                ["04", "INVESTIGATE", "Trace failures, threats and unexpected behavior."],
-                ["05", "ACT", "Know what requires attention and what to do next."],
+                [
+                  "01",
+                  "CONNECT",
+                  "Bring your existing AI agents into one layer.",
+                ],
+                [
+                  "02",
+                  "OBSERVE",
+                  "See activity, tools, data, decisions and interactions.",
+                ],
+                [
+                  "03",
+                  "GOVERN",
+                  "Apply policies, permissions, boundaries and controls.",
+                ],
+                [
+                  "04",
+                  "INVESTIGATE",
+                  "Trace failures, threats and unexpected behavior.",
+                ],
+                [
+                  "05",
+                  "ACT",
+                  "Know what requires attention and what to do next.",
+                ],
               ].map(([number, title, description]) => (
                 <div
                   key={number}
@@ -583,8 +800,9 @@ export default function Home() {
       </section>
 
       {/* ========================================================= */}
-      {/* LAYER 04 — MAP */}
+      {/* LAYER 04 */}
       {/* ========================================================= */}
+
       <section className="relative overflow-hidden bg-white py-32">
         <div className="mx-auto max-w-[1250px] px-5 md:px-8">
           <SectionLabel>ONE LAYER ABOVE EVERY AGENT</SectionLabel>
@@ -593,7 +811,6 @@ export default function Home() {
             <div className="absolute inset-0 blueprint-grid opacity-50" />
 
             <div className="relative z-10 grid gap-4 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-center">
-              {/* ENTERPRISE */}
               <div className="border border-black/10 bg-white p-7 shadow-sm">
                 <div className="text-[9px] font-bold tracking-[0.25em] text-black/35">
                   ENTERPRISE
@@ -612,7 +829,6 @@ export default function Home() {
                 →
               </div>
 
-              {/* ARBYTER */}
               <div className="relative border-2 border-[#1300BA]/30 bg-white p-8 shadow-[0_25px_70px_rgba(19,0,186,0.12)]">
                 <div className="absolute right-5 top-5 h-2 w-2 rounded-full bg-[#1300BA]" />
 
@@ -631,7 +847,6 @@ export default function Home() {
                 →
               </div>
 
-              {/* AGENTS */}
               <div className="border border-black/10 bg-white p-7 shadow-sm">
                 <div className="text-[9px] font-bold tracking-[0.25em] text-black/35">
                   AGENTIC LAYER
@@ -654,8 +869,9 @@ export default function Home() {
       </section>
 
       {/* ========================================================= */}
-      {/* LAYER 05 — CTA */}
+      {/* LAYER 05 CTA */}
       {/* ========================================================= */}
+
       <section className="relative overflow-hidden bg-[#f1f3f8] py-32">
         <div className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1300BA]/[0.05] blur-3xl" />
 
@@ -697,7 +913,10 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ========================================================= */}
       {/* FOOTER */}
+      {/* ========================================================= */}
+
       <footer
         id="contact"
         className="border-t border-black/10 bg-white px-5 py-8 md:px-8"
@@ -725,6 +944,7 @@ export default function Home() {
       {/* ========================================================= */}
       {/* PILLAR MODAL */}
       {/* ========================================================= */}
+
       {selectedPillar && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-5 backdrop-blur-md"
@@ -764,9 +984,7 @@ export default function Home() {
                     0{index + 1}
                   </span>
 
-                  <span className="text-sm font-medium">
-                    {detail}
-                  </span>
+                  <span className="text-sm font-medium">{detail}</span>
                 </div>
               ))}
             </div>
@@ -791,17 +1009,668 @@ export default function Home() {
           background: #f8f9fc;
         }
 
-        .hero-grid {
+        /* ========================================================
+           CINEMATIC INTRO
+        ======================================================== */
+
+        .cinematic-intro {
+          transform: scale(1);
+          opacity: 1;
+          transition:
+            opacity 1.2s ease,
+            transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .cinematic-intro.intro-finished {
+          opacity: 0;
+          transform: scale(1.08);
+          pointer-events: none;
+        }
+
+        .cinematic-grid {
           background-image:
             linear-gradient(rgba(0, 0, 0, 0.035) 1px, transparent 1px),
             linear-gradient(90deg, rgba(0, 0, 0, 0.035) 1px, transparent 1px);
-          background-size: 44px 44px;
+          background-size: 55px 55px;
           mask-image: radial-gradient(
             circle at center,
-            black 15%,
-            transparent 85%
+            black 0%,
+            transparent 80%
           );
         }
+
+        .camera-light {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: 500px;
+          height: 500px;
+          transform: translate(-50%, -50%);
+          border-radius: 999px;
+          background: radial-gradient(
+            circle,
+            rgba(19, 0, 186, 0.08),
+            transparent 68%
+          );
+          filter: blur(12px);
+          transition:
+            transform 2s cubic-bezier(0.2, 0.8, 0.2, 1),
+            opacity 1s ease;
+        }
+
+        .camera-light-fast {
+          transform: translate(-50%, -50%) scale(1.8);
+          opacity: 0.75;
+        }
+
+        /* AGENTS */
+
+        .intro-agents {
+          position: absolute;
+          inset: 0;
+          transition:
+            transform 3s cubic-bezier(0.16, 1, 0.3, 1),
+            filter 2s ease;
+        }
+
+        .intro-agents-chaos {
+          transform: scale(1.35);
+          filter: contrast(1.08);
+        }
+
+        .intro-agents-captured {
+          transform: scale(1.15);
+        }
+
+        .intro-agent {
+          position: absolute;
+          z-index: 5;
+          animation: cinematicAgentMove linear infinite;
+          transition:
+            opacity 0.35s ease,
+            transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .intro-agents-captured .intro-agent {
+          opacity: 0;
+          transform: translate(
+              calc(50vw - 50%),
+              calc(50vh - 50%)
+            )
+            scale(0.02);
+          transition-delay: calc(var(--i, 0) * 45ms);
+        }
+
+        .intro-agent-core {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 8px 11px;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          background: rgba(255, 255, 255, 0.8);
+          backdrop-filter: blur(12px);
+          box-shadow: 0 10px 35px rgba(0, 0, 0, 0.06);
+          font-size: 8px;
+          font-weight: 800;
+          letter-spacing: 0.1em;
+          color: rgba(0, 0, 0, 0.45);
+          white-space: nowrap;
+        }
+
+        .intro-agent-dot {
+          height: 5px;
+          width: 5px;
+          border-radius: 999px;
+          background: #1300ba;
+          box-shadow: 0 0 12px rgba(19, 0, 186, 0.7);
+        }
+
+        @keyframes cinematicAgentMove {
+          0% {
+            transform: translate3d(0, 0, 0) rotate(0deg);
+          }
+
+          20% {
+            transform: translate3d(130px, -90px, 0) rotate(8deg);
+          }
+
+          40% {
+            transform: translate3d(-110px, 120px, 0) rotate(-11deg);
+          }
+
+          60% {
+            transform: translate3d(150px, 70px, 0) rotate(13deg);
+          }
+
+          80% {
+            transform: translate3d(-90px, -80px, 0) rotate(-7deg);
+          }
+
+          100% {
+            transform: translate3d(0, 0, 0) rotate(0deg);
+          }
+        }
+
+        /* FAST & FURIOUS STYLE SPEED */
+
+        .speed-lines {
+          position: absolute;
+          inset: -20%;
+          z-index: 3;
+          opacity: 0;
+          transform: scale(0.6);
+          transition:
+            opacity 1s ease,
+            transform 2s cubic-bezier(0.16, 1, 0.3, 1);
+          pointer-events: none;
+        }
+
+        .speed-lines-active {
+          opacity: 1;
+          transform: scale(1.5);
+        }
+
+        .speed-lines span {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          width: calc(130px + (var(--i) * 22px));
+          height: 1px;
+          transform-origin: left center;
+          transform: rotate(calc(var(--i) * 20deg))
+            translateX(80px)
+            scaleX(0.3);
+          background: linear-gradient(
+            90deg,
+            rgba(19, 0, 186, 0),
+            rgba(19, 0, 186, 0.32),
+            rgba(19, 0, 186, 0)
+          );
+          animation: speedRush 0.8s linear infinite;
+          animation-delay: calc(var(--i) * -0.08s);
+        }
+
+        @keyframes speedRush {
+          0% {
+            opacity: 0;
+            transform: rotate(calc(var(--i) * 20deg))
+              translateX(40px)
+              scaleX(0.1);
+          }
+
+          45% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform: rotate(calc(var(--i) * 20deg))
+              translateX(700px)
+              scaleX(1.4);
+          }
+        }
+
+        /* ARBYTER HUNTER */
+
+        .arb-hunter {
+          position: absolute;
+          left: -15%;
+          top: 42%;
+          z-index: 20;
+          width: 180px;
+          height: 80px;
+          opacity: 0;
+          transform: rotate(-9deg) scale(0.2);
+          transition:
+            left 3.4s cubic-bezier(0.16, 1, 0.3, 1),
+            top 3.4s cubic-bezier(0.16, 1, 0.3, 1),
+            transform 1s cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 0.4s ease;
+        }
+
+        .arb-hunter-active {
+          left: 50%;
+          top: 50%;
+          opacity: 1;
+          transform: translate(-50%, -50%) rotate(-5deg) scale(1);
+        }
+
+        .arb-hunter-finished {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(2.5);
+        }
+
+        .hunter-core {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          height: 22px;
+          width: 22px;
+          transform: translate(-50%, -50%);
+          border-radius: 999px;
+          background: #1300ba;
+          box-shadow:
+            0 0 10px #1300ba,
+            0 0 35px rgba(19, 0, 186, 0.8),
+            0 0 100px rgba(19, 0, 186, 0.45);
+        }
+
+        .hunter-tail {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          height: 3px;
+          transform-origin: right center;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(19, 0, 186, 0.2),
+            #1300ba
+          );
+          border-radius: 999px;
+        }
+
+        .tail-1 {
+          width: 170px;
+          transform: translate(-100%, -50%) rotate(10deg);
+        }
+
+        .tail-2 {
+          width: 120px;
+          transform: translate(-100%, -50%) rotate(-18deg);
+          opacity: 0.7;
+        }
+
+        .tail-3 {
+          width: 80px;
+          transform: translate(-100%, -50%) rotate(28deg);
+          opacity: 0.45;
+        }
+
+        .hunter-glow {
+          position: absolute;
+          inset: -100px;
+          border-radius: 999px;
+          background: radial-gradient(
+            circle,
+            rgba(19, 0, 186, 0.18),
+            transparent 70%
+          );
+          filter: blur(15px);
+        }
+
+        /* CAPTURE PARTICLES */
+
+        .capture-field {
+          position: absolute;
+          inset: 0;
+          z-index: 21;
+          pointer-events: none;
+        }
+
+        .capture-particle {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          height: 7px;
+          width: 7px;
+          border-radius: 999px;
+          background: #1300ba;
+          opacity: 0;
+          box-shadow: 0 0 15px rgba(19, 0, 186, 0.8);
+        }
+
+        .capture-field-active .capture-particle {
+          animation: particleCollect 1.4s
+            cubic-bezier(0.16, 1, 0.3, 1)
+            forwards;
+        }
+
+        .particle-1 {
+          --x: -42vw;
+          --y: -28vh;
+        }
+
+        .particle-2 {
+          --x: 35vw;
+          --y: -32vh;
+        }
+
+        .particle-3 {
+          --x: -35vw;
+          --y: 18vh;
+        }
+
+        .particle-4 {
+          --x: 42vw;
+          --y: 20vh;
+        }
+
+        .particle-5 {
+          --x: -20vw;
+          --y: -35vh;
+        }
+
+        .particle-6 {
+          --x: 24vw;
+          --y: 34vh;
+        }
+
+        .particle-7 {
+          --x: -45vw;
+          --y: 36vh;
+        }
+
+        .particle-8 {
+          --x: 46vw;
+          --y: -12vh;
+        }
+
+        .particle-9 {
+          --x: -30vw;
+          --y: -10vh;
+        }
+
+        .particle-10 {
+          --x: 30vw;
+          --y: 8vh;
+        }
+
+        .particle-11 {
+          --x: -12vw;
+          --y: 27vh;
+        }
+
+        .particle-12 {
+          --x: 12vw;
+          --y: -28vh;
+        }
+
+        .particle-13 {
+          --x: -18vw;
+          --y: 12vh;
+        }
+
+        .particle-14 {
+          --x: 18vw;
+          --y: -5vh;
+        }
+
+        @keyframes particleCollect {
+          0% {
+            opacity: 1;
+            transform: translate(var(--x), var(--y)) scale(1.8);
+          }
+
+          60% {
+            opacity: 1;
+          }
+
+          100% {
+            opacity: 0;
+            transform: translate(0, 0) scale(0.1);
+          }
+        }
+
+        /* ENERGY LINE */
+
+        .energy-line {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          z-index: 22;
+          width: 0;
+          height: 2px;
+          transform: translate(-50%, -50%);
+          opacity: 0;
+          transition:
+            width 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 0.3s ease;
+          background: #1300ba;
+          box-shadow:
+            0 0 12px #1300ba,
+            0 0 40px rgba(19, 0, 186, 0.7);
+        }
+
+        .energy-line-active {
+          width: min(420px, 70vw);
+          opacity: 1;
+        }
+
+        .energy-line span {
+          position: absolute;
+          inset: -15px 0;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(19, 0, 186, 0.5),
+            transparent
+          );
+          filter: blur(7px);
+        }
+
+        /* TRANSFORMER LOGO */
+
+        .transform-logo {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          z-index: 25;
+          width: 300px;
+          height: 270px;
+          transform: translate(-50%, -50%) scale(0.35);
+          opacity: 0;
+          perspective: 900px;
+          transition:
+            opacity 0.4s ease,
+            transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .transform-logo-active {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+
+        .transform-logo-final {
+          transform: translate(-50%, -50%) scale(1.08);
+        }
+
+        .assembled-logo {
+          position: absolute;
+          inset: 50%;
+          width: 170px;
+          height: 155px;
+          transform: translate(-50%, -50%) scale(0);
+          opacity: 0;
+          filter: drop-shadow(0 0 20px rgba(19, 0, 186, 0.35));
+          transition:
+            opacity 0.4s ease,
+            transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .transform-logo-final .assembled-logo {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+
+        .logo-piece {
+          position: absolute;
+          z-index: 3;
+          background: #000;
+          box-shadow:
+            0 0 15px rgba(0, 0, 0, 0.18),
+            0 0 35px rgba(19, 0, 186, 0.12);
+          transition:
+            transform 1.1s cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 0.6s ease;
+        }
+
+        .logo-piece-left {
+          left: 62px;
+          top: 30px;
+          width: 48px;
+          height: 190px;
+          clip-path: polygon(
+            50% 0,
+            100% 20%,
+            70% 100%,
+            0 100%,
+            25% 45%
+          );
+          transform: translate(-260px, 180px) rotate(-42deg);
+        }
+
+        .logo-piece-right {
+          right: 52px;
+          top: 22px;
+          width: 65px;
+          height: 200px;
+          clip-path: polygon(
+            0 0,
+            100% 42%,
+            100% 100%,
+            35% 100%,
+            20% 55%
+          );
+          transform: translate(260px, -190px) rotate(48deg);
+        }
+
+        .logo-piece-bottom {
+          left: 55px;
+          bottom: 22px;
+          width: 190px;
+          height: 48px;
+          clip-path: polygon(
+            0 0,
+            100% 0,
+            84% 100%,
+            10% 100%
+          );
+          transform: translate(-220px, 220px) rotate(18deg);
+        }
+
+        .logo-piece-inner {
+          left: 100px;
+          top: 95px;
+          width: 100px;
+          height: 75px;
+          background: white;
+          clip-path: polygon(50% 0, 100% 100%, 0 100%);
+          transform: translate(190px, 180px) rotate(-55deg);
+          box-shadow: none;
+        }
+
+        .logo-dot-piece {
+          position: absolute;
+          right: 37px;
+          top: 23px;
+          z-index: 5;
+          height: 42px;
+          width: 42px;
+          border-radius: 999px;
+          background: #1300ba;
+          box-shadow:
+            0 0 18px rgba(19, 0, 186, 0.8),
+            0 0 50px rgba(19, 0, 186, 0.35);
+          transform: translate(240px, -180px) scale(0.2);
+          transition:
+            transform 1s cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 0.4s ease;
+        }
+
+        .transform-logo-active .logo-piece-left {
+          transform: translate(0, 0) rotate(0);
+        }
+
+        .transform-logo-active .logo-piece-right {
+          transform: translate(0, 0) rotate(0);
+        }
+
+        .transform-logo-active .logo-piece-bottom {
+          transform: translate(0, 0) rotate(0);
+        }
+
+        .transform-logo-active .logo-piece-inner {
+          transform: translate(0, 0) rotate(0);
+        }
+
+        .transform-logo-active .logo-dot-piece {
+          transform: translate(0, 0) scale(1);
+        }
+
+        .logo-energy-ring {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          border: 1px solid rgba(19, 0, 186, 0.25);
+          border-radius: 999px;
+          transform: translate(-50%, -50%) scale(0.2);
+          opacity: 0;
+        }
+
+        .ring-a {
+          width: 280px;
+          height: 280px;
+        }
+
+        .ring-b {
+          width: 380px;
+          height: 380px;
+        }
+
+        .transform-logo-active .logo-energy-ring {
+          opacity: 1;
+          animation: logoRing 1.6s ease-out forwards;
+        }
+
+        @keyframes logoRing {
+          from {
+            transform: translate(-50%, -50%) scale(0.2);
+            opacity: 0;
+          }
+
+          45% {
+            opacity: 1;
+          }
+
+          to {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 0;
+          }
+        }
+
+        /* FINAL FLASH */
+
+        .final-logo-light {
+          position: absolute;
+          inset: 0;
+          z-index: 28;
+          background: white;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .final-logo-light-active {
+          animation: finalFlash 0.75s ease-out forwards;
+        }
+
+        @keyframes finalFlash {
+          0% {
+            opacity: 0;
+          }
+
+          35% {
+            opacity: 0.92;
+          }
+
+          100% {
+            opacity: 0;
+          }
+        }
+
+        /* ========================================================
+           EXISTING PAGE
+        ======================================================== */
 
         .blueprint-grid {
           background-image:
@@ -814,664 +1683,10 @@ export default function Home() {
           position: absolute;
           inset: 0;
           background-image:
-            linear-gradient(
-              rgba(255, 255, 255, 0.12) 1px,
-              transparent 1px
-            ),
-            linear-gradient(
-              90deg,
-              rgba(255, 255, 255, 0.12) 1px,
-              transparent 1px
-            );
+            linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
           background-size: 32px 32px;
         }
-
-        /* ========================================================= */
-        /* MOVIE INTRO */
-        /* ========================================================= */
-
-        .movie-agent {
-          position: absolute;
-          z-index: 5;
-          transform-origin: center;
-          animation: movieAgentMove linear infinite;
-        }
-
-        .movie-agent-chaos {
-          animation-name: movieAgentChaos;
-          animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95);
-        }
-
-        .movie-agent-body {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          padding: 7px 11px;
-          border: 1px solid rgba(0, 0, 0, 0.12);
-          background: rgba(255, 255, 255, 0.86);
-          box-shadow:
-            0 8px 30px rgba(0, 0, 0, 0.06),
-            0 0 25px rgba(19, 0, 186, 0.035);
-          backdrop-filter: blur(12px);
-          font-size: 8px;
-          font-weight: 800;
-          letter-spacing: 0.12em;
-          color: rgba(0, 0, 0, 0.46);
-          white-space: nowrap;
-        }
-
-        .movie-agent-core {
-          display: block;
-          width: 5px;
-          height: 5px;
-          border-radius: 999px;
-          background: #1300ba;
-          box-shadow:
-            0 0 8px rgba(19, 0, 186, 0.8),
-            0 0 18px rgba(19, 0, 186, 0.35);
-        }
-
-        .movie-agent-trail {
-          position: absolute;
-          left: -80%;
-          top: 50%;
-          width: 180%;
-          height: 1px;
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(19, 0, 186, 0.18),
-            transparent
-          );
-          transform: translateY(-50%);
-          z-index: -1;
-        }
-
-        @keyframes movieAgentMove {
-          0% {
-            transform: translate3d(0, 0, 0) rotate(0deg);
-          }
-
-          25% {
-            transform: translate3d(55px, -35px, 0) rotate(5deg);
-          }
-
-          50% {
-            transform: translate3d(-45px, 55px, 0) rotate(-6deg);
-          }
-
-          75% {
-            transform: translate3d(65px, 20px, 0) rotate(4deg);
-          }
-
-          100% {
-            transform: translate3d(0, 0, 0) rotate(0deg);
-          }
-        }
-
-        @keyframes movieAgentChaos {
-          0% {
-            transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-          }
-
-          20% {
-            transform: translate3d(
-                calc(50px + 2vw),
-                calc(-45px - 2vh),
-                0
-              )
-              rotate(13deg)
-              scale(1.03);
-          }
-
-          40% {
-            transform: translate3d(
-                calc(-65px - 2vw),
-                calc(65px + 2vh),
-                0
-              )
-              rotate(-16deg)
-              scale(0.96);
-          }
-
-          60% {
-            transform: translate3d(
-                calc(75px + 3vw),
-                calc(20px + 2vh),
-                0
-              )
-              rotate(10deg)
-              scale(1.05);
-          }
-
-          80% {
-            transform: translate3d(
-                calc(-45px - 2vw),
-                calc(-55px - 2vh),
-                0
-              )
-              rotate(-12deg)
-              scale(0.98);
-          }
-
-          100% {
-            transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
-          }
-        }
-
-        .movie-motion {
-          position: absolute;
-          height: 1px;
-          transform-origin: center;
-          background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(19, 0, 186, 0.2),
-            transparent
-          );
-          animation: motionSweep 2.7s ease-in-out infinite;
-        }
-
-        .motion-1 {
-          left: -5%;
-          top: 22%;
-          width: 42%;
-          transform: rotate(17deg);
-        }
-
-        .motion-2 {
-          right: -3%;
-          top: 29%;
-          width: 40%;
-          transform: rotate(-21deg);
-          animation-delay: -0.8s;
-        }
-
-        .motion-3 {
-          left: 4%;
-          top: 57%;
-          width: 38%;
-          transform: rotate(-13deg);
-          animation-delay: -1.4s;
-        }
-
-        .motion-4 {
-          right: 0;
-          top: 64%;
-          width: 43%;
-          transform: rotate(14deg);
-          animation-delay: -2s;
-        }
-
-        .motion-5 {
-          left: 25%;
-          top: 14%;
-          width: 24%;
-          transform: rotate(-7deg);
-          animation-delay: -0.4s;
-        }
-
-        .motion-6 {
-          right: 22%;
-          bottom: 17%;
-          width: 26%;
-          transform: rotate(8deg);
-          animation-delay: -1.8s;
-        }
-
-        @keyframes motionSweep {
-          0%,
-          100% {
-            opacity: 0.12;
-            transform: scaleX(0.65) rotate(15deg);
-          }
-
-          50% {
-            opacity: 0.65;
-            transform: scaleX(1.15) rotate(-12deg);
-          }
-        }
-
-        /* FLASH */
-
-        .movie-flash-active {
-          animation: flashContainer 0.8s ease-out forwards;
-        }
-
-        .movie-white-flash {
-          position: absolute;
-          inset: 0;
-          background: white;
-          opacity: 0;
-          animation: whiteFlash 0.8s ease-out forwards;
-        }
-
-        @keyframes flashContainer {
-          0% {
-            opacity: 1;
-          }
-
-          100% {
-            opacity: 1;
-          }
-        }
-
-        @keyframes whiteFlash {
-          0% {
-            opacity: 0;
-          }
-
-          12% {
-            opacity: 0.95;
-          }
-
-          24% {
-            opacity: 0.15;
-          }
-
-          38% {
-            opacity: 0.9;
-          }
-
-          58% {
-            opacity: 0.05;
-          }
-
-          100% {
-            opacity: 0;
-          }
-        }
-
-        .central-strike {
-          position: absolute;
-          left: 50%;
-          top: -15%;
-          width: 180px;
-          height: 130%;
-          transform: translateX(-50%);
-          filter: drop-shadow(0 0 12px rgba(19, 0, 186, 0.9));
-        }
-
-        .central-strike span {
-          position: absolute;
-          left: 50%;
-          top: 0;
-          width: 3px;
-          height: 100%;
-          background: #1300ba;
-          transform-origin: center;
-          animation: lightningStrike 0.65s cubic-bezier(0.2, 0.8, 0.2, 1)
-            forwards;
-        }
-
-        .central-strike span:nth-child(1) {
-          transform: translateX(-50%) rotate(2deg);
-        }
-
-        .central-strike span:nth-child(2) {
-          transform: translateX(-50%) rotate(9deg);
-          width: 2px;
-        }
-
-        .central-strike span:nth-child(3) {
-          transform: translateX(-50%) rotate(-7deg);
-          width: 4px;
-        }
-
-        .central-strike span:nth-child(4) {
-          transform: translateX(-50%) rotate(17deg);
-          width: 1px;
-        }
-
-        .central-strike span:nth-child(5) {
-          transform: translateX(-50%) rotate(-16deg);
-          width: 1px;
-        }
-
-        @keyframes lightningStrike {
-          0% {
-            opacity: 0;
-            clip-path: inset(0 0 100% 0);
-          }
-
-          25% {
-            opacity: 1;
-          }
-
-          100% {
-            opacity: 0.85;
-            clip-path: inset(0 0 0 0);
-          }
-        }
-
-        /* CAPTURE */
-
-        .capture-orbit {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          border: 1px solid rgba(19, 0, 186, 0.25);
-          border-radius: 999px;
-          transform: translate(-50%, -50%);
-          animation: captureOrbit 2.2s ease-out infinite;
-        }
-
-        .orbit-a {
-          width: 180px;
-          height: 180px;
-        }
-
-        .orbit-b {
-          width: 290px;
-          height: 290px;
-          animation-delay: 0.15s;
-        }
-
-        .orbit-c {
-          width: 430px;
-          height: 430px;
-          animation-delay: 0.3s;
-        }
-
-        .orbit-d {
-          width: 590px;
-          height: 590px;
-          animation-delay: 0.45s;
-        }
-
-        @keyframes captureOrbit {
-          0% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.55);
-          }
-
-          20% {
-            opacity: 0.9;
-          }
-
-          100% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(1.12);
-          }
-        }
-
-        .capture-core {
-          position: relative;
-          display: flex;
-          height: 170px;
-          width: 170px;
-          align-items: center;
-          justify-content: center;
-          border: 1px solid rgba(19, 0, 186, 0.3);
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.82);
-          box-shadow:
-            0 0 60px rgba(19, 0, 186, 0.15),
-            0 0 140px rgba(19, 0, 186, 0.08);
-          backdrop-filter: blur(20px);
-        }
-
-        .capture-core-inner {
-          position: relative;
-          height: 65px;
-          width: 65px;
-          border-radius: 999px;
-          background: #1300ba;
-          box-shadow:
-            0 0 25px rgba(19, 0, 186, 0.8),
-            0 0 70px rgba(19, 0, 186, 0.4);
-          animation: corePulse 1.2s ease-in-out infinite;
-        }
-
-        .capture-energy {
-          position: absolute;
-          inset: 10px;
-          border-radius: 999px;
-          background: white;
-          box-shadow: 0 0 20px white;
-        }
-
-        @keyframes corePulse {
-          0%,
-          100% {
-            transform: scale(0.85);
-          }
-
-          50% {
-            transform: scale(1.1);
-          }
-        }
-
-        /* PARTICLES */
-
-        .captured-particle {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          width: 5px;
-          height: 5px;
-          border-radius: 999px;
-          background: #1300ba;
-          opacity: 0;
-          box-shadow: 0 0 12px rgba(19, 0, 186, 0.75);
-        }
-
-        .captured-particles-active .captured-particle {
-          animation: particleCapture 1.4s cubic-bezier(0.2, 0.85, 0.25, 1)
-            forwards;
-        }
-
-        .particle-1 {
-          --start-x: -42vw;
-          --start-y: -25vh;
-        }
-
-        .particle-2 {
-          --start-x: 38vw;
-          --start-y: -30vh;
-        }
-
-        .particle-3 {
-          --start-x: -35vw;
-          --start-y: 25vh;
-        }
-
-        .particle-4 {
-          --start-x: 42vw;
-          --start-y: 30vh;
-        }
-
-        .particle-5 {
-          --start-x: -25vw;
-          --start-y: -35vh;
-        }
-
-        .particle-6 {
-          --start-x: 25vw;
-          --start-y: 35vh;
-        }
-
-        .particle-7 {
-          --start-x: -45vw;
-          --start-y: 5vh;
-        }
-
-        .particle-8 {
-          --start-x: 45vw;
-          --start-y: -5vh;
-        }
-
-        .particle-9 {
-          --start-x: -15vw;
-          --start-y: 40vh;
-        }
-
-        .particle-10 {
-          --start-x: 15vw;
-          --start-y: -40vh;
-        }
-
-        .particle-11 {
-          --start-x: -40vw;
-          --start-y: -5vh;
-        }
-
-        .particle-12 {
-          --start-x: 40vw;
-          --start-y: 5vh;
-        }
-
-        .particle-13 {
-          --start-x: -20vw;
-          --start-y: -28vh;
-        }
-
-        .particle-14 {
-          --start-x: 20vw;
-          --start-y: 28vh;
-        }
-
-        .particle-15 {
-          --start-x: -32vw;
-          --start-y: 12vh;
-        }
-
-        .particle-16 {
-          --start-x: 32vw;
-          --start-y: -12vh;
-        }
-
-        .particle-17 {
-          --start-x: -8vw;
-          --start-y: 32vh;
-        }
-
-        .particle-18 {
-          --start-x: 8vw;
-          --start-y: -32vh;
-        }
-
-        @keyframes particleCapture {
-          0% {
-            opacity: 0;
-            transform: translate(var(--start-x), var(--start-y)) scale(1.4);
-          }
-
-          15% {
-            opacity: 1;
-          }
-
-          100% {
-            opacity: 0;
-            transform: translate(0, 0) scale(0.1);
-          }
-        }
-
-        /* LOGO */
-
-        .logo-energy-ring {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          border: 1px solid rgba(19, 0, 186, 0.22);
-          border-radius: 999px;
-          transform: translate(-50%, -50%);
-          animation: logoRing 2.2s ease-out infinite;
-        }
-
-        .ring-main {
-          width: 260px;
-          height: 260px;
-        }
-
-        .ring-secondary {
-          width: 380px;
-          height: 380px;
-          animation-delay: 0.25s;
-        }
-
-        @keyframes logoRing {
-          0% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.7) rotate(0deg);
-          }
-
-          25% {
-            opacity: 0.8;
-          }
-
-          100% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(1.12) rotate(90deg);
-          }
-        }
-
-        .movie-logo {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          animation: logoMaterialize 1.6s cubic-bezier(0.16, 1, 0.3, 1)
-            forwards;
-        }
-
-        @keyframes logoMaterialize {
-          0% {
-            opacity: 0;
-            filter: blur(18px);
-            transform: scale(0.25) rotate(-15deg);
-          }
-
-          45% {
-            opacity: 1;
-            filter: blur(3px);
-          }
-
-          75% {
-            filter: blur(0);
-          }
-
-          100% {
-            opacity: 1;
-            filter: blur(0);
-            transform: scale(1) rotate(0deg);
-          }
-        }
-
-        .logo-arrival {
-          opacity: 1;
-          transform: translate(-50%, -50%) scale(1) rotate(0deg);
-        }
-
-        .logo-hold-glow {
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          width: 230px;
-          height: 230px;
-          transform: translate(-50%, -50%);
-          border-radius: 999px;
-          background: rgba(19, 0, 186, 0.05);
-          filter: blur(35px);
-          animation: holdGlow 2.5s ease-in-out infinite;
-        }
-
-        @keyframes holdGlow {
-          0%,
-          100% {
-            opacity: 0.5;
-            transform: translate(-50%, -50%) scale(0.9);
-          }
-
-          50% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.15);
-          }
-        }
-
-        /* ========================================================= */
-        /* FORTRESS */
-        /* ========================================================= */
 
         .fortress-roof {
           clip-path: polygon(
@@ -1515,8 +1730,8 @@ export default function Home() {
           font-weight: 800;
           letter-spacing: 0.18em;
           color: rgba(19, 0, 186, 0.7);
-          animation: pieceAssemble 1.8s
-            cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+          animation: pieceAssemble 1.8s cubic-bezier(0.2, 0.8, 0.2, 1)
+            forwards;
         }
 
         .piece-1 {
@@ -1578,46 +1793,46 @@ export default function Home() {
         }
 
         @media (max-width: 768px) {
-          .fortress-piece {
-            display: none;
+          .speed-lines span {
+            width: 160px;
           }
 
-          .orbit-d {
-            width: 340px;
-            height: 340px;
+          .transform-logo {
+            transform: translate(-50%, -50%) scale(0.75);
           }
 
-          .ring-secondary {
-            width: 300px;
-            height: 300px;
+          .transform-logo-active {
+            transform: translate(-50%, -50%) scale(0.8);
           }
 
-          .capture-core {
-            height: 135px;
-            width: 135px;
+          .transform-logo-final {
+            transform: translate(-50%, -50%) scale(0.85);
           }
 
-          .movie-agent-body {
+          .intro-agent-core {
             padding: 6px 8px;
             font-size: 7px;
           }
 
-          .movie-agent-trail {
-            left: -55%;
-            width: 150%;
+          .logo-piece {
+            opacity: 0.9;
+          }
+
+          .fortress-piece {
+            display: none;
           }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .movie-agent,
-          .movie-motion,
-          .capture-orbit,
-          .captured-particle,
-          .movie-logo,
-          .logo-energy-ring,
-          .logo-hold-glow,
-          .central-strike span {
+          .intro-agent,
+          .speed-lines span,
+          .capture-particle,
+          .logo-energy-ring {
             animation: none !important;
+          }
+
+          .cinematic-intro {
+            transition: none;
           }
         }
       `}</style>
