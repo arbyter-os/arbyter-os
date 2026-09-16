@@ -598,22 +598,6 @@ export default function HomePage() {
                 They can read data, call tools, make decisions and execute
                 actions.
               </p>
-
-              <div className="mt-10 flex flex-wrap gap-3">
-                <Link
-                  href="/login"
-                  className="rounded-full bg-black px-7 py-3.5 text-xs font-semibold uppercase tracking-[.18em] text-white transition hover:bg-[#1677ff]"
-                >
-                  Enter Arbyter
-                </Link>
-
-                <Link
-                  href="/demo"
-                  className="rounded-full border border-black/10 px-7 py-3.5 text-xs font-semibold uppercase tracking-[.18em] transition hover:bg-black/[.03]"
-                >
-                  Demo
-                </Link>
-              </div>
             </div>
 
             <div className="relative mt-16 h-[430px] overflow-hidden rounded-[32px] border border-black/10 bg-[#f8f8f6] lg:mt-24">
@@ -1185,7 +1169,7 @@ export default function HomePage() {
               </a>
 
               <a
-                href="/demo"
+                href="#governance"
                 className="rounded-full border border-black/10 px-8 py-4 text-xs font-semibold uppercase tracking-[.18em] transition hover:bg-black/[.03]"
               >
                 Run the demo
