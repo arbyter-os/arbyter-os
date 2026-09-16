@@ -185,18 +185,23 @@ export default function Home() {
                 href="/login"
                 className="rounded-full bg-black px-7 py-3 text-sm font-medium text-white transition hover:bg-[#1300BA]"
               >
-                Request a demo
-              </Link>
+                <div className="flex flex-col gap-3 sm:flex-row">
+  <Link
+    href="/login"
+    className="inline-flex items-center justify-center rounded-full bg-black px-7 py-3.5 text-sm font-medium text-white transition hover:bg-[#1300BA]"
+  >
+    Enter Arbyter
+    <ArrowUpRight className="ml-2 h-4 w-4" />
+  </Link>
 
-              <a
-                href="#system"
-                className="rounded-full border border-black/15 px-7 py-3 text-sm font-medium transition hover:border-black"
-              >
-                Explore Arbyter
-              </a>
-            </div>
-          </div>
-        </section>
+  <Link
+    href="/demo"
+    className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white px-7 py-3.5 text-sm font-medium text-black transition hover:border-[#1300BA] hover:text-[#1300BA]"
+  >
+    Run Demo
+    <Play className="ml-2 h-4 w-4" />
+  </Link>
+</div>
 
         {/* =========================================================
             HOOK
