@@ -180,18 +180,12 @@ export default function Home() {
               Connect them. Understand them. Govern them.
             </p>
 
-            <div className="mt-10 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/login"
-                className="rounded-full bg-black px-7 py-3 text-sm font-medium text-white transition hover:bg-[#1300BA]"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row">
+         <div className="mt-10 flex flex-wrap justify-center gap-3">
   <Link
     href="/login"
     className="inline-flex items-center justify-center rounded-full bg-black px-7 py-3.5 text-sm font-medium text-white transition hover:bg-[#1300BA]"
   >
     Enter Arbyter
-    <ArrowUpRight className="ml-2 h-4 w-4" />
   </Link>
 
   <Link
@@ -199,7 +193,6 @@ export default function Home() {
     className="inline-flex items-center justify-center rounded-full border border-black/15 bg-white px-7 py-3.5 text-sm font-medium text-black transition hover:border-[#1300BA] hover:text-[#1300BA]"
   >
     Run Demo
-    <Play className="ml-2 h-4 w-4" />
   </Link>
 </div>
 
