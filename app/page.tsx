@@ -1,837 +1,676 @@
 "use client";
 
-import Image from "next/image";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import Intro from "@/components/landing/intro";
 
-type Agent = {
-  id: string;
-  name: string;
-  type: string;
-  color: string;
-  x: number;
-  y: number;
-};
+const BLUE = "#1300BA";
 
-const agents: Agent[] = [
-  { id: "sales", name: "Sales Agent", type: "CRM", color: "#1677ff", x: 13, y: 25 },
-  { id: "finance", name: "Finance Agent", type: "Finance", color: "#111111", x: 27, y: 72 },
-  { id: "support", name: "Support Agent", type: "Customer", color: "#1677ff", x: 50, y: 19 },
-  { id: "research", name: "Research Agent", type: "Knowledge", color: "#111111", x: 72, y: 72 },
-  { id: "ops", name: "Operations Agent", type: "Operations", color: "#1677ff", x: 87, y: 27 },
+const LOGO = (
+  <svg
+    viewBox="0 0 456 406"
+    width="100%"
+    height="100%"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="
+        M 166.5 46
+        A 51 51 0 0 1 254.8 46
+        L 421.2 334.3
+        A 49 49 0 0 1 336.3 383.3
+        L 327.9 368.8
+        A 24 24 0 0 0 307.1 357
+        L 74.8 357
+        A 51 51 0 0 1 30.6 280.5
+        L 166.5 46 Z
+        M 210.7 174.1
+        L 259.7 259
+        L 161.7 259
+        Z
+      "
+      fill="#000000"
+    />
+    <circle cx="356" cy="49" r="49" fill="#1300BA" />
+  </svg>
+);
+
+const pillars = [
+  {
+    name: "Governance",
+    short: "GOV",
+    description:
+      "Define the rules, policies and principles that determine how AI agents operate.",
+    detail:
+      "Governance gives your organization a framework for responsible autonomous behavior. Define organizational policies, ethical requirements, approval rules, regulatory expectations and operating principles. Arbyter helps connect those rules to the agents actually operating inside your organization, so governance becomes something that can be observed and enforced rather than a document sitting on a shelf.",
+  },
+  {
+    name: "Control",
+    short: "CTL",
+    description:
+      "Set boundaries around what agents can access, use and execute.",
+    detail:
+      "Control determines the practical limits of an AI agent. Define permissions, tool access, environments, authentication requirements, intervention mechanisms and operational boundaries. When an agent moves outside what it was supposed to do, Arbyter provides the visibility and mechanisms needed to investigate or intervene.",
+  },
+  {
+    name: "Visibility",
+    short: "VIS",
+    description:
+      "Understand what your agents are doing, using, deciding and interacting with.",
+    detail:
+      "Visibility gives teams a continuous picture of autonomous activity. Track actions, tools, data access, interactions, tasks, decisions, failures and outcomes. Instead of asking what an agent has been doing after something goes wrong, teams can see the operating picture as it develops.",
+  },
+  {
+    name: "Audit",
+    short: "AUD",
+    description:
+      "Create a continuous record of agent activity and decisions.",
+    detail:
+      "Audit creates the evidence layer for your AI systems. Record important actions, decisions, policy events, connection events, failures and interventions. This creates a reliable history that teams can use for internal reviews, incident investigations, accountability and regulatory requirements.",
+  },
+  {
+    name: "Security",
+    short: "SEC",
+    description:
+      "Identify threats, unauthorized behavior and dangerous activity.",
+    detail:
+      "Security focuses on protecting the organization from AI-related threats. Monitor unauthorized access, suspicious behavior, abnormal activity, unsafe actions, unexpected tool usage and potential security incidents. Arbyter is designed to make security signals visible across the agent environment instead of treating every agent as an isolated system.",
+  },
+  {
+    name: "Compliance",
+    short: "CMP",
+    description:
+      "Connect autonomous behavior with organizational and regulatory requirements.",
+    detail:
+      "Compliance helps organizations understand whether autonomous systems are operating within the rules that apply to them. Policies can be connected to agent behavior and operational activity, helping teams identify potential violations, review evidence and understand where additional controls may be required.",
+  },
+  {
+    name: "Investigation",
+    short: "INV",
+    description:
+      "Trace incidents from what happened to why it happened.",
+    detail:
+      "Investigation turns an unexplained event into an understandable chain of activity. Follow an agent's actions, decisions, tools, permissions and interactions to understand what happened, why it happened and what changed. This gives security, operations and leadership teams a common place to investigate incidents.",
+  },
+  {
+    name: "Risk",
+    short: "RSK",
+    description:
+      "Identify business, financial, operational and security risks before they escalate.",
+    detail:
+      "Risk brings the consequences of autonomous behavior into focus. Identify actions that could create financial exposure, operational disruption, security problems, regulatory issues or reputational damage. Arbyter helps teams prioritize what actually requires attention instead of treating every agent event as equally important.",
+  },
 ];
 
-const demoStages = [
-  {
-    label: "Agent",
-    eyebrow: "01 / INTENT",
-    title: "An agent wants to act.",
-    description:
-      "The Finance Agent receives a task and decides that a vendor payment should be initiated.",
-    detail: "finance.transfer",
-  },
-  {
-    label: "Task",
-    eyebrow: "02 / CONTEXT",
-    title: "Arbyter understands the action.",
-    description:
-      "The requested action is connected to the task, agent identity, environment and operating context.",
-    detail: "Process vendor payment",
-  },
-  {
-    label: "Governance",
-    eyebrow: "03 / CONTROL",
-    title: "The action meets the control plane.",
-    description:
-      "Arbyter evaluates permissions, policies, risk, scope and applicable governance requirements before execution.",
-    detail: "Policy evaluation",
-  },
-  {
-    label: "Approval",
-    eyebrow: "04 / HUMAN",
-    title: "Risk crosses the boundary.",
-    description:
-      "The action is consequential, so Arbyter pauses execution and asks an authorized human to decide.",
-    detail: "REQUIRE_APPROVAL",
-  },
-  {
-    label: "Execution",
-    eyebrow: "05 / ACTION",
-    title: "Only the authorized action proceeds.",
-    description:
-      "Once approved, the action travels through the permitted connector to the external system.",
-    detail: "Authorized execution",
-  },
-  {
-    label: "Audit",
-    eyebrow: "06 / EVIDENCE",
-    title: "The decision becomes evidence.",
-    description:
-      "The action, decision, policy, approval and result are preserved as a traceable record.",
-    detail: "Execution audit",
-  },
+const agents = [
+  { x: 10, y: 20, size: 9 },
+  { x: 22, y: 69, size: 7 },
+  { x: 36, y: 28, size: 8 },
+  { x: 47, y: 76, size: 10 },
+  { x: 61, y: 18, size: 7 },
+  { x: 73, y: 66, size: 8 },
+  { x: 88, y: 25, size: 9 },
+  { x: 82, y: 81, size: 7 },
+  { x: 15, y: 48, size: 6 },
+  { x: 91, y: 52, size: 8 },
 ];
 
-function Logo({ large = false }: { large?: boolean }) {
-  return (
-    <Image
-      src="/arbyter-os.logo.svg"
-      alt="Arbyter OS"
-      width={large ? 190 : 132}
-      height={large ? 52 : 38}
-      priority={large}
-      className={large ? "h-12 w-auto" : "h-8 w-auto"}
-    />
-  );
-}
-
-function DotGrid() {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 opacity-[0.32]"
-      style={{
-        backgroundImage:
-          "radial-gradient(circle, rgba(0,0,0,.18) 1px, transparent 1px)",
-        backgroundSize: "25px 25px",
-      }}
-    />
-  );
-}
-
-function SectionLabel({
-  children,
-  dark = false,
-}: {
-  children: React.ReactNode;
-  dark?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.32em] ${
-        dark ? "text-white/35" : "text-black/35"
-      }`}
-    >
-      <span
-        className={`h-1.5 w-1.5 rounded-full ${
-          dark ? "bg-[#4d91ff]" : "bg-[#1677ff]"
-        }`}
-      />
-      {children}
-    </div>
-  );
-}
-
-function Connector({
-  x1,
-  y1,
-  x2,
-  y2,
-  active = false,
-}: {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  active?: boolean;
-}) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-
-  return (
-    <div
-      className="absolute origin-left transition-all duration-700"
-      style={{
-        left: `${x1}%`,
-        top: `${y1}%`,
-        width: `${length}%`,
-        transform: `rotate(${angle}deg)`,
-      }}
-    >
-      <div
-        className={`h-px w-full ${
-          active ? "bg-[#1677ff]" : "bg-black/[0.09]"
-        }`}
-      />
-      {active && (
-        <div className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-[#1677ff] shadow-[0_0_18px_rgba(22,119,255,.8)] animate-[flow_2.2s_linear_infinite]" />
-      )}
-    </div>
-  );
-}
-
-function NetworkNode({
-  agent,
-  active,
-  onClick,
-}: {
-  agent: Agent;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ${
-        active ? "scale-110" : "hover:scale-105"
-      }`}
-      style={{ left: `${agent.x}%`, top: `${agent.y}%` }}
-    >
-      <div
-        className={`flex h-14 w-14 items-center justify-center rounded-full border bg-white shadow-[0_12px_35px_rgba(0,0,0,.08)] ${
-          active
-            ? "border-[#1677ff] shadow-[0_0_35px_rgba(22,119,255,.18)]"
-            : "border-black/10"
-        }`}
-      >
-        <span
-          className="h-2.5 w-2.5 rounded-full"
-          style={{ backgroundColor: agent.color }}
-        />
-      </div>
-
-      <div className="absolute left-1/2 top-full mt-3 -translate-x-1/2 whitespace-nowrap text-center">
-        <div className="text-[11px] font-semibold">{agent.name}</div>
-        <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-black/30">
-          {agent.type}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function ControlPlane({
-  activeAgent,
-  setActiveAgent,
-}: {
-  activeAgent: string;
-  setActiveAgent: (id: string) => void;
-}) {
-  const active = agents.find((agent) => agent.id === activeAgent);
-
-  return (
-    <div className="relative h-[620px] overflow-hidden rounded-[34px] border border-black/10 bg-[#f7f7f5]">
-      <DotGrid />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(22,119,255,.07),transparent_32%)]" />
-
-      <Connector x1={13} y1={25} x2={50} y2={47} active={activeAgent === "sales"} />
-      <Connector x1={27} y1={72} x2={50} y2={53} active={activeAgent === "finance"} />
-      <Connector x1={50} y1={19} x2={50} y2={46} active={activeAgent === "support"} />
-      <Connector x1={72} y1={72} x2={50} y2={53} active={activeAgent === "research"} />
-      <Connector x1={87} y1={27} x2={50} y2={47} active={activeAgent === "ops"} />
-
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className="relative flex h-48 w-48 items-center justify-center rounded-full border border-black/15 bg-white shadow-[0_35px_100px_rgba(0,0,0,.11)]">
-          <div className="absolute inset-4 rounded-full border border-[#1677ff]/15" />
-          <div className="absolute inset-9 rounded-full border border-[#1677ff]/10" />
-
-          <div className="relative z-10 text-center">
-            <Logo large />
-            <div className="mt-3 text-[9px] font-semibold uppercase tracking-[0.32em] text-black/35">
-              Control plane
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {agents.map((agent) => (
-        <NetworkNode
-          key={agent.id}
-          agent={agent}
-          active={activeAgent === agent.id}
-          onClick={() => setActiveAgent(agent.id)}
-        />
-      ))}
-
-      <div className="absolute bottom-6 left-6 right-6 flex flex-col justify-between gap-4 rounded-2xl border border-black/10 bg-white/75 p-4 backdrop-blur-xl sm:flex-row sm:items-center">
-        <div>
-          <div className="text-[9px] uppercase tracking-[0.25em] text-black/30">
-            Selected agent
-          </div>
-          <div className="mt-1 text-sm font-semibold">{active?.name}</div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 text-[10px] text-black/40">
-          <span>Identity verified</span>
-          <span>•</span>
-          <span>Healthy</span>
-          <span>•</span>
-          <span className="text-[#1677ff]">Governed</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function DecisionSimulator() {
-  const [decision, setDecision] = useState<"idle" | "blocked" | "approved">(
-    "idle"
-  );
-
-  return (
-    <div className="rounded-[32px] border border-white/10 bg-[#0b0b0b] p-5 shadow-[0_40px_120px_rgba(0,0,0,.35)]">
-      <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-6 sm:p-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[9px] uppercase tracking-[0.28em] text-white/30">
-              Live governance simulation
-            </div>
-            <div className="mt-3 text-xl font-medium">Finance Agent</div>
-          </div>
-
-          <span className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-white/40">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#1677ff]" />
-            Live
-          </span>
-        </div>
-
-        <div className="mt-8 rounded-2xl border border-white/10 bg-black/30 p-5">
-          <div className="text-[9px] uppercase tracking-[0.24em] text-white/25">
-            Requested action
-          </div>
-
-          <div className="mt-3 font-mono text-sm text-white/80">
-            finance.transfer
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-white/10 p-3">
-              <div className="text-[9px] uppercase tracking-[.2em] text-white/25">
-                Permission
-              </div>
-              <div className="mt-2 text-xs text-[#71a9ff]">Granted</div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 p-3">
-              <div className="text-[9px] uppercase tracking-[.2em] text-white/25">
-                Risk
-              </div>
-              <div className="mt-2 text-xs text-white">High</div>
-            </div>
-
-            <div className="rounded-xl border border-white/10 p-3">
-              <div className="text-[9px] uppercase tracking-[.2em] text-white/25">
-                Policy
-              </div>
-              <div className="mt-2 text-xs text-white">Approval</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="my-8 flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-[9px] uppercase tracking-[.25em] text-white/25">
-            Arbyter decision
-          </span>
-          <div className="h-px flex-1 bg-white/10" />
-        </div>
-
-        <div
-          className={`rounded-2xl border p-5 transition-all duration-500 ${
-            decision === "blocked"
-              ? "border-red-400/30 bg-red-400/[0.06]"
-              : decision === "approved"
-                ? "border-[#1677ff]/30 bg-[#1677ff]/[0.06]"
-                : "border-[#1677ff]/20 bg-[#1677ff]/[0.035]"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[9px] uppercase tracking-[.25em] text-white/25">
-                Decision
-              </div>
-
-              <div className="mt-2 text-lg font-medium">
-                {decision === "blocked"
-                  ? "BLOCKED"
-                  : decision === "approved"
-                    ? "AUTHORIZED"
-                    : "REQUIRE_APPROVAL"}
-              </div>
-            </div>
-
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${
-                decision === "blocked"
-                  ? "bg-red-400"
-                  : decision === "approved"
-                    ? "bg-[#1677ff]"
-                    : "bg-amber-400"
-              }`}
-            />
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setDecision("approved")}
-            className="rounded-xl bg-white py-3 text-xs font-semibold text-black transition hover:bg-white/90"
-          >
-            Approve
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setDecision("blocked")}
-            className="rounded-xl border border-white/10 py-3 text-xs font-semibold text-white transition hover:bg-white/5"
-          >
-            Block
-          </button>
-        </div>
-
-        {decision !== "idle" && (
-          <button
-            type="button"
-            onClick={() => setDecision("idle")}
-            className="mt-4 w-full text-[10px] uppercase tracking-[.2em] text-white/30 transition hover:text-white/60"
-          >
-            Reset simulation
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ComplianceMap() {
-  const nodes = [
-    { label: "Regulation", x: 8, y: 50 },
-    { label: "Requirement", x: 28, y: 28 },
-    { label: "Control", x: 50, y: 50 },
-    { label: "Policy", x: 72, y: 28 },
-    { label: "Agent action", x: 92, y: 50 },
-    { label: "Evidence", x: 72, y: 75 },
-    { label: "Audit", x: 50, y: 82 },
-  ];
-
-  return (
-    <div className="relative h-[500px] overflow-hidden rounded-[32px] border border-black/10 bg-[#fafafa]">
-      <DotGrid />
-
-      <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
-        <line x1="8%" y1="50%" x2="28%" y2="28%" stroke="rgba(0,0,0,.12)" />
-        <line x1="28%" y1="28%" x2="50%" y2="50%" stroke="rgba(0,0,0,.12)" />
-        <line x1="50%" y1="50%" x2="72%" y2="28%" stroke="rgba(0,0,0,.12)" />
-        <line x1="72%" y1="28%" x2="92%" y2="50%" stroke="#1677ff" strokeOpacity=".35" />
-        <line x1="92%" y1="50%" x2="72%" y2="75%" stroke="#1677ff" strokeOpacity=".25" />
-        <line x1="72%" y1="75%" x2="50%" y2="82%" stroke="rgba(0,0,0,.12)" />
-      </svg>
-
-      {nodes.map((node, index) => (
-        <div
-          key={node.label}
-          className="absolute -translate-x-1/2 -translate-y-1/2"
-          style={{ left: `${node.x}%`, top: `${node.y}%` }}
-        >
-          <div
-            className={`flex h-16 min-w-16 items-center justify-center rounded-full border px-4 text-center shadow-sm ${
-              index === 2 || index === 4
-                ? "border-[#1677ff] bg-white"
-                : "border-black/10 bg-white"
-            }`}
-          >
-            <span className="whitespace-nowrap text-[10px] font-semibold">
-              {node.label}
-            </span>
-          </div>
-
-          <div className="mt-3 text-center text-[8px] uppercase tracking-[.2em] text-black/25">
-            {String(index + 1).padStart(2, "0")}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AuditTimeline() {
-  const events = [
-    ["10:42:01", "Agent requested action", "Intent captured"],
-    ["10:42:02", "Policy evaluated", "Financial threshold"],
-    ["10:42:02", "Risk classified", "HIGH"],
-    ["10:42:02", "Approval requested", "Human decision"],
-    ["10:43:17", "Approval received", "Administrator"],
-    ["10:43:18", "Execution completed", "External system"],
-    ["10:43:19", "Evidence recorded", "Audit trail"],
-  ];
-
-  return (
-    <div className="relative">
-      <div className="absolute bottom-0 left-[7px] top-0 w-px bg-black/10" />
-
-      <div className="space-y-7">
-        {events.map(([time, title, detail], index) => (
-          <div key={`${time}-${title}`} className="relative flex gap-7">
-            <div
-              className={`relative z-10 mt-1.5 h-3.5 w-3.5 rounded-full border-4 border-white ${
-                index === 2 ? "bg-amber-400" : "bg-[#1677ff]"
-              }`}
-            />
-
-            <div className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-sm font-medium">{title}</div>
-                <div className="mt-1 text-xs text-black/35">{detail}</div>
-              </div>
-
-              <div className="font-mono text-[10px] text-black/30">
-                {time}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default function HomePage() {
+export default function Home() {
   const [introDone, setIntroDone] = useState(false);
-  const [activeAgent, setActiveAgent] = useState("finance");
-  const [demoStage, setDemoStage] = useState(0);
-  const [agentCount, setAgentCount] = useState(3);
-  const [cursor, setCursor] = useState({ x: 50, y: 50 });
-
-  const heroRef = useRef<HTMLDivElement>(null);
+  const [phase, setPhase] = useState(0);
+  const [activePillar, setActivePillar] = useState<number | null>(null);
 
   useEffect(() => {
-    const handlePointer = (event: PointerEvent) => {
-      if (!heroRef.current) return;
+    const timers = [
+      setTimeout(() => setPhase(1), 700),
+      setTimeout(() => setPhase(2), 1500),
+      setTimeout(() => setPhase(3), 3800),
+      setTimeout(() => setPhase(4), 5000),
+      setTimeout(() => setIntroDone(true), 6200),
+    ];
 
-      const rect = heroRef.current.getBoundingClientRect();
-
-      setCursor({
-        x: ((event.clientX - rect.left) / rect.width) * 100,
-        y: ((event.clientY - rect.top) / rect.height) * 100,
-      });
-    };
-
-    window.addEventListener("pointermove", handlePointer);
-
-    return () => window.removeEventListener("pointermove", handlePointer);
+    return () => timers.forEach(clearTimeout);
   }, []);
 
-  const simulatedAgents = useMemo(() => {
-    const count = Math.min(agentCount, 100);
-
-    return Array.from({ length: count }, (_, index) => {
-      const angle = (index / count) * Math.PI * 2;
-      const radius = 30 + ((index * 7) % 12);
-
-      return {
-        x: 50 + Math.cos(angle) * radius,
-        y: 50 + Math.sin(angle) * radius,
-      };
-    });
-  }, [agentCount]);
-
   return (
-    <>
-      {!introDone && <Intro onComplete={() => setIntroDone(true)} />}
+    <main className="min-h-screen overflow-x-hidden bg-white text-black">
+      {!introDone && <Intro phase={phase} />}
 
-      <main className="min-h-screen overflow-hidden bg-white text-black selection:bg-[#1677ff] selection:text-white">
-        <nav className="fixed inset-x-0 top-0 z-50 border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
-          <div className="mx-auto flex h-[68px] max-w-[1440px] items-center justify-between px-6 lg:px-10">
-            <Link href="/" className="flex items-center">
-              <Logo />
-            </Link>
+      <div
+        className={`transition-opacity duration-1000 ${
+          introDone ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <TopBar />
 
-            <div className="hidden items-center gap-8 text-[11px] font-medium uppercase tracking-[.16em] text-black/45 lg:flex">
-              <a href="#problem" className="transition hover:text-black">
-                Problem
-              </a>
-              <a href="#control" className="transition hover:text-black">
-                Control
-              </a>
-              <a href="#governance" className="transition hover:text-black">
-                Governance
-              </a>
-              <a href="#compliance" className="transition hover:text-black">
-                Compliance
-              </a>
-              <a href="#demo" className="transition hover:text-black">
-                Demo
-              </a>
-            </div>
-
-            <a
-              href="mailto:hello@arbyter.ai"
-              className="rounded-full bg-black px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[.16em] text-white transition hover:bg-[#1677ff]"
-            >
-              Talk to us
-            </a>
+        {/* =========================================================
+            HERO
+        ========================================================== */}
+        <section className="relative flex min-h-[calc(100vh-78px)] items-center justify-center overflow-hidden border-b border-black/10">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute left-[8%] top-[20%] h-px w-[84%] bg-black/5" />
+            <div className="absolute left-[18%] top-[50%] h-px w-[64%] bg-black/5" />
+            <div className="absolute left-[50%] top-0 h-full w-px bg-black/5" />
           </div>
-        </nav>
 
-        <section
-          ref={heroRef}
-          className="relative flex min-h-screen items-center overflow-hidden px-6 pb-24 pt-32 lg:px-10"
-        >
-          <DotGrid />
-
-          <div
-            className="pointer-events-none absolute h-[520px] w-[520px] rounded-full bg-[#1677ff]/[0.07] blur-3xl transition-all duration-700"
-            style={{
-              left: `${cursor.x}%`,
-              top: `${cursor.y}%`,
-              transform: "translate(-50%, -50%)",
-            }}
-          />
-
-          <div className="relative mx-auto w-full max-w-[1440px]">
-            <div className="max-w-5xl">
-              <SectionLabel>THE AGE OF ACTION-TAKING AI</SectionLabel>
-
-              <h1 className="mt-8 max-w-5xl text-[58px] font-medium leading-[0.92] tracking-[-0.065em] sm:text-7xl lg:text-[112px]">
-                AI can act.
-                <br />
-                <span className="text-black/20">Who controls it?</span>
-              </h1>
-
-              <p className="mt-9 max-w-2xl text-lg leading-8 text-black/50 sm:text-xl">
-                Agents are gaining access to the systems that run companies.
-                They can read data, call tools, make decisions and execute
-                actions.
-              </p>
+          <div className="relative z-10 max-w-6xl px-6 text-center">
+            <div className="mx-auto mb-10 h-20 w-20">
+              {LOGO}
             </div>
 
-            <div className="relative mt-16 h-[430px] overflow-hidden rounded-[32px] border border-black/10 bg-[#f8f8f6] lg:mt-24">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(22,119,255,.05),transparent_35%)]" />
+            <p className="mb-5 text-xs tracking-[0.35em] text-black/50">
+              AI GOVERNANCE INFRASTRUCTURE
+            </p>
 
-              <div className="absolute left-1/2 top-1/2 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center">
-                <div className="flex h-28 w-28 items-center justify-center rounded-full border border-black/15 bg-white shadow-[0_25px_80px_rgba(0,0,0,.1)]">
-                  <div className="text-center">
-                    <div className="text-[10px] font-semibold uppercase tracking-[.2em]">
-                      Your
-                    </div>
-                    <div className="mt-1 text-lg font-medium">Company</div>
-                  </div>
-                </div>
-              </div>
+            <h1 className="text-[clamp(3.8rem,10vw,9rem)] font-black leading-[0.82] tracking-[-0.07em]">
+              ARBYTER
+            </h1>
 
-              {[
-                ["CRM", "top-[13%] left-[13%]"],
-                ["Email", "top-[25%] right-[12%]"],
-                ["Finance", "bottom-[16%] left-[17%]"],
-                ["Database", "bottom-[14%] right-[16%]"],
-                ["HR", "top-[54%] left-[4%]"],
-                ["Cloud", "top-[55%] right-[4%]"],
-              ].map(([label, position], index) => (
-                <div key={label} className={`absolute ${position} z-10`}>
-                  <div className="flex items-center gap-3 rounded-full border border-black/10 bg-white px-4 py-2.5 shadow-sm">
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        index === 2 || index === 3
-                          ? "bg-red-400"
-                          : "bg-[#1677ff]"
-                      }`}
-                    />
-                    <span className="text-[10px] font-semibold uppercase tracking-[.18em]">
-                      {label}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <p
+              className="mt-7 text-sm uppercase tracking-[0.35em]"
+              style={{ color: BLUE }}
+            >
+              Orchestrate. Govern. Secure.
+            </p>
 
-              <svg className="absolute inset-0 h-full w-full">
-                <line x1="18%" y1="18%" x2="47%" y2="48%" stroke="rgba(0,0,0,.09)" />
-                <line x1="82%" y1="29%" x2="53%" y2="48%" stroke="rgba(0,0,0,.09)" />
-                <line x1="23%" y1="84%" x2="47%" y2="54%" stroke="rgba(0,0,0,.09)" />
-                <line x1="78%" y1="84%" x2="53%" y2="54%" stroke="rgba(0,0,0,.09)" />
-                <line x1="6%" y1="59%" x2="44%" y2="51%" stroke="rgba(0,0,0,.09)" />
-                <line x1="94%" y1="59%" x2="56%" y2="51%" stroke="rgba(0,0,0,.09)" />
-              </svg>
+            <p className="mx-auto mt-8 max-w-xl text-base leading-7 text-black/55">
+              The control layer between your organization and its AI agents.
+              Connect them. Understand them. Govern them.
+            </p>
 
-              <div className="absolute bottom-5 left-5 rounded-xl border border-black/10 bg-white/80 px-4 py-3 backdrop-blur-xl">
-                <div className="text-[9px] uppercase tracking-[.22em] text-black/30">
-                  The problem
-                </div>
-                <div className="mt-1 text-xs font-medium">
-                  Agents are touching everything.
-                </div>
-              </div>
-            </div>
+            <div className="mt-10 flex flex-wrap justify-center gap-3">
+              <Link
+                href="/login"
+                className="rounded-full bg-black px-7 py-3 text-sm font-medium text-white transition hover:bg-[#1300BA]"
+              >
+                Request a demo
+              </Link>
 
-            <div className="mt-10 flex items-center gap-3 text-xs text-black/35">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
-              Data
-              <span className="ml-4 h-1.5 w-1.5 rounded-full bg-[#1677ff]" />
-              Systems
-              <span className="ml-4 h-1.5 w-1.5 rounded-full bg-black" />
-              Agents
+              <a
+                href="#system"
+                className="rounded-full border border-black/15 px-7 py-3 text-sm font-medium transition hover:border-black"
+              >
+                Explore Arbyter
+              </a>
             </div>
           </div>
         </section>
 
+        {/* =========================================================
+            HOOK
+        ========================================================== */}
+        <section className="relative overflow-hidden border-b border-black/10 bg-white py-32 md:py-44">
+          <div className="mx-auto max-w-5xl px-6 text-center">
+            <div
+              className="mx-auto mb-8 h-2 w-2 rounded-full"
+              style={{ backgroundColor: BLUE }}
+            />
+
+            <h2 className="text-5xl font-black leading-[0.92] tracking-[-0.06em] md:text-7xl lg:text-8xl">
+              YOU SHOULDN&apos;T HAVE TO
+              <br />
+              WORRY ABOUT YOUR AGENTS.
+            </h2>
+
+            <p className="mx-auto mt-10 max-w-2xl text-lg leading-8 text-black/50 md:text-xl">
+              They can act. They can decide. They can use tools, access data,
+              communicate with systems and operate at scale.
+              <br />
+              <span className="font-semibold text-black">
+                Arbyter makes sure you always know what happens next.
+              </span>
+            </p>
+
+            <div className="mx-auto mt-14 flex max-w-xl items-center justify-center gap-4">
+              <div className="h-px flex-1 bg-black/10" />
+              <div
+                className="text-[10px] font-bold tracking-[0.35em]"
+                style={{ color: BLUE }}
+              >
+                LET THEM MOVE
+              </div>
+              <div className="h-px flex-1 bg-black/10" />
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================================
+            SYSTEM / FORTRESS
+        ========================================================== */}
         <section
-          id="problem"
-          className="border-t border-black/10 px-6 py-28 lg:px-10 lg:py-40"
+          id="system"
+          className="relative overflow-hidden border-b border-black/10 bg-white"
         >
-          <div className="mx-auto max-w-[1440px]">
-            <div className="grid gap-20 lg:grid-cols-[.7fr_1.3fr]">
-              <div>
-                <SectionLabel>The control gap</SectionLabel>
+          <div className="mx-auto max-w-5xl px-6 pb-20 pt-28 text-center md:pt-36">
+            <div className="mx-auto mb-8 h-16 w-16">{LOGO}</div>
+
+            <h2 className="text-5xl font-black leading-[0.9] tracking-[-0.055em] md:text-7xl">
+              EVERYTHING
+              <br />
+              UNDER CONTROL.
+            </h2>
+
+            <p className="mx-auto mt-8 max-w-2xl text-base leading-8 text-black/50 md:text-lg">
+              Arbyter becomes the operating layer between your organization
+              and its autonomous AI systems. It connects agents, gives them
+              identity, observes their behavior, applies organizational rules
+              and helps your teams understand what needs attention.
+            </p>
+
+            <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-black/35">
+              You do not need to watch every agent yourself.
+              Arbyter watches the system with you.
+            </p>
+          </div>
+
+          {/* Fortress stays in normal document flow */}
+          <div className="mx-auto w-full max-w-[1400px] px-5 pb-28 md:px-10">
+            {/* Roof */}
+            <div className="mx-auto w-[280px] md:w-[410px]">
+              <div className="border-2 border-black bg-white px-8 py-7 text-center shadow-[10px_10px_0_#1300BA]">
+                <div className="mx-auto mb-5 h-12 w-12">{LOGO}</div>
+
+                <div className="text-2xl font-black tracking-[-0.04em]">
+                  ARBYTER OS
+                </div>
+
+                <div
+                  className="mt-2 text-[9px] font-bold tracking-[0.35em]"
+                  style={{ color: BLUE }}
+                >
+                  ORCHESTRATE · GOVERN · SECURE
+                </div>
+
+                <p className="mt-5 text-xs leading-5 text-black/45">
+                  The intelligence layer between your organization and its
+                  autonomous systems.
+                </p>
+              </div>
+            </div>
+
+            {/* Main fortress */}
+            <div className="relative mt-20 border-x-2 border-t-2 border-black bg-white px-3 pt-3 md:px-5 md:pt-5">
+              <div
+                className="absolute left-0 top-0 h-1 w-full"
+                style={{ backgroundColor: BLUE }}
+              />
+
+              {/* Pillars */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {pillars.map((pillar, index) => (
+                  <button
+                    key={pillar.name}
+                    onClick={() => setActivePillar(index)}
+                    className="group relative flex min-h-[350px] flex-col justify-between overflow-hidden border-2 border-black bg-white p-6 text-left transition-all duration-300 hover:-translate-y-2 hover:bg-black hover:text-white"
+                  >
+                    <div
+                      className="absolute left-0 top-0 h-1 w-full"
+                      style={{ backgroundColor: BLUE }}
+                    />
+
+                    <div className="flex items-start justify-between">
+                      <span
+                        className="text-[10px] font-bold tracking-[0.3em]"
+                        style={{ color: BLUE }}
+                      >
+                        0{index + 1}
+                      </span>
+
+                      <span className="text-[10px] text-black/25 group-hover:text-white/25">
+                        SYSTEM
+                      </span>
+                    </div>
+
+                    <div className="mt-12">
+                      <h3 className="text-2xl font-black tracking-[-0.035em] md:text-3xl">
+                        {pillar.name}
+                      </h3>
+
+                      <p className="mt-5 text-sm leading-6 text-black/50 group-hover:text-white/50">
+                        {pillar.description}
+                      </p>
+                    </div>
+
+                    <div className="mt-8 flex items-center justify-between border-t border-black/10 pt-5 group-hover:border-white/10">
+                      <span className="text-[10px] tracking-[0.25em] text-black/35 group-hover:text-white/35">
+                        EXPLORE SYSTEM
+                      </span>
+
+                      <span
+                        className="text-xl transition-transform duration-300 group-hover:translate-x-2"
+                        style={{ color: BLUE }}
+                      >
+                        →
+                      </span>
+                    </div>
+                  </button>
+                ))}
               </div>
 
-              <div>
-                <h2 className="max-w-5xl text-4xl font-medium leading-[1.03] tracking-[-.05em] sm:text-5xl lg:text-7xl">
-                  The more capable agents become, the harder they become to
-                  govern.
-                </h2>
-
-                <p className="mt-10 max-w-3xl text-lg leading-8 text-black/45">
-                  A company can have one agent today and thousands tomorrow.
-                  Each agent can interact with tools, data, APIs, employees,
-                  customers and critical systems.
-                </p>
-
-                <div className="mt-16 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {[
-                    ["ACCESS", "What can it see?"],
-                    ["ACTION", "What can it do?"],
-                    ["DECISION", "Why did it do it?"],
-                    ["RISK", "What happens if it is wrong?"],
-                  ].map(([title, text]) => (
+              {/* Command Center */}
+              <div className="mt-4 border-2 border-black bg-black px-6 py-10 text-white md:px-10">
+                <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+                  <div>
                     <div
-                      key={title}
-                      className="rounded-2xl border border-black/10 bg-[#fafafa] p-6"
+                      className="text-[9px] font-bold tracking-[0.35em]"
+                      style={{ color: "#6A5DFF" }}
                     >
-                      <div className="text-[9px] font-semibold tracking-[.24em] text-black/30">
-                        {title}
-                      </div>
-                      <div className="mt-8 text-sm font-medium">{text}</div>
+                      COMMAND CENTER
+                    </div>
+
+                    <h3 className="mt-3 text-3xl font-black tracking-[-0.04em] md:text-4xl">
+                      Know what&apos;s happening.
+                    </h3>
+                  </div>
+
+                  <p className="max-w-md text-sm leading-6 text-white/40">
+                    Arbyter does not simply collect logs. It turns agent
+                    activity into operational intelligence your organization
+                    can understand and act on.
+                  </p>
+                </div>
+
+                <div className="grid gap-px bg-white/10 md:grid-cols-3">
+                  {[
+                    {
+                      title: "What is happening?",
+                      text: "See agent activity, tools, data access, tasks, interactions, decisions, errors and outcomes.",
+                    },
+                    {
+                      title: "Why is it happening?",
+                      text: "Understand the context behind behavior, including permissions, policies, decisions and unexpected actions.",
+                    },
+                    {
+                      title: "What should happen next?",
+                      text: "Investigate risks, intervene when necessary and guide the system toward the right outcome.",
+                    },
+                  ].map((item) => (
+                    <div key={item.title} className="bg-black p-7">
+                      <h4 className="text-xl font-bold">{item.title}</h4>
+
+                      <p className="mt-4 text-sm leading-6 text-white/40">
+                        {item.text}
+                      </p>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-        </section>
 
-        <section className="relative overflow-hidden bg-[#050505] px-6 py-32 text-white lg:px-10 lg:py-48">
-          <div className="absolute inset-0 opacity-20">
-            <DotGrid />
-          </div>
+              {/* Foundation */}
+              <div className="mt-4 border-2 border-black bg-white">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5">
+                  {[
+                    ["AGENTS", "Autonomous systems"],
+                    ["IDENTITIES", "Who is acting"],
+                    ["TOOLS", "What they can use"],
+                    ["DATA", "What they can access"],
+                    ["ACTIONS", "What they can do"],
+                  ].map(([title, description]) => (
+                    <div
+                      key={title}
+                      className="border-b border-black/10 p-6 md:border-b-0 md:border-r"
+                    >
+                      <div className="text-[9px] font-bold tracking-[0.25em] text-black/30">
+                        {title}
+                      </div>
 
-          <div className="relative mx-auto max-w-[1440px]">
-            <SectionLabel dark>The missing layer</SectionLabel>
+                      <div className="mt-3 text-sm font-semibold">
+                        {description}
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-            <div className="mt-16 flex flex-col items-center">
-              <div className="flex flex-wrap items-center justify-center gap-4">
-                {["Agents", "Tasks"].map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-full border border-white/10 bg-white/[.04] px-6 py-3 text-xs text-white/50"
-                  >
-                    {item}
+                <div className="border-t-2 border-black px-6 py-12 text-center">
+                  <div className="text-[9px] tracking-[0.35em] text-black/35">
+                    FOUNDATION
                   </div>
-                ))}
+
+                  <h3 className="mt-3 text-4xl font-black tracking-[-0.05em]">
+                    YOUR AI AGENTS
+                  </h3>
+
+                  <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-black/45">
+                    Every autonomous system becomes visible, identifiable and
+                    governable without forcing your organization to rebuild
+                    its existing AI infrastructure.
+                  </p>
+                </div>
               </div>
 
-              <div className="my-8 h-16 w-px bg-gradient-to-b from-white/20 to-[#1677ff]" />
-
-              <div className="relative flex h-44 w-44 items-center justify-center rounded-full border border-[#1677ff]/50 bg-[#1677ff]/[.06] shadow-[0_0_100px_rgba(22,119,255,.12)]">
-                <div className="absolute inset-5 rounded-full border border-[#1677ff]/20" />
-                <Logo large />
-              </div>
-
-              <div className="my-8 h-16 w-px bg-gradient-to-b from-[#1677ff] to-white/20" />
-
-              <div className="flex flex-wrap items-center justify-center gap-4">
-                {["Tools", "Data", "Systems"].map((item) => (
-                  <div
-                    key={item}
-                    className="rounded-full border border-white/10 bg-white/[.04] px-6 py-3 text-xs text-white/50"
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-
-              <h2 className="mt-24 text-center text-5xl font-medium tracking-[-.06em] sm:text-6xl lg:text-8xl">
-                The missing layer
-                <br />
-                is <span className="text-[#4d91ff]">control.</span>
-              </h2>
-            </div>
-          </div>
-        </section>
-
-        <section id="control" className="px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto max-w-[1440px]">
-            <div className="grid gap-16 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
-              <div>
-                <SectionLabel>Meet Arbyter OS</SectionLabel>
-
-                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
-                  One control plane.
-                  <br />
-                  Every agent.
-                </h2>
-              </div>
-
-              <p className="max-w-2xl text-lg leading-8 text-black/45">
-                Arbyter sits between your AI agents and the systems they
-                interact with — providing identity, permissions, governance,
-                risk controls, human approval, execution and audit.
-              </p>
-            </div>
-
-            <div className="mt-20">
-              <ControlPlane
-                activeAgent={activeAgent}
-                setActiveAgent={setActiveAgent}
+              <div
+                className="mx-auto h-5 w-[104%] -translate-x-[2%]"
+                style={{ backgroundColor: BLUE }}
               />
             </div>
           </div>
         </section>
 
-        <section className="bg-[#f7f7f5] px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto max-w-[1440px]">
-            <SectionLabel>The agent lifecycle</SectionLabel>
+        {/* =========================================================
+            SYSTEM ARCHITECTURE
+        ========================================================== */}
+        <section className="relative overflow-hidden border-b border-black/10 bg-white py-36 md:py-48">
+          <div className="mx-auto max-w-7xl px-6">
+            <div className="grid gap-20 md:grid-cols-2 md:items-end">
+              <div>
+                <p
+                  className="text-xs font-bold tracking-[0.35em]"
+                  style={{ color: BLUE }}
+                >
+                  THE OPERATING LAYER
+                </p>
 
-            <h2 className="mt-7 max-w-4xl text-4xl font-medium tracking-[-.05em] sm:text-5xl lg:text-7xl">
-              From intention
-              <br />
-              to evidence.
-            </h2>
+                <h2 className="mt-6 text-5xl font-black leading-[0.88] tracking-[-0.06em] md:text-7xl lg:text-8xl">
+                  FROM
+                  <br />
+                  AGENTS
+                  <br />
+                  TO SYSTEM.
+                </h2>
+              </div>
 
-            <div className="relative mt-24 overflow-hidden rounded-[32px] border border-black/10 bg-white p-6 lg:p-10">
-              <div className="absolute left-[7%] right-[7%] top-[88px] hidden h-px bg-black/10 lg:block" />
+              <div>
+                <p className="text-xl leading-9 text-black/55">
+                  AI agents are powerful individually.
+                  <br />
+                  Their real impact appears when an organization has
+                  <span className="font-semibold text-black">
+                    {" "}
+                    dozens, hundreds or thousands of them.
+                  </span>
+                </p>
 
-              <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-7">
+                <p className="mt-7 text-base leading-7 text-black/40">
+                  Different models. Different tools. Different permissions.
+                  Different decisions. All operating across the same business.
+                  Arbyter creates the common layer that brings them together.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-24 border-2 border-black">
+              {[
+                {
+                  number: "01",
+                  title: "CONNECT",
+                  description:
+                    "Bring existing AI agents into Arbyter without rebuilding your AI infrastructure.",
+                  detail:
+                    "Connect agents through supported connection mechanisms and establish the foundation for continuous observation.",
+                },
+                {
+                  number: "02",
+                  title: "IDENTIFY",
+                  description:
+                    "Give every agent a clear identity, owner and operational context.",
+                  detail:
+                    "Know exactly which system is acting, what environment it belongs to and what responsibilities it has.",
+                },
+                {
+                  number: "03",
+                  title: "OBSERVE",
+                  description:
+                    "Understand what every agent is doing across the organization.",
+                  detail:
+                    "Monitor activity, tools, data access, decisions, interactions, errors, tasks and outcomes.",
+                },
+                {
+                  number: "04",
+                  title: "GOVERN",
+                  description:
+                    "Apply organizational rules to autonomous behavior.",
+                  detail:
+                    "Establish policies, permissions, boundaries, approvals and compliance requirements.",
+                },
+                {
+                  number: "05",
+                  title: "PROTECT",
+                  description:
+                    "Detect behavior that could create risk.",
+                  detail:
+                    "Identify security threats, unauthorized access, harmful actions, policy violations and abnormal behavior.",
+                },
+                {
+                  number: "06",
+                  title: "RESPOND",
+                  description:
+                    "Turn signals into decisions and actions.",
+                  detail:
+                    "Investigate incidents, intervene when necessary and continuously improve the governance system.",
+                },
+              ].map((item, index) => (
+                <div
+                  key={item.number}
+                  className={`grid gap-8 border-b border-black/15 p-7 last:border-b-0 md:grid-cols-[90px_1fr_1fr] md:items-center md:p-10 ${
+                    index % 2 === 0 ? "bg-white" : "bg-black/[0.015]"
+                  }`}
+                >
+                  <div
+                    className="text-xs font-bold tracking-[0.3em]"
+                    style={{ color: BLUE }}
+                  >
+                    {item.number}
+                  </div>
+
+                  <div>
+                    <h3 className="text-2xl font-black tracking-[-0.03em]">
+                      {item.title}
+                    </h3>
+
+                    <p className="mt-3 max-w-md text-sm leading-6 text-black/50">
+                      {item.description}
+                    </p>
+                  </div>
+
+                  <div className="border-l border-black/10 pl-0 md:pl-8">
+                    <p className="text-sm leading-6 text-black/40">
+                      {item.detail}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-16 grid gap-4 md:grid-cols-3">
+              {[
+                {
+                  label: "VISIBILITY",
+                  title: "Nothing important stays invisible.",
+                  text: "From routine actions to abnormal decisions, Arbyter creates a continuous picture of how your AI infrastructure behaves.",
+                },
+                {
+                  label: "ACCOUNTABILITY",
+                  title: "Autonomous does not mean unaccountable.",
+                  text: "Every meaningful action can be connected back to an agent, its permissions, policies and operating context.",
+                },
+                {
+                  label: "SCALE",
+                  title: "Built for the agent economy.",
+                  text: "Start with a handful of agents and grow into an organization where hundreds or thousands of autonomous systems operate together.",
+                },
+              ].map((item) => (
+                <div key={item.label} className="border border-black/15 p-8">
+                  <div
+                    className="text-[9px] font-bold tracking-[0.3em]"
+                    style={{ color: BLUE }}
+                  >
+                    {item.label}
+                  </div>
+
+                  <h3 className="mt-5 text-2xl font-black">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-5 text-sm leading-6 text-black/45">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================================
+            ARCHITECTURE / DARK SECTION
+        ========================================================== */}
+        <section className="border-b border-black/10 bg-black py-32 text-white md:py-40">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="grid gap-16 md:grid-cols-[1fr_1.2fr] md:items-center">
+              <div>
+                <p
+                  className="text-xs tracking-[0.35em]"
+                  style={{ color: "#6A5DFF" }}
+                >
+                  THE CONTROL PLANE
+                </p>
+
+                <h2 className="mt-5 text-5xl font-black leading-[0.95] tracking-[-0.05em] md:text-7xl">
+                  ONE LAYER.
+                  <br />
+                  EVERY AGENT.
+                </h2>
+
+                <p className="mt-8 max-w-md text-sm leading-7 text-white/40">
+                  Arbyter is designed to sit above your agent infrastructure
+                  without requiring your organization to replace the systems
+                  that already work.
+                </p>
+              </div>
+
+              <div className="space-y-3">
                 {[
-                  "Agent",
-                  "Task",
-                  "Understand",
-                  "Govern",
-                  "Authorize",
-                  "Execute",
-                  "Audit",
-                ].map((item, index) => (
-                  <div key={item} className="relative z-10">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full border border-black/10 bg-white text-[10px] font-semibold">
-                      {String(index + 1).padStart(2, "0")}
+                  ["01", "AI AGENTS", "The autonomous systems doing the work."],
+                  ["02", "IDENTITIES", "Who each agent is and who owns it."],
+                  ["03", "CONNECTIONS", "How each system communicates."],
+                  ["04", "ACTIVITY", "What agents actually do."],
+                  ["05", "DECISIONS", "What they decide and why."],
+                  ["06", "POLICIES", "What they are allowed to do."],
+                  ["07", "RISK", "What could go wrong."],
+                  ["08", "ORGANIZATION", "The humans and systems responsible."],
+                ].map(([number, title, text]) => (
+                  <div
+                    key={number}
+                    className="flex items-center justify-between border-b border-white/10 py-5"
+                  >
+                    <div className="flex items-center gap-5">
+                      <span className="text-xs text-white/30">
+                        {number}
+                      </span>
+
+                      <div>
+                        <div className="font-bold tracking-wide">
+                          {title}
+                        </div>
+
+                        <div className="mt-1 text-xs text-white/30">
+                          {text}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="mt-6 text-sm font-semibold">{item}</div>
-
-                    <div className="mt-2 text-xs leading-5 text-black/35">
-                      {[
-                        "Identity",
-                        "Intent",
-                        "Context",
-                        "Policy",
-                        "Permission",
-                        "Action",
-                        "Evidence",
-                      ][index]}
-                    </div>
+                    <span style={{ color: "#6A5DFF" }}>→</span>
                   </div>
                 ))}
               </div>
@@ -839,390 +678,470 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section
-          id="governance"
-          className="bg-black px-6 py-28 text-white lg:px-10 lg:py-40"
-        >
-          <div className="mx-auto max-w-[1440px]">
-            <div className="grid gap-16 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
-              <div>
-                <SectionLabel dark>Live governance</SectionLabel>
+        {/* =========================================================
+            LAYER 05 / FINAL CTA
+        ========================================================== */}
+        <section className="relative overflow-hidden bg-white py-36 md:py-48">
+          <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1300BA]/5 blur-3xl" />
 
-                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
-                  Watch a decision
-                  <br />
-                  happen.
-                </h2>
+          <div className="relative z-10 mx-auto max-w-7xl px-6">
+            <div className="mx-auto max-w-4xl text-center">
+              <div className="mx-auto mb-10 h-16 w-16">{LOGO}</div>
 
-                <p className="mt-8 max-w-xl text-lg leading-8 text-white/40">
-                  This is what happens when an agent attempts a consequential
-                  action inside Arbyter.
-                </p>
+              <p
+                className="text-xs font-bold tracking-[0.35em]"
+                style={{ color: BLUE }}
+              >
+                BUILD WITH CONFIDENCE
+              </p>
 
-                <div className="mt-10 flex flex-wrap gap-2">
-                  {demoStages.map((stage, index) => (
-                    <button
-                      type="button"
-                      key={stage.label}
-                      onClick={() => setDemoStage(index)}
-                      className={`rounded-full px-4 py-2 text-[10px] font-semibold uppercase tracking-[.15em] transition ${
-                        demoStage === index
-                          ? "bg-white text-black"
-                          : "border border-white/10 text-white/35 hover:text-white"
-                      }`}
-                    >
-                      {stage.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <DecisionSimulator />
-
-                <div className="mt-5 rounded-2xl border border-white/10 bg-white/[.03] p-6">
-                  <div className="text-[9px] uppercase tracking-[.25em] text-white/25">
-                    {demoStages[demoStage].eyebrow}
-                  </div>
-
-                  <div className="mt-3 text-xl font-medium">
-                    {demoStages[demoStage].title}
-                  </div>
-
-                  <p className="mt-3 text-sm leading-7 text-white/40">
-                    {demoStages[demoStage].description}
-                  </p>
-
-                  <div className="mt-5 font-mono text-[10px] text-[#4d91ff]">
-                    {demoStages[demoStage].detail}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto max-w-[1440px]">
-            <div className="grid gap-16 lg:grid-cols-[.65fr_1.35fr]">
-              <div>
-                <SectionLabel>Visibility</SectionLabel>
-
-                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl">
-                  See the system
-                  <br />
-                  thinking.
-                </h2>
-              </div>
-
-              <div className="relative min-h-[600px] overflow-hidden rounded-[34px] border border-black/10 bg-[#fafafa]">
-                <DotGrid />
-
-                <div className="absolute left-1/2 top-1/2 flex h-32 w-32 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#1677ff]/30 bg-white shadow-xl">
-                  <div className="text-center">
-                    <div className="text-2xl font-semibold">AI</div>
-                    <div className="mt-1 text-[8px] uppercase tracking-[.2em] text-black/30">
-                      action
-                    </div>
-                  </div>
-                </div>
-
-                {[
-                  ["DATA", "Sensitive customer records"],
-                  ["TOOL", "CRM.write"],
-                  ["POLICY", "Customer data boundary"],
-                  ["RISK", "Medium"],
-                  ["DECISION", "FLAG"],
-                  ["SYSTEM", "Production CRM"],
-                  ["TASK", "Update account"],
-                  ["RESULT", "Completed"],
-                ].map(([label, value], index) => {
-                  const positions = [
-                    "left-[8%] top-[9%]",
-                    "right-[8%] top-[13%]",
-                    "left-[5%] top-[42%]",
-                    "right-[7%] top-[44%]",
-                    "left-[10%] bottom-[12%]",
-                    "right-[7%] bottom-[11%]",
-                    "left-[39%] top-[8%]",
-                    "left-[39%] bottom-[8%]",
-                  ];
-
-                  return (
-                    <div
-                      key={label}
-                      className={`absolute ${positions[index]} rounded-xl border border-black/10 bg-white px-4 py-3 shadow-sm`}
-                    >
-                      <div className="text-[8px] font-semibold tracking-[.2em] text-black/30">
-                        {label}
-                      </div>
-                      <div className="mt-1 text-[10px] font-medium">
-                        {value}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section
-          id="compliance"
-          className="bg-[#f7f7f5] px-6 py-28 lg:px-10 lg:py-40"
-        >
-          <div className="mx-auto max-w-[1440px]">
-            <div className="max-w-4xl">
-              <SectionLabel>Regulatory intelligence</SectionLabel>
-
-              <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
-                Turn regulations
+              <h2 className="mt-6 text-5xl font-black leading-[0.88] tracking-[-0.06em] md:text-7xl lg:text-8xl">
+                LET YOUR
                 <br />
-                into controls.
+                AGENTS MOVE.
+                <br />
+                WE&apos;LL WATCH.
               </h2>
 
-              <p className="mt-8 max-w-2xl text-lg leading-8 text-black/45">
-                Regulations should not live in PDFs that nobody connects to
-                execution. Arbyter maps requirements to controls, policies,
-                agents and evidence.
+              <p className="mx-auto mt-9 max-w-2xl text-base leading-8 text-black/50 md:text-lg">
+                Your AI infrastructure should be able to move fast without
+                becoming impossible to understand. Arbyter gives your
+                organization the visibility, governance and security needed
+                to operate confidently in an autonomous world.
               </p>
             </div>
 
-            <div className="mt-20">
-              <ComplianceMap />
+            {/* CTA detail grid */}
+            <div className="mx-auto mt-24 grid max-w-6xl gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  number: "01",
+                  title: "CONNECT",
+                  text: "Bring your existing AI agents into one governed environment.",
+                },
+                {
+                  number: "02",
+                  title: "GOVERN",
+                  text: "Define how autonomous systems are allowed to operate.",
+                },
+                {
+                  number: "03",
+                  title: "SECURE",
+                  text: "Detect threats, abnormal behavior and dangerous actions.",
+                },
+                {
+                  number: "04",
+                  title: "SCALE",
+                  text: "Grow from a few agents to an entire AI workforce.",
+                },
+              ].map((item) => (
+                <div
+                  key={item.number}
+                  className="border-2 border-black bg-white p-7"
+                >
+                  <div
+                    className="text-[10px] font-bold tracking-[0.3em]"
+                    style={{ color: BLUE }}
+                  >
+                    {item.number}
+                  </div>
+
+                  <h3 className="mt-12 text-2xl font-black">
+                    {item.title}
+                  </h3>
+
+                  <p className="mt-4 text-sm leading-6 text-black/45">
+                    {item.text}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Contact */}
+            <div className="mx-auto mt-16 max-w-6xl border-2 border-black bg-black p-8 text-white md:p-12">
+              <div className="grid gap-10 md:grid-cols-[1fr_auto] md:items-center">
+                <div>
+                  <div
+                    className="text-[9px] font-bold tracking-[0.35em]"
+                    style={{ color: "#6A5DFF" }}
+                  >
+                    START A CONVERSATION
+                  </div>
+
+                  <h3 className="mt-4 text-3xl font-black tracking-[-0.04em] md:text-4xl">
+                    Want to understand what Arbyter can do for your
+                    organization?
+                  </h3>
+
+                  <p className="mt-5 max-w-2xl text-sm leading-7 text-white/45">
+                    Tell us about your AI systems, your current challenges and
+                    where you want autonomous agents to take your organization.
+                    We&apos;ll take it from there.
+                  </p>
+                </div>
+
+                <a
+                  href="mailto:arbyteros@gmail.com"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-white px-8 py-4 text-sm font-semibold text-black transition hover:bg-[#1300BA] hover:text-white"
+                >
+                  Contact Us →
+                </a>
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto max-w-[1440px]">
-            <div className="grid gap-16 lg:grid-cols-[1fr_.8fr] lg:items-start">
+        {/* =========================================================
+            FOOTER
+        ========================================================== */}
+        <footer className="border-t border-black/10 bg-white px-6 py-14">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-12 md:grid-cols-3">
+              {/* Brand */}
               <div>
-                <SectionLabel>Investigation</SectionLabel>
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-10">{LOGO}</div>
 
-                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
-                  When something
-                  <br />
-                  goes wrong,
-                  <br />
-                  trace it.
-                </h2>
+                  <div>
+                    <div className="text-sm font-black">ARBYTER OS</div>
 
-                <p className="mt-8 max-w-xl text-lg leading-8 text-black/45">
-                  Arbyter connects the chain between an agent, its task,
-                  decision, policy, tool, data and final execution.
+                    <div className="mt-1 text-[7px] tracking-[0.3em] text-black/35">
+                      AI GOVERNANCE INFRASTRUCTURE
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-6 max-w-sm text-sm leading-6 text-black/40">
+                  The operating layer for organizations building with
+                  autonomous AI.
                 </p>
               </div>
 
-              <div className="rounded-[30px] border border-black/10 bg-[#fafafa] p-5">
-                {[
-                  ["Agent", "Finance Agent"],
-                  ["Task", "Process vendor payment"],
-                  ["Decision", "REQUIRE_APPROVAL"],
-                  ["Policy", "Financial threshold"],
-                  ["Risk", "HIGH"],
-                  ["Tool", "finance.transfer"],
-                  ["Execution", "Blocked pending approval"],
-                ].map(([key, value], index) => (
-                  <div
-                    key={key}
-                    className="relative flex items-center gap-5 border-b border-black/10 py-5 last:border-0"
-                  >
-                    <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-[9px] font-semibold">
-                      {String(index + 1).padStart(2, "0")}
-                    </div>
-
-                    {index < 6 && (
-                      <div className="absolute bottom-[-20px] left-[17px] top-[56px] w-px bg-black/10" />
-                    )}
-
-                    <div className="flex flex-1 items-center justify-between gap-5">
-                      <span className="text-xs text-black/35">{key}</span>
-                      <span className="text-right text-xs font-semibold">
-                        {value}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-[#fafafa] px-6 py-28 lg:px-10 lg:py-40">
-          <div className="mx-auto max-w-[1440px]">
-            <div className="grid gap-16 lg:grid-cols-[.7fr_1.3fr]">
+              {/* Contact */}
               <div>
-                <SectionLabel>Audit</SectionLabel>
-
-                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl">
-                  Every consequential
-                  <br />
-                  action leaves
-                  <br />
-                  evidence.
-                </h2>
-              </div>
-
-              <div className="rounded-[30px] border border-black/10 bg-white p-8 lg:p-12">
-                <AuditTimeline />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="relative overflow-hidden bg-black px-6 py-32 text-white lg:px-10 lg:py-48">
-          <div className="absolute inset-0 opacity-15">
-            <DotGrid />
-          </div>
-
-          <div className="relative mx-auto max-w-[1440px]">
-            <div className="grid gap-16 lg:grid-cols-[.7fr_1.3fr]">
-              <div>
-                <SectionLabel dark>Scale</SectionLabel>
-
-                <h2 className="mt-7 text-5xl font-medium tracking-[-.055em] sm:text-6xl lg:text-7xl">
-                  More agents.
-                  <br />
-                  Same control.
-                </h2>
-              </div>
-
-              <div>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <div className="font-mono text-6xl font-medium tracking-[-.06em]">
-                      {agentCount}
-                    </div>
-                    <div className="mt-2 text-[9px] uppercase tracking-[.25em] text-white/30">
-                      agents governed
-                    </div>
-                  </div>
-
-                  <div className="text-right text-xs text-white/30">
-                    Move the control
-                    <br />
-                    plane through scale.
-                  </div>
+                <div className="text-[9px] font-bold tracking-[0.3em] text-black/35">
+                  CONTACT
                 </div>
 
-                <input
-                  type="range"
-                  min="3"
-                  max="100"
-                  value={agentCount}
-                  onChange={(event) =>
-                    setAgentCount(Number(event.target.value))
-                  }
-                  className="mt-10 w-full accent-[#1677ff]"
-                />
+                <a
+                  href="mailto:arbyteros@gmail.com"
+                  className="mt-5 block text-sm font-medium transition hover:text-[#1300BA]"
+                >
+                  arbyteros@gmail.com
+                </a>
 
-                <div className="relative mt-16 h-[430px] overflow-hidden rounded-[30px] border border-white/10 bg-white/[.025]">
-                  <div className="absolute left-1/2 top-1/2 z-20 flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[#1677ff]/40 bg-black shadow-[0_0_80px_rgba(22,119,255,.15)]">
-                    <Logo />
-                  </div>
+                <a
+                  href="mailto:arbyteros@gmail.com"
+                  className="mt-5 inline-flex rounded-full border border-black px-5 py-2.5 text-xs font-semibold transition hover:bg-black hover:text-white"
+                >
+                  Contact Us →
+                </a>
+              </div>
 
-                  {simulatedAgents.map((node, index) => (
-                    <div
-                      key={index}
-                      className="absolute h-1.5 w-1.5 rounded-full bg-[#1677ff]/70 transition-all duration-700"
-                      style={{
-                        left: `${node.x}%`,
-                        top: `${node.y}%`,
-                      }}
-                    />
-                  ))}
-
-                  <div className="absolute bottom-5 left-5 text-[9px] uppercase tracking-[.25em] text-white/25">
-                    Agent network
-                  </div>
+              {/* Instagram */}
+              <div>
+                <div className="text-[9px] font-bold tracking-[0.3em] text-black/35">
+                  FOLLOW ARBYTER
                 </div>
+
+                <a
+                  href="https://www.instagram.com/arbyter.os"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-3 text-sm font-medium transition hover:text-[#1300BA]"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-black">
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <rect
+                        x="3"
+                        y="3"
+                        width="18"
+                        height="18"
+                        rx="5"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="4"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      />
+
+                      <circle
+                        cx="17.5"
+                        cy="6.5"
+                        r="1"
+                        fill="currentColor"
+                      />
+                    </svg>
+                  </span>
+
+                  @arbyter.os
+                </a>
               </div>
             </div>
-          </div>
-        </section>
 
-        <section id="demo" className="relative overflow-hidden px-6 py-36 lg:px-10 lg:py-56">
-          <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#1677ff]/[.05] blur-3xl" />
+            <div className="mt-14 flex flex-col gap-4 border-t border-black/10 pt-7 text-[10px] text-black/30 md:flex-row md:items-center md:justify-between">
+              <span>© {new Date().getFullYear()} Arbyter OS</span>
 
-          <div className="relative mx-auto max-w-5xl text-center">
-            <Logo large />
-
-            <h2 className="mt-14 text-5xl font-medium leading-[.95] tracking-[-.065em] sm:text-6xl lg:text-8xl">
-              Your agents are
-              <br />
-              already making
-              <br />
-              decisions.
-            </h2>
-
-            <p className="mx-auto mt-9 max-w-2xl text-lg leading-8 text-black/45 sm:text-xl">
-              Give those decisions a control plane.
-            </p>
-
-            <div className="mt-11 flex flex-col justify-center gap-3 sm:flex-row">
-              <a
-                href="mailto:hello@arbyter.ai"
-                className="rounded-full bg-black px-8 py-4 text-xs font-semibold uppercase tracking-[.18em] text-white transition hover:bg-[#1677ff]"
-              >
-                Talk to Arbyter
-              </a>
-
-              <a
-                href="#governance"
-                className="rounded-full border border-black/10 px-8 py-4 text-xs font-semibold uppercase tracking-[.18em] transition hover:bg-black/[.03]"
-              >
-                Run the demo
-              </a>
-            </div>
-          </div>
-        </section>
-
-        <footer className="border-t border-black/10 px-6 py-10 lg:px-10">
-          <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-6 sm:flex-row sm:items-center">
-            <Logo />
-
-            <div className="text-[9px] uppercase tracking-[.25em] text-black/30">
-              Orchestrate · Govern · Secure
-            </div>
-
-            <div className="text-[10px] text-black/30">
-              © 2026 Arbyter OS
+              <span>ORCHESTRATE · GOVERN · SECURE</span>
             </div>
           </div>
         </footer>
-      </main>
+      </div>
 
-      <style jsx global>{`
-        @keyframes flow {
-          0% {
-            transform: translateX(0) translateY(-50%);
-            opacity: 0;
-          }
+      {/* =========================================================
+          PILLAR MODAL
+      ========================================================== */}
+      {activePillar !== null && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm"
+          onClick={() => setActivePillar(null)}
+        >
+          <div
+            className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto border-2 border-black bg-white p-8 shadow-[12px_12px_0_#1300BA] md:p-12"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setActivePillar(null)}
+              className="absolute right-5 top-5 text-2xl leading-none"
+              aria-label="Close"
+            >
+              ×
+            </button>
 
-          15% {
-            opacity: 1;
-          }
+            <div
+              className="text-xs font-bold tracking-[0.3em]"
+              style={{ color: BLUE }}
+            >
+              0{activePillar + 1} · {pillars[activePillar].short}
+            </div>
 
-          85% {
-            opacity: 1;
-          }
+            <h3 className="mt-5 text-4xl font-black tracking-[-0.04em] md:text-5xl">
+              {pillars[activePillar].name}
+            </h3>
 
-          100% {
-            transform: translateX(100%) translateY(-50%);
-            opacity: 0;
-          }
-        }
+            <p className="mt-7 text-lg leading-8 text-black/55">
+              {pillars[activePillar].description}
+            </p>
 
-        html {
-          scroll-behavior: smooth;
-        }
+            <div className="mt-8 border-t border-black/10 pt-8">
+              <div
+                className="text-[9px] font-bold tracking-[0.3em]"
+                style={{ color: BLUE }}
+              >
+                HOW ARBYTER HELPS
+              </div>
 
-        ::selection {
-          background: #1677ff;
-          color: white;
-        }
-      `}</style>
-    </>
+              <p className="mt-5 text-base leading-8 text-black/60">
+                {pillars[activePillar].detail}
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-3 sm:grid-cols-2">
+              {[
+                "Continuous visibility",
+                "Operational context",
+                "Policy awareness",
+                "Actionable intelligence",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="border border-black/10 p-4 text-sm font-medium"
+                >
+                  <span style={{ color: BLUE }}>✓</span>
+                  <span className="ml-3">{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-10 border-t border-black/10 pt-6">
+              <div className="text-xs text-black/35">
+                ARBYTER OS
+              </div>
+
+              <div className="mt-2 text-sm font-semibold">
+                Intelligence with accountability.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
   );
-} 
+}
+
+/* ===============================================================
+   INTRO
+================================================================ */
+
+function Intro({ phase }: { phase: number }) {
+  const decagonPoints = Array.from({ length: 10 }, (_, i) => {
+    const angle = (i * 360) / 10 - 90;
+    const radius = 170;
+
+    return {
+      x: 50 + (Math.cos((angle * Math.PI) / 180) * radius) / 10,
+      y: 50 + (Math.sin((angle * Math.PI) / 180) * radius) / 10,
+    };
+  });
+
+  return (
+    <div className="fixed inset-0 z-[999] overflow-hidden bg-white">
+      {agents.map((agent, index) => {
+        const target = decagonPoints[index];
+
+        return (
+          <div
+            key={index}
+            className="absolute transition-all ease-[cubic-bezier(.77,0,.18,1)]"
+            style={{
+              left: `${phase >= 2 ? target.x : agent.x}%`,
+              top: `${phase >= 2 ? target.y : agent.y}%`,
+              transform: "translate(-50%, -50%)",
+              transitionDuration: `${900 + index * 70}ms`,
+              opacity: phase >= 4 ? 0 : 1,
+            }}
+          >
+            <div
+              className="rounded-full"
+              style={{
+                width: `${agent.size}px`,
+                height: `${agent.size}px`,
+                backgroundColor: index % 3 === 0 ? BLUE : "#000",
+                boxShadow:
+                  phase >= 2 ? `0 0 18px ${BLUE}` : "none",
+              }}
+            />
+          </div>
+        );
+      })}
+
+      {/* Arbyter dot */}
+      <div
+        className={`absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 transition-all duration-[900ms] ${
+          phase >= 1 ? "scale-100 opacity-100" : "scale-0 opacity-0"
+        }`}
+      >
+        <div
+          className="h-5 w-5 rounded-full"
+          style={{
+            backgroundColor: BLUE,
+            boxShadow: `0 0 35px ${BLUE}`,
+          }}
+        />
+      </div>
+
+      {/* Decagon */}
+      <div
+        className={`absolute left-1/2 top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ${
+          phase >= 3
+            ? "scale-100 opacity-100"
+            : "scale-50 opacity-0"
+        }`}
+      >
+        <svg
+          viewBox="0 0 340 340"
+          className="h-full w-full overflow-visible"
+        >
+          <polygon
+            points={decagonPoints
+              .map((p) => {
+                const x = (p.x - 50) * 10 + 170;
+                const y = (p.y - 50) * 10 + 170;
+                return `${x},${y}`;
+              })
+              .join(" ")}
+            fill="none"
+            stroke={BLUE}
+            strokeWidth="1.5"
+          />
+
+          {decagonPoints.map((p, index) => {
+            const x = (p.x - 50) * 10 + 170;
+            const y = (p.y - 50) * 10 + 170;
+
+            return (
+              <circle
+                key={index}
+                cx={x}
+                cy={y}
+                r="5"
+                fill={index % 2 === 0 ? BLUE : "#000"}
+              />
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Exact logo */}
+      <div
+        className={`absolute left-1/2 top-1/2 z-40 h-[110px] w-[125px] -translate-x-1/2 -translate-y-1/2 transition-all duration-[1300ms] ${
+          phase >= 4
+            ? "scale-100 opacity-100"
+            : "scale-90 opacity-0"
+        }`}
+      >
+        {LOGO}
+      </div>
+    </div>
+  );
+}
+
+/* ===============================================================
+   TOP BAR
+================================================================ */
+
+function TopBar() {
+  return (
+    <header className="sticky top-0 z-[80] h-[78px] border-b border-black/10 bg-white/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="h-8 w-9">{LOGO}</div>
+
+          <div>
+            <div className="text-sm font-black tracking-[-0.02em]">
+              ARBYTER OS
+            </div>
+
+            <div className="text-[7px] tracking-[0.3em] text-black/35">
+              AI GOVERNANCE
+            </div>
+          </div>
+        </Link>
+
+        <nav className="hidden items-center gap-8 md:flex">
+          <a
+            href="#system"
+            className="text-xs text-black/50 transition hover:text-black"
+          >
+            System
+          </a>
+
+          <a
+            href="mailto:arbyteros@gmail.com"
+            className="text-xs text-black/50 transition hover:text-black"
+          >
+            Contact
+          </a>
+        </nav>
+
+        <Link
+          href="/login"
+          className="rounded-full bg-black px-5 py-2.5 text-xs font-medium text-white transition hover:bg-[#1300BA]"
+        >
+          Sign in
+        </Link>
+      </div>
+    </header>
+  );
+}
