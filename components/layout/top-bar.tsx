@@ -131,7 +131,7 @@ export function TopBar({
   }
 
   return (
-    <header className="sticky top-3 z-30 mx-3 flex h-14 items-center gap-2 rounded-2xl glass px-3 md:mx-6 md:px-4 lg:mx-8">
+    <header className="sticky top-3 z-30 mx-3 flex h-14 items-center gap-2 rounded-[1.25rem] liquid-glass px-3 md:mx-6 md:px-4 lg:mx-8">
       <button
         type="button"
         onClick={onOpenMobile}
@@ -173,7 +173,7 @@ export function TopBar({
         {/* Global search */}
         <button
           type="button"
-          className="hidden h-10 w-56 items-center gap-2 rounded-xl border border-white/65 bg-white/40 px-3 text-sm text-muted-foreground shadow-inner transition-colors hover:bg-white/60 md:flex xl:w-72"
+          className="hidden h-10 w-56 items-center gap-2 rounded-xl border border-white/75 bg-white/45 px-3 text-sm text-muted-foreground shadow-inner transition-colors hover:bg-white/60 md:flex xl:w-72"
         >
           <Search className="size-4" />
 
@@ -259,7 +259,7 @@ export function TopBar({
         <Menu>
           <MenuTrigger
             aria-label="Account menu"
-            className="flex size-10 items-center justify-center rounded-full bg-white/60 text-xs font-semibold text-primary shadow-sm ring-1 ring-white/70 transition-shadow hover:ring-2 hover:ring-primary/25 aria-expanded:ring-2 aria-expanded:ring-primary/25"
+            className="flex size-10 items-center justify-center rounded-full bg-white/72 text-xs font-semibold text-primary shadow-sm ring-1 ring-white/70 transition-shadow hover:ring-2 hover:ring-primary/25 aria-expanded:ring-2 aria-expanded:ring-primary/25"
           >
             {loadingProfile ? '…' : initials}
           </MenuTrigger>
