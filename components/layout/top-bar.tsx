@@ -131,12 +131,12 @@ export function TopBar({
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
+    <header className="sticky top-3 z-30 mx-3 flex h-14 items-center gap-2 rounded-2xl glass px-3 md:mx-6 md:px-4 lg:mx-8">
       <button
         type="button"
         onClick={onOpenMobile}
         aria-label="Open navigation"
-        className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+        className="flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground lg:hidden"
       >
         <MenuIcon className="size-5" />
       </button>
@@ -145,7 +145,7 @@ export function TopBar({
         type="button"
         onClick={onToggleCollapse}
         aria-label="Toggle sidebar"
-        className="hidden size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:flex"
+        className="hidden size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground lg:flex"
       >
         <PanelLeft className="size-[1.15rem]" />
       </button>
@@ -173,13 +173,13 @@ export function TopBar({
         {/* Global search */}
         <button
           type="button"
-          className="hidden h-9 w-56 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:border-ring/40 md:flex xl:w-72"
+          className="hidden h-10 w-56 items-center gap-2 rounded-xl border border-white/65 bg-white/40 px-3 text-sm text-muted-foreground shadow-inner transition-colors hover:bg-white/60 md:flex xl:w-72"
         >
           <Search className="size-4" />
 
           <span>Search…</span>
 
-          <kbd className="ml-auto rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.625rem] font-medium text-muted-foreground">
+          <kbd className="ml-auto rounded-lg border border-white/60 bg-white/50 px-1.5 py-0.5 font-mono text-[0.625rem] font-medium text-muted-foreground">
             ⌘K
           </kbd>
         </button>
@@ -187,7 +187,7 @@ export function TopBar({
         <button
           type="button"
           aria-label="Search"
-          className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+          className="flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground md:hidden"
         >
           <Search className="size-[1.15rem]" />
         </button>
@@ -196,11 +196,11 @@ export function TopBar({
         <Menu>
           <MenuTrigger
             aria-label="Notifications"
-            className="relative flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground"
+            className="relative flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground aria-expanded:bg-white/60 aria-expanded:text-foreground"
           >
             <Bell className="size-[1.15rem]" />
 
-            <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary ring-2 ring-background" />
+            <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary ring-2 ring-white/70" />
           </MenuTrigger>
 
           <MenuContent className="w-80">
@@ -231,8 +231,8 @@ export function TopBar({
 
         {/* Workspace selector */}
         <Menu>
-          <MenuTrigger className="hidden h-9 items-center gap-2 rounded-md border border-border bg-card px-2.5 text-sm font-medium text-foreground transition-colors hover:border-ring/40 aria-expanded:border-ring/40 sm:flex">
-            <span className="flex size-5 items-center justify-center rounded bg-primary/10 text-[0.625rem] font-bold text-primary">
+          <MenuTrigger className="hidden h-10 items-center gap-2 rounded-xl border border-white/65 bg-white/40 px-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-white/60 aria-expanded:bg-white/65 sm:flex">
+            <span className="flex size-5 items-center justify-center rounded-lg bg-primary/10 text-[0.625rem] font-bold text-primary">
               {workspaceInitials}
             </span>
 
@@ -259,7 +259,7 @@ export function TopBar({
         <Menu>
           <MenuTrigger
             aria-label="Account menu"
-            className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary transition-shadow hover:ring-2 hover:ring-ring/30 aria-expanded:ring-2 aria-expanded:ring-ring/30"
+            className="flex size-10 items-center justify-center rounded-full bg-white/60 text-xs font-semibold text-primary shadow-sm ring-1 ring-white/70 transition-shadow hover:ring-2 hover:ring-primary/25 aria-expanded:ring-2 aria-expanded:ring-primary/25"
           >
             {loadingProfile ? '…' : initials}
           </MenuTrigger>
