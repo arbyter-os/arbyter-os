@@ -18,7 +18,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        'glass flex flex-col rounded-2xl',
+        'content-surface flex flex-col rounded-2xl',
         className,
       )}
     >
