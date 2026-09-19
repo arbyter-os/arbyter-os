@@ -1,3 +1,5 @@
+import { validateExternalUrl } from "@/lib/security/validate-external-url";
+
 export type MCPDiscoveryResult = {
   success: boolean;
   serverUrl: string;
@@ -31,21 +33,26 @@ export async function scanMCPServer(
   const { serverUrl, headers = {} } = options;
 
   try {
-    const url = new URL(serverUrl);
+    const validation = await validateExternalUrl(serverUrl, {
+      protocols: ["https:"],
+    });
 
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
+    if (!validation.valid) {
       return {
         success: false,
         serverUrl,
         tools: [],
         resources: [],
         prompts: [],
-        error: "MCP server URL must use HTTP or HTTPS.",
+        error: validation.error,
       };
     }
 
-    const response = await fetch(serverUrl, {
+    const targetUrl = validation.url.toString();
+
+    const response = await fetch(targetUrl, {
       method: "POST",
+      redirect: "manual",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json, text/event-stream",
@@ -96,9 +103,9 @@ export async function scanMCPServer(
       }
     }
 
-    const tools = await listMCPItems(serverUrl, "tools/list", headers);
-    const resources = await listMCPItems(serverUrl, "resources/list", headers);
-    const prompts = await listMCPItems(serverUrl, "prompts/list", headers);
+    const tools = await listMCPItems(targetUrl, "tools/list", headers);
+    const resources = await listMCPItems(targetUrl, "resources/list", headers);
+    const prompts = await listMCPItems(targetUrl, "prompts/list", headers);
 
     return {
       success: true,
@@ -131,8 +138,17 @@ async function listMCPItems(
   headers: Record<string, string>
 ) {
   try {
-    const response = await fetch(serverUrl, {
+    const validation = await validateExternalUrl(serverUrl, {
+      protocols: ["https:"],
+    });
+
+    if (!validation.valid) {
+      return null;
+    }
+
+    const response = await fetch(validation.url.toString(), {
       method: "POST",
+      redirect: "manual",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json, text/event-stream",
