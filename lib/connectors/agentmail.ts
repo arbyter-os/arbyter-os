@@ -16,7 +16,7 @@ export const agentMailConnector: Connector = {
 
   async execute(
     action: ConnectorAction,
-    _context: ConnectorContext
+    context: ConnectorContext
   ): Promise<ConnectorResult> {
     if (action.action !== "messages.send") {
       return {
@@ -25,12 +25,14 @@ export const agentMailConnector: Connector = {
       };
     }
 
-    const apiKey = process.env.AGENTMAIL_API_KEY;
+    const apiKey =
+      context.credential?.secret ??
+      process.env.AGENTMAIL_API_KEY;
 
     if (!apiKey) {
       return {
         success: false,
-        error: "AGENTMAIL_API_KEY is not configured.",
+        error: "AgentMail credential is not configured.",
       };
     }
 
