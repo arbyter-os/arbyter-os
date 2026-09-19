@@ -10,9 +10,7 @@ const AGENTMAIL_INBOX = "creatorai@agentmail.to";
 export const agentMailConnector: Connector = {
   provider: "agentmail",
 
-  capabilities: [
-    "messages.send",
-  ],
+  capabilities: ["messages.send"],
 
   async execute(
     action: ConnectorAction,
@@ -34,7 +32,13 @@ export const agentMailConnector: Connector = {
       };
     }
 
-    const { to, subject, text } = action.payload;
+    const nestedData = action.payload.data;
+    const payload =
+      nestedData && typeof nestedData === "object" && !Array.isArray(nestedData)
+        ? { ...nestedData, ...action.payload }
+        : action.payload;
+
+    const { to, subject, text } = payload;
 
     if (!to || !subject || !text) {
       return {
@@ -47,20 +51,14 @@ export const agentMailConnector: Connector = {
 
     try {
       const response = await fetch(
-        `https://api.agentmail.to/v0/inboxes/${encodeURIComponent(
-          AGENTMAIL_INBOX
-        )}/messages/send`,
+        `https://api.agentmail.to/v0/inboxes/${encodeURIComponent(AGENTMAIL_INBOX)}/messages/send`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            to: recipients,
-            subject,
-            text,
-          }),
+          body: JSON.stringify({ to: recipients, subject, text }),
         }
       );
 
@@ -68,24 +66,13 @@ export const agentMailConnector: Connector = {
 
       if (!response.ok) {
         console.error("AgentMail API error:", data);
-
-        return {
-          success: false,
-          error: "AgentMail rejected the request.",
-        };
+        return { success: false, error: "AgentMail rejected the request." };
       }
 
-      return {
-        success: true,
-        data,
-      };
+      return { success: true, data };
     } catch (error) {
       console.error("AgentMail connector error:", error);
-
-      return {
-        success: false,
-        error: "Failed to connect to AgentMail.",
-      };
+      return { success: false, error: "Failed to connect to AgentMail." };
     }
   },
 };
