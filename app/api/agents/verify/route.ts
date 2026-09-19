@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { validateExternalUrl } from "@/lib/security/validate-external-url";
+import { scanMCPServer } from "@/lib/discovery/scanners/mcp";
 
 const VERIFY_TIMEOUT_MS = 8000;
 
@@ -222,14 +223,67 @@ export async function POST(request: Request) {
     }
 
     if (connectionType === "mcp") {
-      const checkedAt = new Date().toISOString();
+      if (!connection.endpoint_url) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "This MCP connection does not have an endpoint URL.",
+          },
+          { status: 400 },
+        );
+      }
 
-      const message =
-        "MCP connections require transport-specific verification. Configure the MCP transport before verification.";
+      const endpointValidation = await validateEndpoint(
+        connection.endpoint_url,
+      );
 
-      await supabase
-        .from("agent_connection_events")
-        .insert({
+      if (!endpointValidation.valid || !endpointValidation.url) {
+        const checkedAt = new Date().toISOString();
+        const currentFailures = Number(
+          connection.consecutive_failures || 0,
+        );
+        const message = endpointValidation.error;
+
+        await supabase.from("agent_health_checks").insert({
+          organization_id: organizationId,
+          agent_id: agentId,
+          agent_connection_id: connection.id,
+          status: "failed",
+          latency_ms: 0,
+          response_status: null,
+          error_code: "INVALID_ENDPOINT",
+          error_message: message,
+          details: {
+            verification_stage: "endpoint_validation",
+            provider: connection.provider,
+            connection_type: connection.connection_type,
+            environment: connection.environment,
+            checked_at: checkedAt,
+          },
+          checked_at: checkedAt,
+        });
+
+        await supabase
+          .from("agent_connections")
+          .update({
+            status: "error",
+            health_status: "unhealthy",
+            last_health_check_at: checkedAt,
+            consecutive_failures: currentFailures + 1,
+          })
+          .eq("id", connection.id)
+          .eq("organization_id", organizationId);
+
+        await supabase
+          .from("agent_identities")
+          .update({
+            verified: false,
+            verified_at: null,
+          })
+          .eq("agent_id", agentId)
+          .eq("organization_id", organizationId);
+
+        await supabase.from("agent_connection_events").insert({
           organization_id: organizationId,
           agent_id: agentId,
           agent_connection_id: connection.id,
@@ -237,23 +291,236 @@ export async function POST(request: Request) {
           status: "error",
           message,
           metadata: {
+            reason: "invalid_or_unsafe_endpoint",
             verification_method: "mcp_transport_handshake",
-            connection_type: connection.connection_type,
-            provider: connection.provider,
-            environment: connection.environment,
+            identity_verified: false,
           },
           occurred_at: checkedAt,
         });
 
-      return NextResponse.json(
-        {
-          success: false,
-          verificationRequired: true,
-          verificationMethod: "mcp_transport_handshake",
-          message,
+        return NextResponse.json(
+          {
+            success: false,
+            message,
+            connectionStatus: "error",
+            healthStatus: "unhealthy",
+            verified: false,
+          },
+          { status: 400 },
+        );
+      }
+
+      const startedAt = Date.now();
+      const checkedAt = new Date().toISOString();
+      const scan = await scanMCPServer({
+        serverUrl: endpointValidation.url.toString(),
+      });
+      const latencyMs = Date.now() - startedAt;
+      const isHealthy = scan.success && typeof scan.protocol === "string" && scan.protocol.length > 0;
+      const verificationStatus = isHealthy ? "healthy" : "unhealthy";
+      const nextConnectionStatus = isHealthy ? "connected" : "error";
+      const nextHealthStatus = isHealthy ? "healthy" : "unhealthy";
+      const errorMessage = isHealthy
+        ? null
+        : scan.error ?? "MCP handshake verification failed.";
+      const nextFailures = isHealthy
+        ? 0
+        : Number(connection.consecutive_failures || 0) + 1;
+
+      const {
+        data: healthCheck,
+        error: healthCheckError,
+      } = await supabase
+        .from("agent_health_checks")
+        .insert({
+          organization_id: organizationId,
+          agent_id: agentId,
+          agent_connection_id: connection.id,
+          status: verificationStatus,
+          latency_ms: latencyMs,
+          response_status: isHealthy ? 200 : null,
+          error_code: isHealthy ? null : "MCP_VERIFICATION_FAILED",
+          error_message: errorMessage,
+          details: {
+            verification_stage: "mcp_transport_handshake",
+            provider: connection.provider,
+            connection_type: connection.connection_type,
+            environment: connection.environment,
+            endpoint_host: endpointValidation.url.hostname,
+            protocol: scan.protocol ?? null,
+            server_name: scan.serverName ?? null,
+            tools_count: scan.tools.length,
+            resources_count: scan.resources.length,
+            prompts_count: scan.prompts.length,
+            checked_at: checkedAt,
+          },
+          checked_at: checkedAt,
+        })
+        .select()
+        .single();
+
+      if (healthCheckError) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `The MCP server was checked, but the health result could not be recorded: ${healthCheckError.message}`,
+          },
+          { status: 500 },
+        );
+      }
+
+      const {
+        data: updatedConnection,
+        error: updateConnectionError,
+      } = await supabase
+        .from("agent_connections")
+        .update({
+          status: nextConnectionStatus,
+          health_status: nextHealthStatus,
+          last_health_check_at: checkedAt,
+          ...(isHealthy
+            ? {
+                last_connected_at: checkedAt,
+                last_seen_at: checkedAt,
+                consecutive_failures: 0,
+              }
+            : {
+                consecutive_failures: nextFailures,
+              }),
+        })
+        .eq("id", connection.id)
+        .eq("organization_id", organizationId)
+        .select()
+        .single();
+
+      if (updateConnectionError) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `MCP health check succeeded, but the connection state could not be updated: ${updateConnectionError.message}`,
+            healthCheck,
+          },
+          { status: 500 },
+        );
+      }
+
+      const { data: existingIdentity, error: identityLookupError } = await supabase
+        .from("agent_identities")
+        .select("id")
+        .eq("agent_id", agentId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+
+      if (identityLookupError) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `MCP verification completed, but the agent identity could not be checked: ${identityLookupError.message}`,
+            healthCheck,
+            connection: updatedConnection,
+          },
+          { status: 500 },
+        );
+      }
+
+      let identityError = null;
+      if (existingIdentity) {
+        const { error } = await supabase
+          .from("agent_identities")
+          .update({
+            verified: isHealthy,
+            verified_at: isHealthy ? checkedAt : null,
+          })
+          .eq("id", existingIdentity.id)
+          .eq("organization_id", organizationId);
+        identityError = error;
+      } else {
+        const { error } = await supabase
+          .from("agent_identities")
+          .insert({
+            organization_id: organizationId,
+            agent_id: agentId,
+            verified: isHealthy,
+            verified_at: isHealthy ? checkedAt : null,
+          });
+        identityError = error;
+      }
+
+      if (identityError) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `MCP verification completed, but agent verification could not be recorded: ${identityError.message}`,
+            healthCheck,
+            connection: updatedConnection,
+          },
+          { status: 500 },
+        );
+      }
+
+      const { error: eventError } = await supabase
+        .from("agent_connection_events")
+        .insert({
+          organization_id: organizationId,
+          agent_id: agentId,
+          agent_connection_id: connection.id,
+          event_type: isHealthy ? "connected" : "connection_failed",
+          status: isHealthy ? "connected" : "error",
+          message: isHealthy
+            ? "MCP transport handshake succeeded. Agent identity verified."
+            : errorMessage,
+          metadata: {
+            verification_method: "mcp_transport_handshake",
+            endpoint_host: endpointValidation.url.hostname,
+            protocol: scan.protocol ?? null,
+            server_name: scan.serverName ?? null,
+            tools_count: scan.tools.length,
+            resources_count: scan.resources.length,
+            prompts_count: scan.prompts.length,
+            identity_verified: isHealthy,
+          },
+          occurred_at: checkedAt,
+        });
+
+      if (eventError) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              `MCP verification completed, but the connection event could not be recorded: ${eventError.message}`,
+            healthCheck,
+            connection: updatedConnection,
+            verified: isHealthy,
+          },
+          { status: 500 },
+        );
+      }
+
+      return NextResponse.json({
+        success: isHealthy,
+        agent: {
+          id: agent.id,
+          name: agent.name,
         },
-        { status: 400 },
-      );
+        connection: updatedConnection,
+        healthCheck,
+        verification: {
+          status: verificationStatus,
+          verified: isHealthy,
+          verifiedAt: isHealthy ? checkedAt : null,
+          latencyMs,
+          responseStatus: isHealthy ? 200 : null,
+          endpointHost: endpointValidation.url.hostname,
+          protocol: scan.protocol ?? null,
+        },
+        message: isHealthy
+          ? "MCP transport handshake succeeded. The agent is now Connected, Healthy, and Verified."
+          : errorMessage,
+      });
     }
 
     if (!connection.endpoint_url) {
