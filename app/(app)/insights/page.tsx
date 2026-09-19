@@ -138,7 +138,7 @@ export default function InsightsPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="rounded-xl border bg-white/55 p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Governance Health
@@ -159,7 +159,7 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="rounded-xl border bg-white/55 p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Risk Exposure
@@ -177,7 +177,7 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="rounded-xl border bg-white/55 p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Control Effectiveness
@@ -195,7 +195,7 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="rounded-xl border bg-white/55 p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Active AI Agents
@@ -214,7 +214,7 @@ export default function InsightsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border bg-card p-5">
+      <section className="rounded-xl border bg-white/55 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-semibold">
@@ -267,7 +267,7 @@ export default function InsightsPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="rounded-xl border bg-white/55 p-5">
           <div>
             <h2 className="font-semibold">
               Governance Activity
@@ -308,7 +308,7 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="rounded-xl border bg-white/55 p-5">
           <div>
             <h2 className="font-semibold">
               Framework Posture
@@ -350,7 +350,7 @@ export default function InsightsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border bg-card p-5">
+      <section className="rounded-xl border bg-white/55 p-5">
         <div>
           <h2 className="font-semibold">
             Executive Takeaway
