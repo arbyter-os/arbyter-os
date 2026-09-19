@@ -46,6 +46,26 @@ const sources = [
   },
 ];
 
+type DiscoveryFinding = {
+  id: string;
+  name: string;
+  description: string | null;
+  classification: string | null;
+  confidence: number | null;
+  provider: string | null;
+  framework: string | null;
+  environment: string | null;
+  endpoint: string | null;
+  tools: unknown;
+  capabilities: unknown;
+  evidence: unknown;
+  review_status: string | null;
+  onboarding_status: string | null;
+  discovered_at: string | null;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+};
+
 export default function DiscoveryPage() {
   const supabase = createClient();
 
@@ -60,6 +80,11 @@ export default function DiscoveryPage() {
   const [lastScan, setLastScan] = useState("Never");
   const [loadingStats, setLoadingStats] = useState(true);
 
+  const [findings, setFindings] = useState<DiscoveryFinding[]>([]);
+  const [selectedFinding, setSelectedFinding] =
+    useState<DiscoveryFinding | null>(null);
+  const [loadingFindings, setLoadingFindings] = useState(true);
+
   const [mcpOpen, setMcpOpen] = useState(false);
   const [mcpName, setMcpName] = useState("");
   const [mcpUrl, setMcpUrl] = useState("");
@@ -72,32 +97,40 @@ export default function DiscoveryPage() {
 
   useEffect(() => {
     loadDiscoveryStats();
+    loadDiscoveryFindings();
   }, []);
+
+  async function getOrganizationId() {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      throw new Error("You must be signed in.");
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("users")
+      .select("organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile?.organization_id) {
+      throw new Error("Could not find your organization.");
+    }
+
+    return {
+      user,
+      organizationId: profile.organization_id,
+    };
+  }
 
   async function loadDiscoveryStats() {
     setLoadingStats(true);
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        return;
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select("organization_id")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile?.organization_id) {
-        return;
-      }
-
-      const organizationId = profile.organization_id;
+      const { organizationId } = await getOrganizationId();
 
       const { data: findings, error: findingsError } = await supabase
         .from("discovery_findings")
@@ -160,6 +193,51 @@ export default function DiscoveryPage() {
     }
   }
 
+  async function loadDiscoveryFindings() {
+    setLoadingFindings(true);
+
+    try {
+      const { organizationId } = await getOrganizationId();
+
+      const { data, error } = await supabase
+        .from("discovery_findings")
+        .select(
+          `
+            id,
+            name,
+            description,
+            classification,
+            confidence,
+            provider,
+            framework,
+            environment,
+            endpoint,
+            tools,
+            capabilities,
+            evidence,
+            review_status,
+            onboarding_status,
+            discovered_at,
+            first_seen_at,
+            last_seen_at
+          `
+        )
+        .eq("organization_id", organizationId)
+        .neq("review_status", "rejected")
+        .order("discovered_at", { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      setFindings((data ?? []) as DiscoveryFinding[]);
+    } catch (error) {
+      console.error("Discovery findings error:", error);
+    } finally {
+      setLoadingFindings(false);
+    }
+  }
+
   function toggleSource(id: string) {
     setSelectedSources((current) =>
       current.includes(id)
@@ -196,24 +274,7 @@ export default function DiscoveryPage() {
     setMcpSaving(true);
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        throw new Error("You must be signed in.");
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select("organization_id")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile?.organization_id) {
-        throw new Error("Could not find your organization.");
-      }
+      const { user, organizationId } = await getOrganizationId();
 
       const configuration: Record<string, string> = {
         authentication_method: mcpAuth,
@@ -226,7 +287,7 @@ export default function DiscoveryPage() {
       const { data: existing, error: existingError } = await supabase
         .from("discovery_sources")
         .select("id")
-        .eq("organization_id", profile.organization_id)
+        .eq("organization_id", organizationId)
         .eq("source_type", "mcp")
         .eq("endpoint_url", mcpUrl.trim())
         .maybeSingle();
@@ -256,7 +317,7 @@ export default function DiscoveryPage() {
         const { error } = await supabase
           .from("discovery_sources")
           .insert({
-            organization_id: profile.organization_id,
+            organization_id: organizationId,
             name: mcpName.trim(),
             source_type: "mcp",
             provider: "MCP",
@@ -357,26 +418,7 @@ export default function DiscoveryPage() {
     setMessage("Preparing discovery scan...");
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        throw new Error("You must be signed in to start discovery.");
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("users")
-        .select("organization_id")
-        .eq("id", user.id)
-        .single();
-
-      if (profileError || !profile?.organization_id) {
-        throw new Error("Could not find your organization.");
-      }
-
-      const organizationId = profile.organization_id;
+      const { user, organizationId } = await getOrganizationId();
 
       const { data: existingSources, error: sourceError } = await supabase
         .from("discovery_sources")
@@ -482,6 +524,7 @@ export default function DiscoveryPage() {
       );
 
       await loadDiscoveryStats();
+      await loadDiscoveryFindings();
     } catch (error) {
       console.error("Discovery error:", error);
 
@@ -493,6 +536,54 @@ export default function DiscoveryPage() {
     } finally {
       setStarting(false);
     }
+  }
+
+  function getToolCount(finding: DiscoveryFinding) {
+    if (Array.isArray(finding.tools)) {
+      return finding.tools.length;
+    }
+
+    return 0;
+  }
+
+  function getEvidenceCount(
+    finding: DiscoveryFinding,
+    key: "resource_count" | "prompt_count"
+  ) {
+    if (
+      finding.evidence &&
+      typeof finding.evidence === "object" &&
+      key in finding.evidence
+    ) {
+      const value = (finding.evidence as Record<string, unknown>)[key];
+
+      return typeof value === "number" ? value : 0;
+    }
+
+    return 0;
+  }
+
+  function getCapabilityCount(finding: DiscoveryFinding) {
+    if (
+      finding.capabilities &&
+      typeof finding.capabilities === "object"
+    ) {
+      return Object.values(
+        finding.capabilities as Record<string, unknown>
+      ).filter(Boolean).length;
+    }
+
+    return 0;
+  }
+
+  function formatClassification(classification: string | null) {
+    if (!classification) {
+      return "Unknown";
+    }
+
+    return classification
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
   return (
@@ -545,6 +636,109 @@ export default function DiscoveryPage() {
             </div>
           ))}
         </div>
+
+        <section className="mb-6 rounded-3xl border border-[#e6e7eb] bg-white p-6 md:p-8">
+          <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1300BA]">
+                Discovery Results
+              </div>
+
+              <h2 className="mt-2 text-2xl font-semibold text-[#111113]">
+                Systems Arbyter discovered
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-[#77777f]">
+                Review discovered systems before bringing them into the AI
+                workforce.
+              </p>
+            </div>
+
+            <div className="text-sm text-[#77777f]">
+              {findings.length} discovered
+            </div>
+          </div>
+
+          {loadingFindings ? (
+            <div className="rounded-2xl border border-[#e6e7eb] bg-[#f8f9fc] p-5 text-sm text-[#77777f]">
+              Loading discovery results...
+            </div>
+          ) : findings.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#dcdce2] bg-[#f8f9fc] p-8 text-center">
+              <div className="text-sm font-semibold text-[#111113]">
+                No discovery findings yet.
+              </div>
+
+              <p className="mt-1 text-sm text-[#77777f]">
+                Run a discovery scan to find AI systems in your environment.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {findings.map((finding) => {
+                const toolCount = getToolCount(finding);
+                const resourceCount = getEvidenceCount(
+                  finding,
+                  "resource_count"
+                );
+                const promptCount = getEvidenceCount(
+                  finding,
+                  "prompt_count"
+                );
+
+                return (
+                  <button
+                    key={finding.id}
+                    onClick={() => setSelectedFinding(finding)}
+                    className="w-full rounded-2xl border border-[#e6e7eb] bg-white p-5 text-left transition hover:border-[#1300BA] hover:bg-[#faf9ff]"
+                  >
+                    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-[#111113]">
+                            {finding.name}
+                          </h3>
+
+                          <span className="rounded-full bg-[#eeeafd] px-2.5 py-1 text-[11px] font-semibold text-[#1300BA]">
+                            {formatClassification(finding.classification)}
+                          </span>
+
+                          {finding.review_status === "unreviewed" && (
+                            <span className="rounded-full bg-[#fff7df] px-2.5 py-1 text-[11px] font-semibold text-[#8a6500]">
+                              Needs review
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-2 truncate text-sm text-[#77777f]">
+                          {finding.endpoint ?? "No endpoint recorded"}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 text-xs text-[#66666e]">
+                        <span className="rounded-lg bg-[#f5f5f7] px-3 py-2">
+                          {toolCount} tools
+                        </span>
+
+                        <span className="rounded-lg bg-[#f5f5f7] px-3 py-2">
+                          {resourceCount} resources
+                        </span>
+
+                        <span className="rounded-lg bg-[#f5f5f7] px-3 py-2">
+                          {promptCount} prompts
+                        </span>
+
+                        <span className="rounded-lg bg-[#f5f5f7] px-3 py-2">
+                          {finding.confidence ?? 0}% confidence
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section className="rounded-3xl border border-[#e6e7eb] bg-white p-6 md:p-8">
           <div className="mb-7">
@@ -663,6 +857,188 @@ export default function DiscoveryPage() {
             ＋ Add Agent Manually
           </button>
         </section>
+
+        {selectedFinding && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5"
+            onClick={() => setSelectedFinding(null)}
+          >
+            <div
+              className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:p-8"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-5">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1300BA]">
+                    Discovery Finding
+                  </div>
+
+                  <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#111113]">
+                    {selectedFinding.name}
+                  </h2>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-[#eeeafd] px-3 py-1.5 text-xs font-semibold text-[#1300BA]">
+                      {formatClassification(selectedFinding.classification)}
+                    </span>
+
+                    <span className="rounded-full bg-[#f5f5f7] px-3 py-1.5 text-xs font-semibold text-[#44444c]">
+                      {selectedFinding.confidence ?? 0}% confidence
+                    </span>
+
+                    <span className="rounded-full bg-[#fff7df] px-3 py-1.5 text-xs font-semibold text-[#8a6500]">
+                      {selectedFinding.review_status ?? "unreviewed"}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setSelectedFinding(null)}
+                  className="text-2xl text-[#77777f] hover:text-[#111113]"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="mt-8 grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl bg-[#f8f9fc] p-4">
+                  <div className="text-xs text-[#85858d]">Tools</div>
+                  <div className="mt-1 text-2xl font-semibold text-[#111113]">
+                    {getToolCount(selectedFinding)}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-[#f8f9fc] p-4">
+                  <div className="text-xs text-[#85858d]">Resources</div>
+                  <div className="mt-1 text-2xl font-semibold text-[#111113]">
+                    {getEvidenceCount(
+                      selectedFinding,
+                      "resource_count"
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl bg-[#f8f9fc] p-4">
+                  <div className="text-xs text-[#85858d]">Prompts</div>
+                  <div className="mt-1 text-2xl font-semibold text-[#111113]">
+                    {getEvidenceCount(
+                      selectedFinding,
+                      "prompt_count"
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-7 rounded-2xl border border-[#e6e7eb] p-5">
+                <h3 className="text-sm font-semibold text-[#111113]">
+                  Detection details
+                </h3>
+
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <div>
+                    <div className="text-xs text-[#85858d]">Provider</div>
+                    <div className="mt-1 text-sm font-medium text-[#111113]">
+                      {selectedFinding.provider ?? "Unknown"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-[#85858d]">Framework</div>
+                    <div className="mt-1 text-sm font-medium text-[#111113]">
+                      {selectedFinding.framework ?? "Unknown"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-[#85858d]">Environment</div>
+                    <div className="mt-1 text-sm font-medium text-[#111113]">
+                      {selectedFinding.environment ?? "Unknown"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-[#85858d]">Onboarding</div>
+                    <div className="mt-1 text-sm font-medium text-[#111113]">
+                      {selectedFinding.onboarding_status ??
+                        "not_onboarded"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <div className="text-xs text-[#85858d]">Endpoint</div>
+
+                  <div className="mt-1 break-all rounded-xl bg-[#f8f9fc] px-3 py-2 text-sm text-[#33333a]">
+                    {selectedFinding.endpoint ?? "No endpoint recorded"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-[#e6e7eb] p-5">
+                <h3 className="text-sm font-semibold text-[#111113]">
+                  Evidence
+                </h3>
+
+                <div className="mt-4 space-y-3 text-sm text-[#55555d]">
+                  <div className="flex justify-between gap-4">
+                    <span>Capabilities detected</span>
+                    <span className="font-semibold text-[#111113]">
+                      {getCapabilityCount(selectedFinding)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <span>Tool definitions discovered</span>
+                    <span className="font-semibold text-[#111113]">
+                      {getToolCount(selectedFinding)}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <span>Resources discovered</span>
+                    <span className="font-semibold text-[#111113]">
+                      {getEvidenceCount(
+                        selectedFinding,
+                        "resource_count"
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between gap-4">
+                    <span>Prompts discovered</span>
+                    <span className="font-semibold text-[#111113]">
+                      {getEvidenceCount(
+                        selectedFinding,
+                        "prompt_count"
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button
+                  onClick={() => setSelectedFinding(null)}
+                  className="rounded-xl border border-[#dcdce2] px-5 py-3 text-sm font-semibold text-[#111113] hover:bg-[#f8f9fc]"
+                >
+                  Close
+                </button>
+
+                <button
+                  onClick={() => {
+                    setMessage(
+                      "Finding review workflow is ready for the next step."
+                    );
+                    setSelectedFinding(null);
+                  }}
+                  className="rounded-xl bg-[#1300BA] px-5 py-3 text-sm font-semibold text-white hover:opacity-90"
+                >
+                  Review Finding →
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {mcpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5">
