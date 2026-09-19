@@ -5,7 +5,7 @@ import type { SnapshotNode } from '@/lib/types'
 function Node({ node }: { node: SnapshotNode }) {
   const Icon = node.icon
   return (
-    <div className="flex flex-1 flex-col items-center rounded-lg border border-border bg-background px-3 py-4 text-center transition-colors hover:border-ring/30">
+    <div className="flex flex-1 flex-col items-center rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 py-4 text-center transition-colors hover:border-ring/30">
       <span className="flex size-9 items-center justify-center rounded-lg bg-accent text-primary">
         <Icon className="size-4.5" aria-hidden="true" />
       </span>
