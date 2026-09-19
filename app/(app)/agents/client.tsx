@@ -984,7 +984,7 @@ export default function AgentsClient() {
         </div>
 
         {/* Filters */}
-        <div className="mt-6 rounded-2xl border bg-card p-4 shadow-sm">
+        <div className="mt-6 liquid-glass rounded-2xl p-4 shadow-[0_12px_35px_rgba(32,38,75,.07)]">
           <div className="flex flex-col gap-3 lg:flex-row">
             <div className="relative flex-1">
               <input
@@ -1494,7 +1494,7 @@ export default function AgentsClient() {
                                 setShowConnectionForm(false)
                                 setEditingConnection(false)
                               }}
-                              className="h-10 rounded-xl border px-4 text-sm font-medium transition hover:bg-muted"
+                              className="liquid-glass-interactive h-10 rounded-xl border border-white/70 bg-white/40 px-4 text-sm font-medium transition hover:bg-white/65"
                             >
                               Cancel
                             </button>
@@ -1502,7 +1502,7 @@ export default function AgentsClient() {
                             <button
                               type="button"
                               onClick={saveConnection}
-                              className="h-10 rounded-xl bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 active:scale-[0.98]"
+                              className="liquid-glass-interactive h-10 rounded-xl bg-[#1300BA] px-4 text-sm font-medium text-white shadow-[0_10px_28px_rgba(19,0,186,.22)] transition hover:opacity-95 active:scale-[0.98]"
                             >
                               {editingConnection
                                 ? 'Save Changes'
@@ -1512,7 +1512,7 @@ export default function AgentsClient() {
                         </div>
                       ) : connection ? (
                         <div className="space-y-4">
-                          <div className="rounded-xl border bg-muted/20 p-4">
+                          <div className="rounded-xl border border-white/65 bg-white/35 p-4 backdrop-blur-md">
                             <div className="grid gap-4 sm:grid-cols-2">
                               <DetailItem
                                 label="Provider"
@@ -1559,7 +1559,7 @@ export default function AgentsClient() {
                             )}
                           </div>
 
-                          <div className="rounded-xl border bg-muted/20 p-4">
+                          <div className="rounded-xl border border-white/65 bg-white/35 p-4 backdrop-blur-md">
                             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                               Capabilities
                             </div>
@@ -1598,7 +1598,7 @@ export default function AgentsClient() {
                             <button
                               type="button"
                               onClick={verifyConnection}
-                              className="h-10 rounded-xl bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90 active:scale-[0.98]"
+                              className="liquid-glass-interactive h-10 rounded-xl bg-[#1300BA] px-4 text-sm font-medium text-white shadow-[0_10px_28px_rgba(19,0,186,.22)] transition hover:opacity-95 active:scale-[0.98]"
                             >
                               Verify Connection
                             </button>
@@ -1606,7 +1606,7 @@ export default function AgentsClient() {
                             <button
                               type="button"
                               onClick={startEditConnection}
-                              className="h-10 rounded-xl border px-4 text-sm font-medium transition hover:bg-muted"
+                              className="liquid-glass-interactive h-10 rounded-xl border border-white/70 bg-white/40 px-4 text-sm font-medium transition hover:bg-white/65"
                             >
                               Edit
                             </button>
@@ -1614,7 +1614,7 @@ export default function AgentsClient() {
                             <button
                               type="button"
                               onClick={deleteConnection}
-                              className="h-10 rounded-xl border border-red-500/20 px-4 text-sm font-medium text-red-600 transition hover:bg-red-500/5 dark:text-red-400"
+                              className="liquid-glass-interactive h-10 rounded-xl border border-red-500/20 bg-red-500/5 px-4 text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-400"
                             >
                               Remove
                             </button>
@@ -1719,7 +1719,7 @@ export default function AgentsClient() {
           />
 
           <div
-            className="relative w-full max-w-lg rounded-2xl border bg-background shadow-2xl animate-in zoom-in-95 duration-150"
+            className="relative w-full max-w-lg liquid-glass-strong rounded-2xl shadow-[0_30px_90px_rgba(20,25,55,.22)] animate-in zoom-in-95 duration-150"
             role="dialog"
             aria-modal="true"
             aria-label="Add Agent"
@@ -1797,7 +1797,7 @@ export default function AgentsClient() {
                 <button
                   type="button"
                   onClick={() => setShowAddAgent(false)}
-                  className="h-10 rounded-xl border px-4 text-sm font-medium transition hover:bg-muted"
+                  className="liquid-glass-interactive h-10 rounded-xl border border-white/70 bg-white/40 px-4 text-sm font-medium transition hover:bg-white/65"
                 >
                   Cancel
                 </button>
@@ -1832,7 +1832,7 @@ function SummaryCard({
   value: number
 }) {
   return (
-    <div className="rounded-2xl border bg-card p-4 shadow-sm">
+    <div className="liquid-glass rounded-2xl p-4 shadow-[0_12px_35px_rgba(32,38,75,.07)]">
       <div className="text-xs font-medium text-muted-foreground">
         {label}
       </div>
@@ -1852,7 +1852,7 @@ function InfoCard({
   value: string
 }) {
   return (
-    <div className="rounded-xl border bg-muted/20 px-3 py-3">
+    <div className="rounded-xl border border-white/65 bg-white/35 px-3 py-3 backdrop-blur-md">
       <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
