@@ -253,7 +253,7 @@ export default function GovernancePage() {
                 setCreateError(null)
                 setShowCreate(true)
               }}
-              className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white transition-opacity hover:opacity-80"
+              className="rounded-xl bg-primary px-5 py-3 shadow-lg shadow-primary/15 text-sm font-medium text-white transition-opacity hover:opacity-80"
             >
               + New Policy
             </button>
@@ -261,7 +261,7 @@ export default function GovernancePage() {
         </div>
 
         <div className="mb-8 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-black/10 bg-white p-6">
+          <div className="glass rounded-2xl p-6">
             <p className="text-sm text-black/45">
               Policies
             </p>
@@ -271,7 +271,7 @@ export default function GovernancePage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-black/10 bg-white p-6">
+          <div className="glass rounded-2xl p-6">
             <p className="text-sm text-black/45">
               Active Rules
             </p>
@@ -281,7 +281,7 @@ export default function GovernancePage() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-black/10 bg-white p-6">
+          <div className="glass rounded-2xl p-6">
             <p className="text-sm text-black/45">
               Governance State
             </p>
@@ -292,7 +292,7 @@ export default function GovernancePage() {
           </div>
         </div>
 
-        <section className="rounded-2xl border border-black/10 bg-white">
+        <section className="glass rounded-2xl">
           <div className="border-b border-black/10 px-6 py-5">
             <h2 className="text-lg font-semibold tracking-tight">
               Policies
@@ -389,7 +389,7 @@ export default function GovernancePage() {
                           setRulePolicyId(policy.id)
                           setRuleError(null)
                         }}
-                        className="rounded-xl border border-black/10 px-4 py-2 text-sm font-medium hover:bg-black/[0.03]"
+                        className="glass rounded-xl px-4 py-2 text-sm font-medium hover:bg-black/[0.03]"
                       >
                         + Add Rule
                       </button>
@@ -400,7 +400,7 @@ export default function GovernancePage() {
                         {policyRules.map((rule) => (
                           <div
                             key={rule.id}
-                            className="rounded-xl border border-black/10 bg-black/[0.02] px-4 py-3"
+                            className="glass rounded-2xl px-4 py-3"
                           >
                             <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
                               <div>
@@ -451,7 +451,7 @@ export default function GovernancePage() {
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-lg glass-strong rounded-3xl p-6 shadow-2xl">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">
@@ -484,7 +484,7 @@ export default function GovernancePage() {
                     setName(event.target.value)
                   }
                   placeholder="e.g. Customer Data Protection"
-                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                  className="w-full glass rounded-xl px-4 py-3 text-sm outline-none focus:border-black/30"
                 />
               </div>
 
@@ -500,7 +500,7 @@ export default function GovernancePage() {
                   }
                   placeholder="What does this policy control?"
                   rows={3}
-                  className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                  className="w-full resize-none glass rounded-xl px-4 py-3 text-sm outline-none focus:border-black/30"
                 />
               </div>
 
@@ -542,7 +542,7 @@ export default function GovernancePage() {
                     setJurisdiction(event.target.value)
                   }
                   placeholder="e.g. India, EU, California"
-                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                  className="w-full glass rounded-xl px-4 py-3 text-sm outline-none focus:border-black/30"
                 />
               </div>
 
@@ -557,7 +557,7 @@ export default function GovernancePage() {
                     setSector(event.target.value)
                   }
                   placeholder="e.g. Finance, Healthcare, General"
-                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                  className="w-full glass rounded-xl px-4 py-3 text-sm outline-none focus:border-black/30"
                 />
               </div>
 
@@ -571,7 +571,7 @@ export default function GovernancePage() {
                 <button
                   type="button"
                   onClick={() => setShowCreate(false)}
-                  className="rounded-xl border border-black/10 px-4 py-3 text-sm font-medium"
+                  className="glass rounded-xl px-4 py-3 text-sm font-medium"
                 >
                   Cancel
                 </button>
@@ -580,7 +580,7 @@ export default function GovernancePage() {
                   type="button"
                   disabled={creating}
                   onClick={createPolicy}
-                  className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white disabled:opacity-40"
+                  className="rounded-xl bg-primary px-5 py-3 shadow-lg shadow-primary/15 text-sm font-medium text-white disabled:opacity-40"
                 >
                   {creating
                     ? "Creating..."
@@ -594,7 +594,7 @@ export default function GovernancePage() {
 
       {rulePolicyId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl border border-black/10 bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-lg glass-strong rounded-3xl p-6 shadow-2xl">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">
@@ -627,7 +627,7 @@ export default function GovernancePage() {
                     setRuleName(event.target.value)
                   }
                   placeholder="e.g. Email requires approval"
-                  className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                  className="w-full glass rounded-xl px-4 py-3 text-sm outline-none focus:border-black/30"
                 />
               </div>
 
@@ -643,7 +643,7 @@ export default function GovernancePage() {
                   }
                   placeholder="Describe what this rule controls."
                   rows={3}
-                  className="w-full resize-none rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                  className="w-full resize-none glass rounded-xl px-4 py-3 text-sm outline-none focus:border-black/30"
                 />
               </div>
 
@@ -716,7 +716,7 @@ export default function GovernancePage() {
                     onChange={(event) =>
                       setRulePriority(event.target.value)
                     }
-                    className="w-full rounded-xl border border-black/10 px-4 py-3 text-sm outline-none focus:border-black/30"
+                    className="w-full glass rounded-xl px-4 py-3 text-sm outline-none focus:border-black/30"
                   />
                 </div>
               </div>
@@ -731,7 +731,7 @@ export default function GovernancePage() {
                 <button
                   type="button"
                   onClick={() => setRulePolicyId(null)}
-                  className="rounded-xl border border-black/10 px-4 py-3 text-sm font-medium"
+                  className="glass rounded-xl px-4 py-3 text-sm font-medium"
                 >
                   Cancel
                 </button>
@@ -740,7 +740,7 @@ export default function GovernancePage() {
                   type="button"
                   disabled={ruleCreating}
                   onClick={createRule}
-                  className="rounded-xl bg-black px-5 py-3 text-sm font-medium text-white disabled:opacity-40"
+                  className="rounded-xl bg-primary px-5 py-3 shadow-lg shadow-primary/15 text-sm font-medium text-white disabled:opacity-40"
                 >
                   {ruleCreating
                     ? "Creating..."
