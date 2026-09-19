@@ -18,11 +18,11 @@ export function Panel({
   return (
     <section
       className={cn(
-        'flex flex-col rounded-xl border border-border bg-card',
+        'glass flex flex-col rounded-2xl',
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
+      <div className="flex items-start justify-between gap-3 border-b border-white/55 px-5 py-4">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-foreground">{title}</h2>
           {description ? (
