@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const { data: userRecord, error: userError } =
       await supabase
         .from("users")
-        .select("organization_id")
+        .select("organization_id, role")
         .eq("id", user.id)
         .maybeSingle()
 
@@ -48,6 +48,13 @@ export async function POST(request: Request) {
     }
 
     const organizationId = userRecord.organization_id
+
+    if (userRecord.role !== "owner" && userRecord.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only an owner or admin can execute tasks." },
+        { status: 403 }
+      )
+    }
 
     const { data: task, error: taskError } = await supabase
       .from("tasks")

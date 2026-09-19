@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
+const GOVERNANCE_EFFECTS = new Set([
+  "allow",
+  "block",
+  "require_approval",
+  "flag",
+])
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
+}
+
 export async function POST(request: Request) {
   const supabase = await createClient()
 
@@ -73,6 +84,43 @@ export async function POST(request: Request) {
       )
     }
 
+    if (name.length > 200) {
+      return NextResponse.json(
+        { error: "Rule name must be 200 characters or fewer." },
+        { status: 400 }
+      )
+    }
+
+    const effect =
+      typeof body?.effect === "string" ? body.effect.trim().toLowerCase() : "flag"
+
+    if (!GOVERNANCE_EFFECTS.has(effect)) {
+      return NextResponse.json(
+        { error: "Rule effect must be allow, block, require_approval, or flag." },
+        { status: 400 }
+      )
+    }
+
+    const priority = typeof body?.priority === "number" ? body.priority : 100
+    if (!Number.isSafeInteger(priority) || priority < 0 || priority > 1_000_000) {
+      return NextResponse.json(
+        { error: "Rule priority must be an integer between 0 and 1000000." },
+        { status: 400 }
+      )
+    }
+
+    if (!isRecord(body?.conditions) && body?.conditions !== undefined) {
+      return NextResponse.json({ error: "Rule conditions must be an object." }, { status: 400 })
+    }
+
+    if (!isRecord(body?.scope) && body?.scope !== undefined) {
+      return NextResponse.json({ error: "Rule scope must be an object." }, { status: 400 })
+    }
+
+    if (!isRecord(body?.exceptions) && body?.exceptions !== undefined) {
+      return NextResponse.json({ error: "Rule exceptions must be an object." }, { status: 400 })
+    }
+
     const { data: policy, error: policyError } =
       await supabase
         .from("governance_policies")
@@ -112,19 +160,10 @@ export async function POST(request: Request) {
             typeof body?.ruleType === "string"
               ? body.ruleType
               : "governance",
-          effect:
-            typeof body?.effect === "string"
-              ? body.effect
-              : "flag",
+          effect,
           conditions:
-            body?.conditions &&
-            typeof body.conditions === "object"
-              ? body.conditions
-              : {},
-          priority:
-            typeof body?.priority === "number"
-              ? body.priority
-              : 100,
+            isRecord(body?.conditions) ? body.conditions : {},
+          priority,
           enabled:
             typeof body?.enabled === "boolean"
               ? body.enabled
@@ -134,15 +173,9 @@ export async function POST(request: Request) {
               ? body.version
               : "1.0",
           scope:
-            body?.scope &&
-            typeof body.scope === "object"
-              ? body.scope
-              : {},
+            isRecord(body?.scope) ? body.scope : {},
           exceptions:
-            body?.exceptions &&
-            typeof body.exceptions === "object"
-              ? body.exceptions
-              : {},
+            isRecord(body?.exceptions) ? body.exceptions : {},
         })
         .select()
         .single()

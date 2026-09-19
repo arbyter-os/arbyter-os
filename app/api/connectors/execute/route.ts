@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { data: userRecord, error: userError } = await supabase
       .from("users")
-      .select("organization_id")
+      .select("organization_id, role")
       .eq("id", user.id)
       .maybeSingle()
 
@@ -29,6 +29,13 @@ export async function POST(request: Request) {
 
     if (!userRecord?.organization_id) {
       return NextResponse.json({ error: "No organization is associated with your account." }, { status: 403 })
+    }
+
+    if (userRecord.role !== "owner" && userRecord.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only an owner or admin can execute connector actions." },
+        { status: 403 }
+      )
     }
 
     if (typeof body?.agentId !== "string" || !body.agentId) {

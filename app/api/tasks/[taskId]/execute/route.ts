@@ -53,7 +53,7 @@ export async function POST(
       error: userError,
     } = await supabase
       .from("users")
-      .select("organization_id")
+      .select("organization_id, role")
       .eq("id", user.id)
       .maybeSingle()
 
@@ -68,6 +68,33 @@ export async function POST(
             "No organization is associated with your account.",
         },
         { status: 403 }
+      )
+    }
+
+    if (userRecord.role !== "owner" && userRecord.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only an owner or admin can execute tasks." },
+        { status: 403 }
+      )
+    }
+
+    const { data: task, error: taskError } = await supabase
+      .from("tasks")
+      .select("id, status")
+      .eq("id", taskId)
+      .eq("organization_id", userRecord.organization_id)
+      .maybeSingle()
+
+    if (taskError) throw taskError
+
+    if (!task) {
+      return NextResponse.json({ error: "Task not found." }, { status: 404 })
+    }
+
+    if (task.status === "completed") {
+      return NextResponse.json(
+        { error: "This task is already completed." },
+        { status: 409 }
       )
     }
 

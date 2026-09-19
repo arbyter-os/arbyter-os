@@ -1,4 +1,5 @@
 import dns from "node:dns/promises";
+import type { LookupAddress, LookupOptions } from "node:dns";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
@@ -58,11 +59,14 @@ function parseIpv6(address: string): bigint | null {
     ? [...left, ...Array(8 - left.length - right.length).fill("0"), ...right]
     : left;
   if (groups.length !== 8) return null;
-  return groups.reduce((result, group) => (result << 16n) | BigInt(parseInt(group, 16)), 0n);
+  return groups.reduce(
+    (result, group) => (result << BigInt(16)) | BigInt(parseInt(group, 16)),
+    BigInt(0),
+  );
 }
 
 function ipv6InRange(address: bigint, prefix: bigint, bits: number): boolean {
-  const shift = 128n - BigInt(bits);
+  const shift = BigInt(128) - BigInt(bits);
   return (address >> shift) === (prefix >> shift);
 }
 
@@ -138,20 +142,23 @@ export async function fetchValidatedExternalUrl(
 
   const lookup = (
     _hostname: string,
-    options: { family?: number },
-    callback: (error: NodeJS.ErrnoException | null, address?: string, family?: number) => void,
+    options: LookupOptions,
+    callback: (
+      error: NodeJS.ErrnoException | null,
+      address: string | LookupAddress[],
+      family?: number,
+    ) => void,
   ) => {
     const address = addresses.find((candidate) => !options.family || net.isIP(candidate) === options.family);
     if (!address) {
-      callback(new Error("No validated address is available for this connection."));
+      callback(new Error("No validated address is available for this connection."), "");
       return;
     }
     callback(null, address, net.isIPv6(address) ? 6 : 4);
   };
 
   return new Promise((resolve, reject) => {
-    const transport = url.protocol === "https:" ? https : http;
-    const request = transport.request({
+    const requestOptions = {
       protocol: url.protocol,
       hostname: url.hostname,
       port: url.port || undefined,
@@ -161,7 +168,8 @@ export async function fetchValidatedExternalUrl(
       lookup,
       servername: url.hostname,
       signal: init.signal ?? undefined,
-    }, (response) => {
+    };
+    const handleResponse = (response: http.IncomingMessage) => {
       const chunks: Buffer[] = [];
       response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
       response.on("end", () => resolve(new Response(Buffer.concat(chunks), {
@@ -170,7 +178,10 @@ export async function fetchValidatedExternalUrl(
         headers: response.headers as Record<string, string>,
       })));
       response.on("error", reject);
-    });
+    };
+    const request = url.protocol === "https:"
+      ? https.request(requestOptions, handleResponse)
+      : http.request(requestOptions, handleResponse);
     request.on("error", reject);
     if (body) request.write(body);
     request.end();
