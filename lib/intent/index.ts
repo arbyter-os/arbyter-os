@@ -1,6 +1,6 @@
-import { GeminiProvider } from "../llm/gemini"
-import type { LLMProvider } from "../llm/types"
-import { assertJsonSchema } from "../validation/json-schema"
+import { GeminiProvider } from "../llm/gemini.ts"
+import type { LLMProvider } from "../llm/types.ts"
+import { assertJsonSchema } from "../validation/json-schema.ts"
 
 export type Intent = {
   intent: string
