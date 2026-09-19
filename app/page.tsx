@@ -127,8 +127,8 @@ export default function Home() {
       setTimeout(() => setPhase(1), 700),
       setTimeout(() => setPhase(2), 1500),
       setTimeout(() => setPhase(3), 3800),
-      setTimeout(() => setPhase(4), 5000),
-      setTimeout(() => setIntroDone(true), 6200),
+      setTimeout(() => setPhase(4), 5400),
+      setTimeout(() => setIntroDone(true), 7000),
     ];
 
     return () => timers.forEach(clearTimeout);
@@ -997,11 +997,10 @@ function Intro({ phase }: { phase: number }) {
 
   const unfolding = phase >= 3;
   const unfolded = phase >= 4;
+  const logoVisible = phase >= 4;
 
   return (
     <div className="fixed inset-0 z-[999] overflow-hidden bg-white">
-      {/* iPhone-Duo-inspired unfold: the scene is soft at the fold, then
-          the two translucent layers pull apart and the system resolves sharply. */}
       <div
         className="absolute inset-0 transition-[filter] duration-[900ms] ease-out"
         style={{
@@ -1037,7 +1036,6 @@ function Intro({ phase }: { phase: number }) {
           );
         })}
 
-        {/* Arbyter dot */}
         <div
           className={`absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 transition-all duration-[900ms] ${
             phase >= 1 ? "scale-100 opacity-100" : "scale-0 opacity-0"
@@ -1052,7 +1050,6 @@ function Intro({ phase }: { phase: number }) {
           />
         </div>
 
-        {/* Decagon */}
         <div
           className={`absolute left-1/2 top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ${
             phase >= 3 ? "scale-100 opacity-100" : "scale-50 opacity-0"
@@ -1092,20 +1089,71 @@ function Intro({ phase }: { phase: number }) {
           </svg>
         </div>
 
-        {/* Exact logo */}
+        {/* Exact Arbyter logo becomes a glass object only after the panels unfold. */}
         <div
-          className={`absolute left-1/2 top-1/2 z-40 h-[110px] w-[125px] -translate-x-1/2 -translate-y-1/2 transition-all duration-[1300ms] ${
-            phase >= 4
-              ? "scale-100 opacity-100"
-              : "scale-90 opacity-0"
+          className={`absolute left-1/2 top-1/2 z-40 h-[150px] w-[168px] -translate-x-1/2 -translate-y-1/2 perspective-[1200px] transition-all duration-[1500ms] ease-[cubic-bezier(.16,1,.3,1)] ${
+            logoVisible
+              ? "scale-100 rotate-x-0 rotate-y-0 opacity-100"
+              : "scale-[.72] rotate-x-[18deg] rotate-y-[-24deg] opacity-0"
           }`}
+          style={{
+            transformStyle: "preserve-3d",
+            filter: logoVisible
+              ? `drop-shadow(0 26px 32px rgba(0,0,0,.16)) drop-shadow(0 0 32px rgba(19,0,186,.16))`
+              : "none",
+          }}
         >
-          {LOGO}
+          {/* translucent glass volume / depth */}
+          <div
+            className="absolute inset-[6%] rounded-[28px] border border-white/80 bg-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,.95),inset_0_-18px_35px_rgba(255,255,255,.18),0_0_0_1px_rgba(19,0,186,.08)] backdrop-blur-xl"
+            style={{ transform: "translateZ(-18px)" }}
+          />
+
+          {[16, 12, 8, 4].map((depth) => (
+            <div
+              key={depth}
+              className="absolute inset-0"
+              style={{
+                transform: `translate3d(${depth / 4}px,${depth / 4}px,-${depth}px)`,
+                opacity: 0.09,
+              }}
+            >
+              {LOGO}
+            </div>
+          ))}
+
+          {/* exact logo face */}
+          <div
+            className="absolute inset-0"
+            style={{
+              opacity: 0.72,
+              filter:
+                "drop-shadow(0 1px 0 rgba(255,255,255,.95)) drop-shadow(0 8px 14px rgba(0,0,0,.12))",
+            }}
+          >
+            {LOGO}
+          </div>
+
+          {/* glass reflection */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-[16%] top-[8%] h-[18%] w-[68%] rotate-[-18deg] rounded-full bg-white/55 blur-md"
+            style={{ transform: "translateZ(22px)" }}
+          />
+
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/55"
+            style={{
+              transform: "translateZ(24px)",
+              boxShadow:
+                "inset 0 0 24px rgba(255,255,255,.3), 0 0 28px rgba(19,0,186,.08)",
+            }}
+          />
         </div>
       </div>
 
-      {/* Fold layers. They start together, create the soft central seam,
-          then glide outward like two glass surfaces opening. */}
+      {/* Glass panels unfold first. The logo is revealed only after they open. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 left-0 z-50 w-1/2 border-r border-white/80 bg-white/45 shadow-[12px_0_60px_rgba(19,0,186,.08)] backdrop-blur-[18px] transition-transform duration-[1400ms] ease-[cubic-bezier(.77,0,.18,1)]"
@@ -1122,7 +1170,6 @@ function Intro({ phase }: { phase: number }) {
         }}
       />
 
-      {/* Precision hinge / light seam */}
       <div
         aria-hidden="true"
         className={`pointer-events-none absolute left-1/2 top-0 z-[60] h-full w-px -translate-x-1/2 transition-all duration-[900ms] ${
