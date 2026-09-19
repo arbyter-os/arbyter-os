@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   Bell,
@@ -17,14 +17,6 @@ import {
 } from 'lucide-react'
 
 import { footerNav, navSections, routeTitles } from '@/lib/mock-data/navigation'
-import {
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuLabel,
-  MenuSeparator,
-  MenuTrigger,
-} from '@/components/ui/menu'
 import { createClient } from '@/lib/supabase/client'
 
 const supabase = createClient()
@@ -41,6 +33,8 @@ const notifications: {
   { title: 'Policy conflict detected', meta: '1h ago', icon: Bell },
 ]
 
+type OpenMenu = 'notifications' | 'workspace' | 'account' | null
+
 export function TopBar({
   onToggleCollapse,
   onOpenMobile,
@@ -50,6 +44,8 @@ export function TopBar({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const headerRef = useRef<HTMLElement>(null)
+
   const current = routeTitles[pathname] ?? 'Overview'
 
   const [fullName, setFullName] = useState('')
@@ -58,11 +54,15 @@ export function TopBar({
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [openMenu, setOpenMenu] = useState<OpenMenu>(null)
 
   const searchResults = searchItems.filter((item) => {
     const query = searchQuery.trim().toLowerCase()
     if (!query) return true
-    return item.label.toLowerCase().includes(query) || item.href.toLowerCase().includes(query)
+    return (
+      item.label.toLowerCase().includes(query) ||
+      item.href.toLowerCase().includes(query)
+    )
   })
 
   useEffect(() => {
@@ -94,16 +94,14 @@ export function TopBar({
             .eq('id', profile.organization_id)
             .maybeSingle()
 
-          if (organization?.name) {
-            setOrganizationName(organization.name)
-          }
+          if (organization?.name) setOrganizationName(organization.name)
         }
       }
 
       setLoadingProfile(false)
     }
 
-    loadProfile()
+    void loadProfile()
   }, [router])
 
   useEffect(() => {
@@ -111,15 +109,31 @@ export function TopBar({
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
         setSearchOpen(true)
+        setOpenMenu(null)
       }
 
       if (event.key === 'Escape') {
         setSearchOpen(false)
+        setOpenMenu(null)
+      }
+    }
+
+    function onPointerDown(event: PointerEvent) {
+      if (
+        headerRef.current &&
+        !headerRef.current.contains(event.target as Node)
+      ) {
+        setOpenMenu(null)
       }
     }
 
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
   }, [])
 
   const displayName = fullName.trim() || email.split('@')[0] || 'User'
@@ -140,6 +154,10 @@ export function TopBar({
       .map((part) => part[0]?.toUpperCase())
       .join('') || 'A'
 
+  function toggleMenu(menu: Exclude<OpenMenu, null>) {
+    setOpenMenu((currentMenu) => (currentMenu === menu ? null : menu))
+  }
+
   async function handleSignOut() {
     setLoadingProfile(true)
 
@@ -155,7 +173,10 @@ export function TopBar({
   }
 
   return (
-    <header className="sticky top-3 z-30 mx-3 flex h-14 items-center gap-2 rounded-[1.25rem] liquid-glass px-3 md:mx-6 md:px-4 lg:mx-8">
+    <header
+      ref={headerRef}
+      className="sticky top-3 z-40 mx-3 flex h-14 items-center gap-2 rounded-[1.25rem] liquid-glass px-3 md:mx-6 md:px-4 lg:mx-8"
+    >
       <button
         type="button"
         onClick={onOpenMobile}
@@ -185,7 +206,10 @@ export function TopBar({
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
         <button
           type="button"
-          onClick={() => setSearchOpen(true)}
+          onClick={() => {
+            setSearchOpen(true)
+            setOpenMenu(null)
+          }}
           className="hidden h-10 w-56 items-center gap-2 rounded-xl border border-white/75 bg-white/45 px-3 text-sm text-muted-foreground shadow-inner transition-colors hover:bg-white/60 md:flex xl:w-72"
         >
           <Search className="size-4" />
@@ -197,39 +221,60 @@ export function TopBar({
 
         <button
           type="button"
-          onClick={() => setSearchOpen(true)}
+          onClick={() => {
+            setSearchOpen(true)
+            setOpenMenu(null)
+          }}
           aria-label="Search"
           className="flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground md:hidden"
         >
           <Search className="size-[1.15rem]" />
         </button>
 
-        <Menu>
-          <MenuTrigger
+        <div className="relative">
+          <button
+            type="button"
             aria-label="Notifications"
+            aria-expanded={openMenu === 'notifications'}
+            onClick={() => toggleMenu('notifications')}
             className="relative flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground aria-expanded:bg-white/60 aria-expanded:text-foreground"
           >
             <Bell className="size-[1.15rem]" />
             <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary ring-2 ring-white/70" />
-          </MenuTrigger>
+          </button>
 
-          <MenuContent align="end" className="w-80">
-            <MenuLabel>Notifications</MenuLabel>
-            <MenuSeparator />
-            {notifications.map((n) => (
-              <MenuItem key={n.title} className="items-start gap-2.5 py-2">
-                <n.icon className="mt-0.5 size-4" />
-                <span className="flex flex-col">
-                  <span className="text-sm text-foreground">{n.title}</span>
-                  <span className="text-xs text-muted-foreground">{n.meta}</span>
-                </span>
-              </MenuItem>
-            ))}
-          </MenuContent>
-        </Menu>
+          {openMenu === 'notifications' ? (
+            <div className="absolute right-0 top-full z-[120] mt-2 w-80 rounded-2xl border border-white/75 bg-white/78 p-1 text-foreground shadow-[0_20px_60px_rgba(32,38,75,.18)] backdrop-blur-2xl">
+              <div className="px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+                Notifications
+              </div>
+              <div className="my-1 h-px bg-border/60" />
+              {notifications.map((n) => (
+                <button
+                  key={n.title}
+                  type="button"
+                  onClick={() => setOpenMenu(null)}
+                  className="flex w-full items-start gap-2.5 rounded-xl px-2.5 py-2 text-left transition-colors hover:bg-white/65"
+                >
+                  <n.icon className="mt-0.5 size-4 text-muted-foreground" />
+                  <span className="flex flex-col">
+                    <span className="text-sm">{n.title}</span>
+                    <span className="text-xs text-muted-foreground">{n.meta}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
-        <Menu>
-          <MenuTrigger className="hidden h-10 items-center gap-2 rounded-xl border border-white/65 bg-white/40 px-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-white/60 aria-expanded:bg-white/65 sm:flex">
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Workspace menu"
+            aria-expanded={openMenu === 'workspace'}
+            onClick={() => toggleMenu('workspace')}
+            className="hidden h-10 items-center gap-2 rounded-xl border border-white/65 bg-white/40 px-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-white/60 aria-expanded:bg-white/65 sm:flex"
+          >
             <span className="flex size-5 items-center justify-center rounded-lg bg-primary/10 text-[0.625rem] font-bold text-primary">
               {workspaceInitials}
             </span>
@@ -237,67 +282,98 @@ export function TopBar({
               {loadingProfile ? 'Loading…' : organizationName}
             </span>
             <ChevronsUpDown className="size-3.5 text-muted-foreground" />
-          </MenuTrigger>
+          </button>
 
-          <MenuContent align="end">
-            <MenuLabel>Workspace</MenuLabel>
-            <MenuSeparator />
-            <MenuItem>
-              <span className="flex-1">{organizationName}</span>
-              <Check className="size-4 text-primary" />
-            </MenuItem>
-          </MenuContent>
-        </Menu>
+          {openMenu === 'workspace' ? (
+            <div className="absolute right-0 top-full z-[120] mt-2 min-w-56 rounded-2xl border border-white/75 bg-white/78 p-1 text-foreground shadow-[0_20px_60px_rgba(32,38,75,.18)] backdrop-blur-2xl">
+              <div className="px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+                Workspace
+              </div>
+              <div className="my-1 h-px bg-border/60" />
+              <button
+                type="button"
+                onClick={() => setOpenMenu(null)}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm hover:bg-white/65"
+              >
+                <span className="flex-1">{organizationName}</span>
+                <Check className="size-4 text-primary" />
+              </button>
+            </div>
+          ) : null}
+        </div>
 
-        <Menu>
-          <MenuTrigger
+        <div className="relative">
+          <button
+            type="button"
             aria-label="Account menu"
+            aria-expanded={openMenu === 'account'}
+            onClick={() => toggleMenu('account')}
             className="flex size-10 items-center justify-center rounded-full bg-white/72 text-xs font-semibold text-primary shadow-sm ring-1 ring-white/70 transition-shadow hover:ring-2 hover:ring-primary/25 aria-expanded:ring-2 aria-expanded:ring-primary/25"
           >
             {loadingProfile ? '…' : initials}
-          </MenuTrigger>
+          </button>
 
-          <MenuContent align="end" className="w-64">
-            <div className="px-2.5 py-2">
-              <p className="text-sm font-medium text-foreground">
-                {loadingProfile ? 'Loading…' : displayName}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {loadingProfile ? '' : email}
-              </p>
+          {openMenu === 'account' ? (
+            <div className="absolute right-0 top-full z-[120] mt-2 w-64 rounded-2xl border border-white/75 bg-white/78 p-1 text-foreground shadow-[0_20px_60px_rgba(32,38,75,.18)] backdrop-blur-2xl">
+              <div className="px-2.5 py-2">
+                <p className="text-sm font-medium">
+                  {loadingProfile ? 'Loading…' : displayName}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {loadingProfile ? '' : email}
+                </p>
+              </div>
+
+              <div className="my-1 h-px bg-border/60" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null)
+                  router.push('/settings')
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm hover:bg-white/65"
+              >
+                <User className="size-4 text-muted-foreground" />
+                Profile
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOpenMenu(null)
+                  router.push('/settings')
+                }}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm hover:bg-white/65"
+              >
+                <Settings className="size-4 text-muted-foreground" />
+                Settings
+              </button>
+
+              <div className="my-1 h-px bg-border/60" />
+
+              <button
+                type="button"
+                onClick={() => void handleSignOut()}
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm text-destructive hover:bg-red-500/5"
+              >
+                <LogOut className="size-4" />
+                Sign out
+              </button>
             </div>
-
-            <MenuSeparator />
-
-            <MenuItem onSelect={() => router.push('/settings')}>
-              <User />
-              Profile
-            </MenuItem>
-
-            <MenuItem onSelect={() => router.push('/settings')}>
-              <Settings />
-              Settings
-            </MenuItem>
-
-            <MenuSeparator />
-
-            <MenuItem
-              onSelect={handleSignOut}
-              className="text-destructive [&_svg]:text-destructive"
-            >
-              <LogOut />
-              Sign out
-            </MenuItem>
-          </MenuContent>
-        </Menu>
+          ) : null}
+        </div>
       </div>
 
       {searchOpen ? (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/20 p-4 pt-20 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[200] flex items-start justify-center bg-black/20 p-4 pt-20 backdrop-blur-sm">
           <button
             type="button"
             aria-label="Close search"
-            onClick={() => setSearchOpen(false)}
+            onClick={() => {
+              setSearchOpen(false)
+              setSearchQuery('')
+            }}
             className="absolute inset-0 cursor-default"
           />
 
@@ -345,7 +421,7 @@ export function TopBar({
                           <Icon className="size-4" />
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-sm font-medium text-foreground">
+                          <span className="block text-sm font-medium">
                             {item.label}
                           </span>
                           <span className="block text-xs text-muted-foreground">
