@@ -10,7 +10,7 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
         <li key={item.id}>
           <button
             type="button"
-            className="group flex w-full items-center gap-4 py-3.5 text-left transition-colors data-[first=false]:border-t data-[first=false]:border-border"
+            className="group flex w-full items-center gap-4 py-3.5 text-left transition-colors data-[first=false]:border-t data-[first=false]:border-white/55"
             data-first={i === 0}
           >
             <div className="min-w-0 flex-1">
