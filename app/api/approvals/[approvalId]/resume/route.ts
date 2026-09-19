@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { executeConnectorAction } from "@/lib/connectors/runtime"
+import { resolveConnectionCredential } from "@/lib/credentials/runtime"
 import { recordExecutionAudit } from "@/lib/execution/audit"
 
 type RouteContext = {
@@ -169,6 +170,16 @@ export async function POST(
       })
     }
 
+    if (!execution.agent_connection_id) {
+      return NextResponse.json(
+        {
+          error:
+            "Approved execution is not linked to a connector connection.",
+        },
+        { status: 409 }
+      )
+    }
+
     const inputData =
       execution.input_data &&
       typeof execution.input_data === "object"
@@ -236,6 +247,23 @@ export async function POST(
       )
     }
 
+    const credential =
+      await resolveConnectionCredential({
+        organizationId,
+        connectionId:
+          execution.agent_connection_id,
+      })
+
+    if (!credential) {
+      return NextResponse.json(
+        {
+          error:
+            "No active credential is configured for the approved connection.",
+        },
+        { status: 409 }
+      )
+    }
+
     await supabase
       .from("agent_executions")
       .update({
@@ -258,9 +286,10 @@ export async function POST(
         },
         {
           connectionId:
-            execution.agent_connection_id ?? "",
+            execution.agent_connection_id,
           agentId: execution.agent_id,
           organizationId,
+          credential,
         }
       )
 
