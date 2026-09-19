@@ -16,7 +16,6 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient()
 
-    // Authenticate the user.
     const {
       data: { user },
       error: userError,
@@ -29,10 +28,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Resolve the user's organization.
     const { data: profile, error: profileError } = await supabase
       .from("users")
-      .select("organization_id")
+      .select("organization_id, role")
       .eq("id", user.id)
       .single()
 
@@ -43,8 +41,14 @@ export async function POST(request: Request) {
       )
     }
 
-    const organizationId = profile.organization_id
+    if (profile.role !== "owner" && profile.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only an owner or admin can manage credentials." },
+        { status: 403 }
+      )
+    }
 
+    const organizationId = profile.organization_id
     const body = (await request.json()) as CredentialRequest
 
     const agentConnectionId = body.agentConnectionId?.trim()
@@ -80,12 +84,9 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verify the connection belongs to the authenticated user's organization.
     const { data: connection, error: connectionError } = await supabase
       .from("agent_connections")
-      .select(
-        "id, organization_id, agent_id, provider, connection_type"
-      )
+      .select("id, organization_id, agent_id, provider, connection_type")
       .eq("id", agentConnectionId)
       .eq("organization_id", organizationId)
       .single()
@@ -99,10 +100,6 @@ export async function POST(request: Request) {
 
     const admin = createAdminClient()
 
-    // Store the actual secret in Supabase Vault.
-    //
-    // Only the returned UUID will ever be stored in
-    // agent_credentials.secret_reference.
     const vaultName =
       `arbyter/${organizationId}/${agentConnectionId}/${name}`
 
@@ -125,7 +122,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Store only the Vault reference and non-secret metadata.
     const { data: credential, error: credentialError } = await admin
       .from("agent_credentials")
       .insert({
@@ -153,10 +149,6 @@ export async function POST(request: Request) {
         credentialError
       )
 
-      // There is intentionally no automatic Vault deletion here because
-      // this Supabase project does not expose vault.delete_secret().
-      // The orphaned Vault record can be cleaned up through an explicit
-      // server-side administrative cleanup process later.
       return NextResponse.json(
         {
           error:
@@ -166,7 +158,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Never return the secret or Vault reference.
     return NextResponse.json(
       {
         success: true,
