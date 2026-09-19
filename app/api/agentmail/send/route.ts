@@ -1,7 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError) throw authError;
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "You must be signed in." },
+        { status: 401 }
+      );
+    }
+
+    const { data: userRecord, error: userError } =
+      await supabase
+        .from("users")
+        .select("organization_id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+    if (userError) throw userError;
+
+    if (!userRecord?.organization_id) {
+      return NextResponse.json(
+        { error: "No organization is associated with your account." },
+        { status: 403 }
+      );
+    }
+
     const apiKey = process.env.AGENTMAIL_API_KEY;
 
     if (!apiKey) {
