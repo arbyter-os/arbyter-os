@@ -9,17 +9,17 @@ export type Intent = {
 }
 
 function isIntent(value: unknown): value is Intent {
-  if (!value || typeof value !== "object") return false
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const item = value as Record<string, unknown>
-  return (
-    typeof item.intent === "string" &&
-    !!item.entities &&
-    typeof item.entities === "object" &&
-    !Array.isArray(item.entities) &&
-    Array.isArray(item.required_capabilities) &&
-    item.required_capabilities.every((entry) => typeof entry === "string") &&
-    typeof item.action === "string"
-  )
+  if (typeof item.intent !== "string" || item.intent.trim() === "") return false
+  if (typeof item.action !== "string" || item.action.trim() === "") return false
+  if (!item.entities || typeof item.entities !== "object" || Array.isArray(item.entities)) return false
+  if (!Array.isArray(item.required_capabilities) || item.required_capabilities.length === 0) return false
+
+  const entities = item.entities as Record<string, unknown>
+  const capabilities = item.required_capabilities as unknown[]
+  return Object.entries(entities).every(([key, value]) => key.trim() !== "" && typeof value === "string") &&
+    capabilities.every((entry) => typeof entry === "string" && entry.trim() !== "")
 }
 
 function fallbackIntent(input: string): Intent {
