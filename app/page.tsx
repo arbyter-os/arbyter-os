@@ -135,7 +135,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-white text-black">
+    <main className="min-h-screen overflow-x-hidden bg-[#f7f8fc] text-black">
       {!introDone && <Intro phase={phase} />}
 
       <div
@@ -183,14 +183,14 @@ export default function Home() {
             <div className="mt-10 flex flex-wrap justify-center gap-3">
               <Link
                 href="/login"
-                className="rounded-full bg-black px-7 py-3 text-sm font-medium text-white transition hover:bg-[#1300BA]"
+                className="liquid-glass-interactive rounded-full bg-black px-7 py-3 text-sm font-medium text-white shadow-[0_14px_35px_rgba(0,0,0,.14)] transition hover:bg-[#1300BA]"
               >
                 Request a demo
               </Link>
 
               <a
                 href="#system"
-                className="rounded-full border border-black/15 px-7 py-3 text-sm font-medium transition hover:border-black"
+                className="liquid-glass liquid-glass-interactive rounded-full px-7 py-3 text-sm font-medium transition"
               >
                 Explore Arbyter
               </a>
@@ -269,7 +269,7 @@ export default function Home() {
           <div className="mx-auto w-full max-w-[1400px] px-5 pb-28 md:px-10">
             {/* Roof */}
             <div className="mx-auto w-[280px] md:w-[410px]">
-              <div className="border-2 border-black bg-white px-8 py-7 text-center shadow-[10px_10px_0_#1300BA]">
+              <div className="liquid-glass liquid-glass-interactive border-2 border-white/70 px-8 py-7 text-center shadow-[0_24px_70px_rgba(19,0,186,.14)]">
                 <div className="mx-auto mb-5 h-12 w-12">{LOGO}</div>
 
                 <div className="text-2xl font-black tracking-[-0.04em]">
@@ -303,7 +303,7 @@ export default function Home() {
                   <button
                     key={pillar.name}
                     onClick={() => setActivePillar(index)}
-                    className="group relative flex min-h-[350px] flex-col justify-between overflow-hidden border-2 border-black bg-white p-6 text-left transition-all duration-300 hover:-translate-y-2 hover:bg-black hover:text-white"
+                    className="liquid-glass liquid-glass-interactive group relative flex min-h-[350px] flex-col justify-between overflow-hidden border border-white/70 p-6 text-left transition-all duration-300 hover:bg-white/72"
                   >
                     <div
                       className="absolute left-0 top-0 h-1 w-full"
@@ -350,7 +350,7 @@ export default function Home() {
               </div>
 
               {/* Command Center */}
-              <div className="mt-4 border-2 border-black bg-black px-6 py-10 text-white md:px-10">
+              <div className="liquid-glass-dark mt-4 border px-6 py-10 text-white md:px-10">
                 <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
                   <div>
                     <div
@@ -399,7 +399,7 @@ export default function Home() {
               </div>
 
               {/* Foundation */}
-              <div className="mt-4 border-2 border-black bg-white">
+              <div className="liquid-glass mt-4 border border-white/70">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5">
                   {[
                     ["AGENTS", "Autonomous systems"],
@@ -1103,7 +1103,7 @@ function Intro({ phase }: { phase: number }) {
 
 function TopBar() {
   return (
-    <header className="sticky top-0 z-[80] h-[78px] border-b border-black/10 bg-white/95 backdrop-blur-xl">
+    <header className="sticky top-0 z-[80] h-[78px] border-b border-white/70 bg-white/35 shadow-[0_10px_40px_rgba(32,38,75,.08)] backdrop-blur-2xl">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-3">
           <div className="h-8 w-9">{LOGO}</div>
@@ -1137,7 +1137,7 @@ function TopBar() {
 
         <Link
           href="/login"
-          className="rounded-full bg-black px-5 py-2.5 text-xs font-medium text-white transition hover:bg-[#1300BA]"
+          className="liquid-glass-interactive rounded-full bg-black px-5 py-2.5 text-xs font-medium text-white shadow-[0_10px_30px_rgba(0,0,0,.14)] transition hover:bg-[#1300BA]"
         >
           Sign in
         </Link>
