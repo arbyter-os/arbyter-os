@@ -908,7 +908,7 @@ export default function Home() {
           onClick={() => setActivePillar(null)}
         >
           <div
-            className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto border-2 border-black bg-white p-8 shadow-[12px_12px_0_#1300BA] md:p-12"
+            className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto modal-surface border-2 border-white/70 p-8 shadow-[12px_12px_0_#1300BA] md:p-12"
             onClick={(e) => e.stopPropagation()}
           >
             <button
