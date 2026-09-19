@@ -21,7 +21,7 @@ export function RangeSelector({
     <div
       role="tablist"
       aria-label="Date range"
-      className="inline-flex items-center gap-0.5 rounded-xl border border-white/65 bg-white/40 p-1 shadow-sm backdrop-blur-md"
+      className="liquid-glass-interactive inline-flex max-w-full items-center gap-0.5 rounded-xl p-1"
     >
       {options.map((opt) => {
         const active = opt.value === value
@@ -32,10 +32,10 @@ export function RangeSelector({
             aria-selected={active}
             onClick={() => onChange(opt.value)}
             className={cn(
-              'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              'min-h-9 rounded-lg px-3 py-1.5 text-sm font-medium transition-all',
               active
-                ? 'bg-muted text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
+                ? 'bg-primary/[0.08] text-primary shadow-sm ring-1 ring-primary/10'
+                : 'text-muted-foreground hover:bg-white/35 hover:text-foreground',
             )}
           >
             {opt.label}
