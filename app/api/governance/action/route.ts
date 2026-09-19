@@ -19,6 +19,14 @@ const VALID_ACTIONS: GovernanceAction[] = [
   "view_regulation",
 ]
 
+const ADMIN_ACTIONS = new Set<GovernanceAction>([
+  "approve",
+  "block",
+  "modify_policy",
+  "pause_agent",
+  "disable_tool",
+])
+
 export async function POST(request: Request) {
   const supabase = await createClient()
 
@@ -53,7 +61,7 @@ export async function POST(request: Request) {
     const { data: userRecord, error: userError } =
       await supabase
         .from("users")
-        .select("organization_id")
+        .select("organization_id, role")
         .eq("id", user.id)
         .maybeSingle()
 
@@ -66,6 +74,20 @@ export async function POST(request: Request) {
         {
           error:
             "No organization is associated with your account.",
+        },
+        { status: 403 }
+      )
+    }
+
+    if (
+      ADMIN_ACTIONS.has(action) &&
+      userRecord.role !== "owner" &&
+      userRecord.role !== "admin"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Only an owner or admin can perform this governance action.",
         },
         { status: 403 }
       )
