@@ -8,12 +8,7 @@ import { footerNav, navSections } from '@/lib/mock-data/navigation'
 import { Logo } from '@/components/layout/logo'
 import type { NavItem } from '@/lib/types'
 
-function NavLink({
-  item,
-  active,
-  collapsed,
-  onNavigate,
-}: {
+function NavLink({ item, active, collapsed, onNavigate }: {
   item: NavItem
   active: boolean
   collapsed: boolean
@@ -27,18 +22,15 @@ function NavLink({
       title={collapsed ? item.label : undefined}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group relative flex h-9 items-center gap-3 rounded-md px-2.5 text-sm font-medium transition-colors',
+        'group relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-all duration-200',
         collapsed && 'justify-center px-0',
         active
-          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-          : 'text-sidebar-foreground hover:bg-muted hover:text-foreground',
+          ? 'bg-white/65 text-sidebar-accent-foreground shadow-sm ring-1 ring-white/70'
+          : 'text-sidebar-foreground hover:bg-white/45 hover:text-foreground',
       )}
     >
       {active ? (
-        <span
-          className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary"
-          aria-hidden="true"
-        />
+        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary" aria-hidden="true" />
       ) : null}
       <Icon
         className={cn(
@@ -52,11 +44,7 @@ function NavLink({
   )
 }
 
-export function Sidebar({
-  collapsed = false,
-  onNavigate,
-  className,
-}: {
+export function Sidebar({ collapsed = false, onNavigate, className }: {
   collapsed?: boolean
   onNavigate?: () => void
   className?: string
@@ -66,18 +54,8 @@ export function Sidebar({
     pathname === href || pathname.startsWith(`${href}/`)
 
   return (
-    <aside
-      className={cn(
-        'flex h-full flex-col border-r border-sidebar-border bg-sidebar',
-        className,
-      )}
-    >
-      <div
-        className={cn(
-          'flex h-16 items-center border-b border-sidebar-border px-4',
-          collapsed && 'justify-center px-0',
-        )}
-      >
+    <aside className={cn('glass-strong flex h-full flex-col overflow-hidden rounded-2xl', className)}>
+      <div className={cn('flex h-16 items-center border-b border-white/55 px-4', collapsed && 'justify-center px-0')}>
         <Logo collapsed={collapsed} />
       </div>
 
@@ -89,17 +67,12 @@ export function Sidebar({
                 {section.label}
               </p>
             ) : (
-              <div className="mx-2.5 mb-2 h-px bg-sidebar-border" />
+              <div className="mx-2.5 mb-2 h-px bg-white/45" />
             )}
-            <ul className="flex flex-col gap-0.5">
+            <ul className="flex flex-col gap-1">
               {section.items.map((item) => (
                 <li key={item.href}>
-                  <NavLink
-                    item={item}
-                    active={isActive(item.href)}
-                    collapsed={collapsed}
-                    onNavigate={onNavigate}
-                  />
+                  <NavLink item={item} active={isActive(item.href)} collapsed={collapsed} onNavigate={onNavigate} />
                 </li>
               ))}
             </ul>
@@ -107,16 +80,11 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className="border-t border-sidebar-border px-3 py-3">
-        <ul className="flex flex-col gap-0.5">
+      <div className="border-t border-white/55 px-3 py-3">
+        <ul className="flex flex-col gap-1">
           {footerNav.map((item) => (
             <li key={item.href}>
-              <NavLink
-                item={item}
-                active={isActive(item.href)}
-                collapsed={collapsed}
-                onNavigate={onNavigate}
-              />
+              <NavLink item={item} active={isActive(item.href)} collapsed={collapsed} onNavigate={onNavigate} />
             </li>
           ))}
         </ul>
