@@ -109,6 +109,8 @@ export async function executeAgentTask(
           "organization_id",
           input.organizationId
         )
+        .eq("status", "connected")
+        .neq("health_status", "unhealthy")
         .maybeSingle()
 
     if (error) throw error
@@ -501,5 +503,5 @@ export async function executeAgentTask(
     })
 
     throw error
-  } 
-}
+  }
+} 
