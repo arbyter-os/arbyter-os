@@ -25,14 +25,12 @@ export const agentMailConnector: Connector = {
       };
     }
 
-    const apiKey =
-      context.credential?.secret ??
-      process.env.AGENTMAIL_API_KEY;
+    const apiKey = context.credential?.secret;
 
     if (!apiKey) {
       return {
         success: false,
-        error: "AgentMail credential is not configured.",
+        error: "AgentMail connection credential is unavailable.",
       };
     }
 
