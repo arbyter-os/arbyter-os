@@ -35,7 +35,7 @@ function isUnsafeIpv4(address: string): boolean {
     ipv4InRange(address, "172.16.0.0", "172.31.255.255") ||
     ipv4InRange(address, "192.0.0.0", "192.0.0.255") ||
     ipv4InRange(address, "192.0.2.0", "192.0.2.255") ||
-    address === "192.88.99.0" ||
+    ipv4InRange(address, "192.88.99.0", "192.88.99.255") ||
     ipv4InRange(address, "192.168.0.0", "192.168.255.255") ||
     ipv4InRange(address, "198.18.0.0", "198.19.255.255") ||
     ipv4InRange(address, "198.51.100.0", "198.51.100.255") ||
@@ -95,8 +95,10 @@ function isUnsafeIpv6(address: string): boolean {
     ["100::", 64],
     ["2001:2::", 48],
     ["2001:10::", 28],
+    ["2001:20::", 28],
     ["2001:db8::", 32],
     ["2001::", 32],
+    ["2002::", 16],
     ["fc00::", 7],
     ["fe80::", 10],
     ["ff00::", 8],
