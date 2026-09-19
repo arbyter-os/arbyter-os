@@ -127,9 +127,13 @@ function formatDate(value: string | null) {
   }
 }
 
-export default function AgentsClient() {
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [loadingAgents, setLoadingAgents] = useState(true)
+export default function AgentsClient({
+  initialAgents = [],
+}: {
+  initialAgents?: Agent[]
+}) {
+  const [agents, setAgents] = useState<Agent[]>(initialAgents)
+  const [loadingAgents, setLoadingAgents] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
@@ -242,10 +246,6 @@ export default function AgentsClient() {
       setLoadingAgents(false)
     }
   }
-
-  useEffect(() => {
-    loadAgents()
-  }, [])
 
   async function loadConnection(agentId: string) {
     setLoadingConnection(true)
