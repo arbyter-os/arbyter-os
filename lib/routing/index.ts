@@ -1,15 +1,16 @@
-import type { Intent } from "@/lib/intent"
-import type { RegisteredAgent } from "@/lib/agents/registry"
+export type RoutingIntent = { required_capabilities: string[] }
+export type RoutingAgent = { id: string; name: string; capabilities: string[]; verified: boolean }
 
-export function selectAgent(intent: Intent, candidates: RegisteredAgent[]): RegisteredAgent {
+export function selectAgent(intent: RoutingIntent, candidates: RoutingAgent[]): RoutingAgent {
+  const required = [...new Set(intent.required_capabilities)]
   const ranked = candidates
     .map((agent) => ({
       agent,
-      matched: intent.required_capabilities.filter((capability) => agent.capabilities.includes(capability)).length,
+      matched: required.filter((capability) => agent.capabilities.includes(capability)).length,
     }))
-    .filter(({ matched }) => matched > 0)
-    .sort((a, b) => b.matched - a.matched || Number(b.agent.verified) - Number(a.agent.verified))
+    .filter(({ matched }) => matched === required.length)
+    .sort((a, b) => Number(b.agent.verified) - Number(a.agent.verified))
 
-  if (!ranked[0]) throw new Error("No agent matches the requested capabilities.")
+  if (!ranked[0]) throw new Error("No agent matches all requested capabilities.")
   return ranked[0].agent
 }

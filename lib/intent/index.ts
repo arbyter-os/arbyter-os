@@ -1,5 +1,6 @@
-import { GeminiProvider } from "@/lib/llm/gemini"
-import type { LLMProvider } from "@/lib/llm/types"
+import { GeminiProvider } from "../llm/gemini"
+import type { LLMProvider } from "../llm/types"
+import { assertJsonSchema } from "../validation/json-schema"
 
 export type Intent = {
   intent: string
@@ -8,18 +9,30 @@ export type Intent = {
   action: string
 }
 
-function isIntent(value: unknown): value is Intent {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return false
-  const item = value as Record<string, unknown>
-  if (typeof item.intent !== "string" || item.intent.trim() === "") return false
-  if (typeof item.action !== "string" || item.action.trim() === "") return false
-  if (!item.entities || typeof item.entities !== "object" || Array.isArray(item.entities)) return false
-  if (!Array.isArray(item.required_capabilities) || item.required_capabilities.length === 0) return false
+const intentSchema = {
+  type: "object",
+  properties: {
+    intent: { type: "string" },
+    entities: { type: "object", additionalProperties: true },
+    required_capabilities: { type: "array", items: { type: "string" } },
+    action: { type: "string" },
+  },
+  required: ["intent", "entities", "required_capabilities", "action"],
+  additionalProperties: false,
+} as const
 
-  const entities = item.entities as Record<string, unknown>
-  const capabilities = item.required_capabilities as unknown[]
-  return Object.entries(entities).every(([key, value]) => key.trim() !== "" && typeof value === "string") &&
-    capabilities.every((entry) => typeof entry === "string" && entry.trim() !== "")
+export function validateIntent(value: unknown): asserts value is Intent {
+  assertJsonSchema(value, intentSchema, "LLM intent")
+  const item = value as Intent
+  if (!item.intent.trim() || !item.action.trim() || item.required_capabilities.length === 0) {
+    throw new Error("LLM intent failed schema validation: required fields must not be empty.")
+  }
+  if (Object.entries(item.entities).some(([key, entityValue]) => !key.trim() || typeof entityValue !== "string")) {
+    throw new Error("LLM intent failed schema validation: entities must be string key/value pairs.")
+  }
+  if (item.required_capabilities.some((capability) => !capability.trim())) {
+    throw new Error("LLM intent failed schema validation: capabilities must be non-empty strings.")
+  }
 }
 
 function fallbackIntent(input: string): Intent {
@@ -37,7 +50,6 @@ function fallbackIntent(input: string): Intent {
 
 export async function generateIntent(input: string, provider?: LLMProvider): Promise<Intent> {
   if (!input.trim()) throw new Error("Request is required.")
-
   if (!provider && !process.env.GEMINI_API_KEY) return fallbackIntent(input)
 
   const llm = provider ?? new GeminiProvider()
@@ -50,7 +62,6 @@ export async function generateIntent(input: string, provider?: LLMProvider): Pro
     ].join(" "),
     input,
   })
-
-  if (!isIntent(raw)) throw new Error("LLM intent failed schema validation.")
+  validateIntent(raw)
   return raw
 }
