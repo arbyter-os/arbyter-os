@@ -32,27 +32,6 @@ export async function POST(request: Request) {
       );
     }
 
-    let parsedUrl: URL;
-
-    try {
-      parsedUrl = new URL(serverUrl);
-    } catch {
-      return NextResponse.json(
-        { error: "Invalid MCP server URL." },
-        { status: 400 }
-      );
-    }
-
-    if (
-      parsedUrl.protocol !== "https:" &&
-      parsedUrl.protocol !== "http:"
-    ) {
-      return NextResponse.json(
-        { error: "MCP server must use HTTP or HTTPS." },
-        { status: 400 }
-      );
-    }
-
     const headers: Record<string, string> = {};
 
     if (
