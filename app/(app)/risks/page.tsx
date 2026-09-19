@@ -284,7 +284,7 @@ export default function RisksPage() {
       {/* New Risk modal */}
       {showNewRisk && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg content-surface-strong rounded-2xl p-6 shadow-xl">
+          <div className="w-full max-w-lg modal-surface rounded-2xl p-6 shadow-xl">
             <div className="mb-5">
               <h2 className="text-xl font-semibold">
                 New Risk
