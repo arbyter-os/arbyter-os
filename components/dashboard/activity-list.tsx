@@ -8,7 +8,7 @@ export function ActivityList({ items }: { items: ActivityItem[] }) {
         <li
           key={item.id}
           data-first={i === 0}
-          className="flex items-center gap-3 py-3.5 data-[first=false]:border-t data-[first=false]:border-border"
+          className="flex items-center gap-3 py-3.5 data-[first=false]:border-t data-[first=false]:border-white/55"
         >
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[0.625rem] font-semibold text-primary">
             {item.agent
