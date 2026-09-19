@@ -1,4 +1,4 @@
-import { assertJsonSchema, type JsonSchema } from "../validation/json-schema"
+import { assertJsonSchema, type JsonSchema } from "../validation/json-schema.ts"
 
 export type ToolDefinition = {
   name: string
