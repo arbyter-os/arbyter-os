@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { executeConnectorAction } from "@/lib/connectors/runtime";
+import { resolveConnectionCredential } from "@/lib/credentials/runtime";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
     const { data: userRecord, error: userError } =
       await supabase
         .from("users")
-        .select("organization_id")
+        .select("organization_id, role")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -35,18 +37,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.AGENTMAIL_API_KEY;
-
-    if (!apiKey) {
+    if (userRecord.role !== "owner" && userRecord.role !== "admin") {
       return NextResponse.json(
-        { error: "AGENTMAIL_API_KEY is not configured." },
-        { status: 500 }
+        {
+          error: "Only an owner or admin can send through AgentMail.",
+        },
+        { status: 403 }
       );
     }
 
     const body = await request.json();
-
-    const { to, subject, text } = body;
+    const { to, subject, text } = body ?? {};
 
     if (!to || !subject || !text) {
       return NextResponse.json(
@@ -59,46 +60,98 @@ export async function POST(request: NextRequest) {
 
     const recipients = Array.isArray(to) ? to : [to];
 
-    const response = await fetch(
-      "https://api.agentmail.to/v0/inboxes/creatorai@agentmail.to/messages/send",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+    const { data: connection, error: connectionError } =
+      await supabase
+        .from("agent_connections")
+        .select(
+          "id, agent_id, provider, status, health_status, capabilities"
+        )
+        .eq("organization_id", userRecord.organization_id)
+        .eq("provider", "agentmail")
+        .eq("status", "connected")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (connectionError) throw connectionError;
+
+    if (!connection) {
+      return NextResponse.json(
+        { error: "No connected AgentMail connection was found." },
+        { status: 404 }
+      );
+    }
+
+    if (connection.health_status === "unhealthy") {
+      return NextResponse.json(
+        { error: "The AgentMail connection is unhealthy." },
+        { status: 409 }
+      );
+    }
+
+    const capabilities =
+      connection.capabilities &&
+      typeof connection.capabilities === "object" &&
+      !Array.isArray(connection.capabilities)
+        ? (connection.capabilities as Record<string, boolean>)
+        : {};
+
+    if (capabilities["messages.send"] !== true) {
+      return NextResponse.json(
+        {
+          error: "messages.send is not enabled for the AgentMail connection.",
         },
-        body: JSON.stringify({
+        { status: 403 }
+      );
+    }
+
+    const credential = await resolveConnectionCredential({
+      organizationId: userRecord.organization_id,
+      connectionId: connection.id,
+    });
+
+    if (!credential) {
+      return NextResponse.json(
+        { error: "No active AgentMail credential is configured." },
+        { status: 409 }
+      );
+    }
+
+    const result = await executeConnectorAction(
+      connection.provider,
+      {
+        action: "messages.send",
+        payload: {
           to: recipients,
           subject,
           text,
-        }),
+        },
+      },
+      {
+        connectionId: connection.id,
+        agentId: connection.agent_id,
+        organizationId: userRecord.organization_id,
+        credential,
       }
     );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error("AgentMail API error:", data);
-
+    if (!result.success) {
       return NextResponse.json(
-        {
-          error: "AgentMail rejected the request.",
-          details: data,
-        },
-        { status: response.status }
+        { error: result.error ?? "AgentMail execution failed." },
+        { status: 502 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data,
+      data: result.data ?? null,
     });
   } catch (error) {
     console.error("AgentMail integration error:", error);
 
     return NextResponse.json(
       {
-        error: "Failed to connect to AgentMail.",
+        error: "Failed to execute AgentMail request.",
       },
       { status: 500 }
     );
