@@ -1,4 +1,6 @@
 import dns from "node:dns/promises";
+import http from "node:http";
+import https from "node:https";
 import net from "node:net";
 
 export type ExternalUrlValidationOptions = {
@@ -16,11 +18,7 @@ function ipv4ToNumber(address: string): number {
     .reduce((value, octet) => value * 256 + octet, 0);
 }
 
-function ipv4InRange(
-  address: string,
-  start: string,
-  end: string,
-): boolean {
+function ipv4InRange(address: string, start: string, end: string): boolean {
   const value = ipv4ToNumber(address);
   return value >= ipv4ToNumber(start) && value <= ipv4ToNumber(end);
 }
@@ -167,4 +165,82 @@ export async function validateExternalUrl(
   }
 
   return { valid: true, url: parsed, addresses };
+}
+
+/**
+ * Fetch a URL using exactly the public IP addresses returned by
+ * validateExternalUrl(). The original hostname is retained for HTTP Host and
+ * TLS SNI/certificate validation, while the socket lookup is pinned to the
+ * already-validated address set. This closes the validation/fetch DNS race.
+ */
+export async function fetchValidatedExternalUrl(
+  validation: Extract<ExternalUrlValidationResult, { valid: true }>,
+  init: RequestInit = {},
+): Promise<Response> {
+  const { url, addresses } = validation;
+  const method = init.method ?? "GET";
+  const headers = new Headers(init.headers);
+  const body =
+    typeof init.body === "string"
+      ? Buffer.from(init.body)
+      : init.body instanceof Uint8Array
+        ? Buffer.from(init.body)
+        : init.body instanceof ArrayBuffer
+          ? Buffer.from(init.body)
+          : undefined;
+
+  const lookup = (
+    _hostname: string,
+    options: { family?: number },
+    callback: (error: NodeJS.ErrnoException | null, address?: string, family?: number) => void,
+  ) => {
+    const candidates = addresses.filter((address) => {
+      if (!options.family) return true;
+      return net.isIP(address) === options.family;
+    });
+
+    const address = candidates[0];
+    if (!address) {
+      callback(new Error("No validated address is available for this connection."));
+      return;
+    }
+
+    callback(null, address, net.isIPv6(address) ? 6 : 4);
+  };
+
+  return new Promise((resolve, reject) => {
+    const transport = url.protocol === "https:" ? https : http;
+    const request = transport.request(
+      {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port: url.port || undefined,
+        path: `${url.pathname}${url.search}`,
+        method,
+        headers,
+        lookup,
+        servername: url.hostname,
+        signal: init.signal ?? undefined,
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+        response.on("end", () => {
+          resolve(
+            new Response(Buffer.concat(chunks), {
+              status: response.statusCode ?? 0,
+              statusText: response.statusMessage ?? "",
+              headers: response.headers as Record<string, string>,
+            }),
+          );
+        });
+        response.on("error", reject);
+      },
+    );
+
+    request.on("error", reject);
+
+    if (body) request.write(body);
+    request.end();
+  });
 }
