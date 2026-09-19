@@ -42,25 +42,31 @@ export function createSupabaseAgentRegistry(): AgentRegistry {
       if (userError) throw userError
       if (!userRecord?.organization_id) throw new Error("No organization is associated with your account.")
 
+      const required = [...new Set(requiredCapabilities)]
       const { data: agents, error: agentsError } = await supabase
         .from("ai_agents")
         .select("id, name, description, status")
         .eq("organization_id", userRecord.organization_id)
-        .neq("status", "paused")
+        .eq("status", "active")
       if (agentsError) throw agentsError
 
       const result: RegisteredAgent[] = []
       for (const agent of agents ?? []) {
-        const { data: connection } = await supabase
+        const { data: connection, error: connectionError } = await supabase
           .from("agent_connections")
           .select("provider, endpoint_url, capabilities, status, health_status")
           .eq("agent_id", agent.id)
           .eq("organization_id", userRecord.organization_id)
+          .eq("status", "connected")
+          .neq("health_status", "unhealthy")
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle()
 
-        const { data: identity } = await supabase
+        if (connectionError) throw connectionError
+        if (!connection) continue
+
+        const { data: identity, error: identityError } = await supabase
           .from("agent_identities")
           .select("verified")
           .eq("agent_id", agent.id)
@@ -68,9 +74,11 @@ export function createSupabaseAgentRegistry(): AgentRegistry {
           .limit(1)
           .maybeSingle()
 
-        const capabilities = normalizedCapabilities(connection?.capabilities)
-        if (!requiredCapabilities.some((capability) => capabilities.includes(capability))) continue
-        if (connection?.status === "connected" && connection.health_status === "unhealthy") continue
+        if (identityError) throw identityError
+
+        const capabilities = normalizedCapabilities(connection.capabilities)
+        const supportsAllRequired = required.every((capability) => capabilities.includes(capability))
+        if (!supportsAllRequired) continue
 
         result.push({
           id: agent.id,
@@ -79,8 +87,8 @@ export function createSupabaseAgentRegistry(): AgentRegistry {
           status: agent.status ?? "active",
           verified: Boolean(identity?.verified),
           capabilities,
-          endpoint: connection?.endpoint_url ?? undefined,
-          provider: connection?.provider ?? undefined,
+          endpoint: connection.endpoint_url ?? undefined,
+          provider: connection.provider ?? undefined,
         })
       }
 
