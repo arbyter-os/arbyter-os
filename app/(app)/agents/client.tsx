@@ -1719,7 +1719,7 @@ export default function AgentsClient() {
           />
 
           <div
-            className="relative w-full max-w-lg liquid-glass-strong rounded-2xl shadow-[0_30px_90px_rgba(20,25,55,.22)] animate-in zoom-in-95 duration-150"
+            className="relative w-full max-w-lg modal-surface rounded-2xl shadow-[0_30px_90px_rgba(20,25,55,.22)] animate-in zoom-in-95 duration-150"
             role="dialog"
             aria-modal="true"
             aria-label="Add Agent"
