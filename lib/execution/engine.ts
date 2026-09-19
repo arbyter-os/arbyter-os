@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { evaluateGovernance } from "@/lib/governance"
 import { executeConnectorAction } from "@/lib/connectors/runtime"
 import { getConnector } from "@/lib/connectors/registry"
+import { resolveConnectionCredential } from "@/lib/credentials/runtime"
 import { recordExecutionAudit } from "./audit"
 
 export type ExecutionInput = {
@@ -387,6 +388,12 @@ export async function executeAgentTask(
       }
     }
 
+    const credential =
+      await resolveConnectionCredential({
+        organizationId: input.organizationId,
+        connectionId: connection.id,
+      })
+
     const result =
       await executeConnectorAction(
         connection.provider,
@@ -412,6 +419,7 @@ export async function executeAgentTask(
           agentId: input.agentId,
           organizationId:
             input.organizationId,
+          credential: credential ?? undefined,
         }
       )
 
