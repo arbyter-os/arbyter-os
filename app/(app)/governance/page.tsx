@@ -451,7 +451,7 @@ export default function GovernancePage() {
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-lg content-surface-strong rounded-3xl p-6 shadow-2xl">
+          <div className="w-full max-w-lg modal-surface rounded-3xl p-6 shadow-2xl">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">
@@ -594,7 +594,7 @@ export default function GovernancePage() {
 
       {rulePolicyId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5 backdrop-blur-sm">
-          <div className="w-full max-w-lg content-surface-strong rounded-3xl p-6 shadow-2xl">
+          <div className="w-full max-w-lg modal-surface rounded-3xl p-6 shadow-2xl">
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold tracking-tight">
