@@ -1,82 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { validateExternalUrl } from "@/lib/security/validate-external-url";
 
 const VERIFY_TIMEOUT_MS = 8000;
 
-function isPrivateOrLocalHostname(hostname: string) {
-  const host = hostname.toLowerCase();
-
-  if (
-    host === "localhost" ||
-    host === "localhost.localdomain" ||
-    host === "0.0.0.0" ||
-    host === "::1" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local")
-  ) {
-    return true;
-  }
-
-  const ipv4 = host.match(
-    /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/,
-  );
-
-  if (ipv4) {
-    const a = Number(ipv4[1]);
-    const b = Number(ipv4[2]);
-
-    if (
-      a === 10 ||
-      a === 127 ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      a === 169
-    ) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function validateEndpoint(rawUrl: string) {
-  let parsed: URL;
-
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return {
-      valid: false,
-      error: "The endpoint URL is not valid.",
-    };
-  }
-
-  if (parsed.protocol !== "https:") {
-    return {
-      valid: false,
-      error: "Only HTTPS endpoints can be verified.",
-    };
-  }
-
-  if (parsed.username || parsed.password) {
-    return {
-      valid: false,
-      error: "Endpoint URLs cannot contain embedded credentials.",
-    };
-  }
-
-  if (isPrivateOrLocalHostname(parsed.hostname)) {
-    return {
-      valid: false,
-      error:
-        "Private, localhost, and local-network endpoints cannot be verified.",
-    };
-  }
-
-  return {
-    valid: true,
-    url: parsed,
-  };
+async function validateEndpoint(rawUrl: string) {
+  return validateExternalUrl(rawUrl, {
+    protocols: ["https:"],
+  });
 }
 
 function normalizeConnectionType(connectionType: string | null) {
@@ -215,9 +146,6 @@ export async function POST(request: Request) {
       connection.connection_type,
     );
 
-    /*
-     * Webhook connections are inbound.
-     */
     if (
       connectionType === "webhook" ||
       connectionType === "webhooks"
@@ -258,9 +186,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * SDK connections require an SDK/runtime handshake.
-     */
     if (connectionType === "sdk") {
       const checkedAt = new Date().toISOString();
 
@@ -296,9 +221,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * MCP connections require transport-specific verification.
-     */
     if (connectionType === "mcp") {
       const checkedAt = new Date().toISOString();
 
@@ -334,9 +256,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * REST/API connections reach this point.
-     */
     if (!connection.endpoint_url) {
       return NextResponse.json(
         {
@@ -348,7 +267,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const endpointValidation = validateEndpoint(
+    const endpointValidation = await validateEndpoint(
       connection.endpoint_url,
     );
 
@@ -444,9 +363,6 @@ export async function POST(request: Request) {
     let errorCode: string | null = null;
     let errorMessage: string | null = null;
 
-    /*
-     * Perform outbound reachability verification.
-     */
     try {
       const controller = new AbortController();
 
@@ -520,9 +436,6 @@ export async function POST(request: Request) {
       ? 0
       : Number(connection.consecutive_failures || 0) + 1;
 
-    /*
-     * Record health-check result.
-     */
     const {
       data: healthCheck,
       error: healthCheckError,
@@ -563,9 +476,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * Update connection state.
-     */
     const {
       data: updatedConnection,
       error: updateConnectionError,
@@ -602,9 +512,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * Update agent identity verification.
-     */
     const {
       data: existingIdentity,
       error: identityLookupError,
@@ -667,27 +574,6 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * Record lifecycle event.
-     *
-     * Database constraints allow:
-     * event_type:
-     * created
-     * connected
-     * disconnected
-     * connection_failed
-     * reconnected
-     * configuration_changed
-     * credential_rotated
-     * disabled
-     * enabled
-     *
-     * status:
-     * pending
-     * connected
-     * disconnected
-     * error
-     */
     const { error: eventError } = await supabase
       .from("agent_connection_events")
       .insert({
