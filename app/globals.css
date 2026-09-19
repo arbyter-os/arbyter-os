@@ -208,6 +208,33 @@
     box-shadow: 0 10px 32px rgba(32,38,75,.055);
   }
 
+  .modal-surface {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+      linear-gradient(135deg, rgba(255,255,255,.80), rgba(255,255,255,.70)),
+      rgba(255,255,255,.76);
+    border: 1px solid rgba(255,255,255,.88);
+    box-shadow:
+      0 30px 90px rgba(20,25,55,.20),
+      inset 0 1px 0 rgba(255,255,255,.96),
+      inset 0 -1px 0 rgba(255,255,255,.30);
+    backdrop-filter: blur(28px) saturate(155%);
+    -webkit-backdrop-filter: blur(28px) saturate(155%);
+  }
+
+  .modal-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(255,255,255,.70), transparent 34%),
+      radial-gradient(circle at 88% 100%, rgba(19,0,186,.06), transparent 38%);
+  }
+
   .content-surface-interactive {
     transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms ease, border-color 180ms ease;
   }
