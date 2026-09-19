@@ -943,7 +943,7 @@ async function reviewFinding(
             onClick={() => setSelectedFinding(null)}
           >
             <div
-              className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl md:p-8"
+              className="max-h-[90vh] w-full max-w-2xl overflow-y-auto modal-surface rounded-3xl p-6 shadow-2xl md:p-8"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-5">
@@ -1153,7 +1153,7 @@ async function reviewFinding(
 
         {mcpOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-5">
-            <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl md:p-8">
+            <div className="w-full max-w-lg modal-surface rounded-3xl p-6 shadow-2xl md:p-8">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#1300BA]">
