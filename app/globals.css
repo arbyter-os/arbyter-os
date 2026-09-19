@@ -202,6 +202,27 @@
     box-shadow: 0 12px 34px rgba(32,38,75,.12), inset 0 1px 0 rgba(255,255,255,.88);
   }
 
+  .content-surface {
+    background: rgba(255,255,255,.58);
+    border: 1px solid rgba(210,215,230,.72);
+    box-shadow: 0 10px 32px rgba(32,38,75,.055);
+  }
+
+  .content-surface-interactive {
+    transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms ease, border-color 180ms ease;
+  }
+
+  .content-surface-interactive:hover {
+    transform: translateY(-1px);
+    border-color: rgba(19,0,186,.16);
+    box-shadow: 0 16px 40px rgba(32,38,75,.08);
+  }
+
+  .content-surface .content-surface {
+    box-shadow: none;
+    border-color: rgba(210,215,230,.5);
+  }
+
   .liquid-glass-shimmer {
     isolation: isolate;
   }
