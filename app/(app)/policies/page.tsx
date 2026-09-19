@@ -184,7 +184,7 @@ export default function PoliciesPage() {
 
       {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="content-surface rounded-xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Total Policies
@@ -202,7 +202,7 @@ export default function PoliciesPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="content-surface rounded-xl p-5">
           <p className="text-sm text-muted-foreground">
             Active
           </p>
@@ -216,7 +216,7 @@ export default function PoliciesPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="content-surface rounded-xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Needs Review
@@ -234,7 +234,7 @@ export default function PoliciesPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="content-surface rounded-xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Auto-Enforced
@@ -254,7 +254,7 @@ export default function PoliciesPage() {
       </section>
 
       {/* Policy enforcement */}
-      <section className="rounded-xl border bg-card p-5">
+      <section className="content-surface rounded-xl p-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="font-semibold">
@@ -285,7 +285,7 @@ export default function PoliciesPage() {
       </section>
 
       {/* Filters */}
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden content-surface rounded-xl">
         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -329,7 +329,7 @@ export default function PoliciesPage() {
       </section>
 
       {/* Policy list */}
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden content-surface rounded-xl">
         <div className="border-b p-5">
           <h2 className="font-semibold">
             Policy Registry
