@@ -22,7 +22,7 @@ function NavLink({ item, active, collapsed, onNavigate }: {
       title={collapsed ? item.label : undefined}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-all duration-200',
+        'group relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-all duration-200',
         collapsed && 'justify-center px-0',
         active
           ? 'bg-white/72 text-sidebar-accent-foreground shadow-[0_8px_24px_rgba(19,0,186,.08)] ring-1 ring-white/80'
