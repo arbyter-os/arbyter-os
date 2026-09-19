@@ -38,7 +38,7 @@ export default async function AgentsPage() {
           Agents
         </h1>
 
-        <div className="rounded-xl border bg-card p-6 text-sm text-destructive">
+        <div className="glass rounded-2xl p-6 text-sm text-destructive">
           Unable to determine your organization.
         </div>
       </main>
@@ -81,7 +81,7 @@ export default async function AgentsPage() {
           Agents
         </h1>
 
-        <div className="rounded-xl border bg-card p-6 text-sm text-destructive">
+        <div className="glass rounded-2xl p-6 text-sm text-destructive">
           Failed to load agents: {agentsError.message}
         </div>
       </main>
