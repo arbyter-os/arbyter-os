@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const sources = [
@@ -53,6 +53,13 @@ export default function DiscoveryPage() {
   const [starting, setStarting] = useState(false);
   const [message, setMessage] = useState("");
 
+  const [discoveredCount, setDiscoveredCount] = useState(0);
+  const [onboardedCount, setOnboardedCount] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
+  const [unknownCount, setUnknownCount] = useState(0);
+  const [lastScan, setLastScan] = useState("Never");
+  const [loadingStats, setLoadingStats] = useState(true);
+
   const [mcpOpen, setMcpOpen] = useState(false);
   const [mcpName, setMcpName] = useState("");
   const [mcpUrl, setMcpUrl] = useState("");
@@ -62,6 +69,96 @@ export default function DiscoveryPage() {
   const [mcpSaving, setMcpSaving] = useState(false);
   const [mcpTesting, setMcpTesting] = useState(false);
   const [mcpMessage, setMcpMessage] = useState("");
+
+  useEffect(() => {
+    loadDiscoveryStats();
+  }, []);
+
+  async function loadDiscoveryStats() {
+    setLoadingStats(true);
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("organization_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError || !profile?.organization_id) {
+        return;
+      }
+
+      const organizationId = profile.organization_id;
+
+      const { data: findings, error: findingsError } = await supabase
+        .from("discovery_findings")
+        .select(
+          "id, classification, review_status, onboarding_status, duplicate_of"
+        )
+        .eq("organization_id", organizationId)
+        .neq("review_status", "rejected");
+
+      if (findingsError) {
+        throw findingsError;
+      }
+
+      const activeFindings = findings ?? [];
+
+      setDiscoveredCount(activeFindings.length);
+
+      setOnboardedCount(
+        activeFindings.filter(
+          (finding) => finding.onboarding_status === "onboarded"
+        ).length
+      );
+
+      setReviewCount(
+        activeFindings.filter(
+          (finding) => finding.review_status === "unreviewed"
+        ).length
+      );
+
+      setUnknownCount(
+        activeFindings.filter(
+          (finding) => finding.classification === "unknown"
+        ).length
+      );
+
+      const { data: latestScan, error: scanError } = await supabase
+        .from("discovery_scans")
+        .select("completed_at, created_at, status")
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!scanError && latestScan) {
+        const timestamp = latestScan.completed_at ?? latestScan.created_at;
+
+        if (timestamp) {
+          setLastScan(
+            new Date(timestamp).toLocaleString([], {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Discovery stats error:", error);
+    } finally {
+      setLoadingStats(false);
+    }
+  }
 
   function toggleSource(id: string) {
     setSelectedSources((current) =>
@@ -383,6 +480,8 @@ export default function DiscoveryPage() {
           result.totalFindings === 1 ? "" : "s"
         } discovered.`
       );
+
+      await loadDiscoveryStats();
     } catch (error) {
       console.error("Discovery error:", error);
 
@@ -426,11 +525,11 @@ export default function DiscoveryPage() {
 
         <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-5">
           {[
-            ["Last scan", "Never"],
-            ["Discovered", "0"],
-            ["Onboarded", "0"],
-            ["Needs review", "0"],
-            ["Unknown", "0"],
+            ["Last scan", loadingStats ? "..." : lastScan],
+            ["Discovered", loadingStats ? "..." : String(discoveredCount)],
+            ["Onboarded", loadingStats ? "..." : String(onboardedCount)],
+            ["Needs review", loadingStats ? "..." : String(reviewCount)],
+            ["Unknown", loadingStats ? "..." : String(unknownCount)],
           ].map(([label, value]) => (
             <div
               key={label}
