@@ -193,7 +193,7 @@ export default function ControlsPage() {
 
       {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Total Controls
@@ -210,7 +210,7 @@ export default function ControlsPage() {
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Effective
@@ -227,7 +227,7 @@ export default function ControlsPage() {
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Needs Attention
@@ -244,7 +244,7 @@ export default function ControlsPage() {
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Avg. Coverage
@@ -263,7 +263,7 @@ export default function ControlsPage() {
       </section>
 
       {/* Coverage */}
-      <section className="glass rounded-2xl p-5">
+      <section className="content-surface rounded-2xl p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold">
@@ -289,7 +289,7 @@ export default function ControlsPage() {
       </section>
 
       {/* Filters */}
-      <section className="overflow-hidden glass rounded-2xl">
+      <section className="overflow-hidden content-surface rounded-2xl">
         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -330,7 +330,7 @@ export default function ControlsPage() {
       </section>
 
       {/* Controls */}
-      <section className="overflow-hidden glass rounded-2xl">
+      <section className="overflow-hidden content-surface rounded-2xl">
         <div className="border-b p-5">
           <h2 className="font-semibold">
             Control Registry
@@ -429,7 +429,7 @@ export default function ControlsPage() {
       {/* Add control modal */}
       {showNewControl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg glass-strong rounded-2xl p-6 shadow-xl">
+          <div className="w-full max-w-lg content-surface-strong rounded-2xl p-6 shadow-xl">
             <div className="mb-5">
               <h2 className="text-xl font-semibold">
                 Add Control
