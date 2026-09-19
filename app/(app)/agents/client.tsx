@@ -133,7 +133,7 @@ export default function AgentsClient({
   initialAgents?: Agent[]
 }) {
   const [agents, setAgents] = useState<Agent[]>(initialAgents)
-  const [loadingAgents, setLoadingAgents] = useState(false)
+  const [loadingAgents, setLoadingAgents] = useState(initialAgents.length === 0)
   const [error, setError] = useState<string | null>(null)
 
   const [search, setSearch] = useState('')
@@ -909,13 +909,13 @@ export default function AgentsClient({
   )
 
   return (
-    <div className="min-h-full bg-background">
+    <div className="min-h-full bg-transparent">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-sm font-medium text-muted-foreground">
-              AI Environment
+              AI Workforce
             </div>
 
             <h1 className="mt-1 text-2xl font-semibold tracking-tight">
@@ -923,8 +923,7 @@ export default function AgentsClient({
             </h1>
 
             <p className="mt-1 text-sm text-muted-foreground">
-              Manage AI agents, connections, permissions,
-              and operational state.
+              Command your AI workforce, assign work, and manage operational state.
             </p>
           </div>
 
@@ -1044,7 +1043,7 @@ export default function AgentsClient({
         )}
 
         {/* Agent inventory */}
-        <div className="mt-6 overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <div className="mt-6 overflow-hidden rounded-2xl liquid-glass shadow-[0_12px_35px_rgba(32,38,75,.07)]">
           <div className="border-b px-5 py-4">
             <div className="text-sm font-semibold">
               Agent Inventory
@@ -1088,9 +1087,9 @@ export default function AgentsClient({
                   type="button"
                   onClick={() => openAgent(agent)}
                   aria-label={`Open ${agent.name}`}
-                  className="group flex w-full items-center gap-4 px-5 py-4 text-left transition duration-150 hover:bg-muted/40 active:bg-muted/60"
+                  className="group flex w-full items-center gap-4 px-5 py-4 text-left transition duration-150 hover:bg-white/45 active:bg-white/60"
                 >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background text-sm font-semibold">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/8 text-sm font-semibold text-primary ring-1 ring-primary/10">
                     {agent.name
                       .slice(0, 1)
                       .toUpperCase()}
@@ -1157,7 +1156,7 @@ export default function AgentsClient({
           />
 
           <aside
-            className="absolute inset-y-0 right-0 flex w-full max-w-2xl flex-col border-l bg-background shadow-2xl animate-in slide-in-from-right duration-200"
+            className="absolute inset-y-3 right-3 flex w-full max-w-2xl flex-col rounded-[1.5rem] border border-white/75 bg-white/78 shadow-[0_24px_80px_rgba(32,38,75,.2)] backdrop-blur-2xl animate-in slide-in-from-right duration-200"
             role="dialog"
             aria-modal="true"
             aria-label={
