@@ -44,6 +44,37 @@ async function updateTaskStatus(
   }
 }
 
+async function claimTask(
+  organizationId: string,
+  taskId: string | undefined
+) {
+  if (!taskId) {
+    return
+  }
+
+  const { data, error } = await createClient()
+    .from("tasks")
+    .update({
+      status: "running",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", taskId)
+    .eq("organization_id", organizationId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle()
+
+  if (error) {
+    throw new Error("Failed to claim task for execution.")
+  }
+
+  if (!data) {
+    throw new Error(
+      "Task is already being executed or is not pending."
+    )
+  }
+}
+
 export async function executeAgentTask(
   input: ExecutionInput
 ) {
@@ -204,6 +235,11 @@ export async function executeAgentTask(
     data: input.data ?? {},
   }
 
+  await claimTask(
+    input.organizationId,
+    input.taskId
+  )
+
   const { data: execution, error: executionError } =
     await supabase
       .from("agent_executions")
@@ -225,16 +261,15 @@ export async function executeAgentTask(
       .single()
 
   if (executionError) {
+    await updateTaskStatus(
+      input.organizationId,
+      input.taskId,
+      "blocked"
+    )
     throw executionError
   }
 
   try {
-    await updateTaskStatus(
-      input.organizationId,
-      input.taskId,
-      "running"
-    )
-
     const governance =
       await evaluateGovernance(
         input.organizationId,
