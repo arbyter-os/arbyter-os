@@ -10,10 +10,10 @@ const toneClasses: Record<Kpi['tone'], string> = {
 export function KpiCard({ kpi }: { kpi: Kpi }) {
   const Icon = kpi.icon
   return (
-    <div className="rounded-xl border border-border bg-card p-5 transition-colors hover:border-ring/30">
+    <div className="glass glass-interactive rounded-2xl p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">{kpi.label}</p>
-        <span className="flex size-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <span className="flex size-8 items-center justify-center rounded-xl bg-white/45 text-muted-foreground ring-1 ring-white/60">
           <Icon className="size-4" aria-hidden="true" />
         </span>
       </div>
