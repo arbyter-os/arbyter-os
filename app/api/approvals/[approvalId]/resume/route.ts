@@ -170,6 +170,16 @@ export async function POST(
       })
     }
 
+    if (execution.status === "running") {
+      return NextResponse.json(
+        {
+          error: "This approved execution is already running.",
+          executionId: execution.id,
+        },
+        { status: 409 }
+      )
+    }
+
     if (!execution.agent_connection_id) {
       return NextResponse.json(
         {
@@ -264,14 +274,33 @@ export async function POST(
       )
     }
 
-    await supabase
-      .from("agent_executions")
-      .update({
-        status: "running",
-        error_message: null,
-      })
-      .eq("id", execution.id)
-      .eq("organization_id", organizationId)
+    const { data: claimedExecution, error: claimError } =
+      await supabase
+        .from("agent_executions")
+        .update({
+          status: "running",
+          error_message: null,
+        })
+        .eq("id", execution.id)
+        .eq("organization_id", organizationId)
+        .eq("status", execution.status)
+        .select("id")
+        .maybeSingle()
+
+    if (claimError) {
+      throw claimError
+    }
+
+    if (!claimedExecution) {
+      return NextResponse.json(
+        {
+          error:
+            "This approved execution was already claimed by another request.",
+          executionId: execution.id,
+        },
+        { status: 409 }
+      )
+    }
 
     const result =
       await executeConnectorAction(
