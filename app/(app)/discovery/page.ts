@@ -334,4 +334,4 @@ export default function DiscoveryPage() {
       </div>
     </main>
   );
-}
+} 
