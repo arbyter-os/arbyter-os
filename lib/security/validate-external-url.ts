@@ -50,7 +50,7 @@ function parseIpv6(address: string): bigint | null {
   if (value.includes(".")) {
     const lastColon = value.lastIndexOf(":");
     const ipv4 = value.slice(lastColon + 1);
-    if (net.isIPv4(ipv4) !== 4) return null;
+    if (!net.isIPv4(ipv4)) return null;
     const numeric = ipv4ToNumber(ipv4);
     value = `${value.slice(0, lastColon)}:${
       (numeric >>> 16).toString(16)
@@ -109,8 +109,8 @@ function isUnsafeIpv6(address: string): boolean {
 }
 
 function isUnsafeAddress(address: string): boolean {
-  if (net.isIPv4(address) === 4) return isUnsafeIpv4(address);
-  if (net.isIPv6(address) === 6) return isUnsafeIpv6(address);
+  if (net.isIPv4(address)) return isUnsafeIpv4(address);
+  if (net.isIPv6(address)) return isUnsafeIpv6(address);
   return true;
 }
 
