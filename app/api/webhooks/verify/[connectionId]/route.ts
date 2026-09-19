@@ -171,6 +171,12 @@ export async function POST(
       return jsonError("Invalid webhook signature.", 401);
     }
 
+    try {
+      JSON.parse(body.toString("utf8"));
+    } catch {
+      return jsonError("Request body must contain valid JSON.", 400);
+    }
+
     const checkedAt = new Date().toISOString();
     const { data: healthCheck, error: healthCheckError } = await admin
       .from("agent_health_checks")
