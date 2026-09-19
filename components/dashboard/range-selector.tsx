@@ -21,7 +21,7 @@ export function RangeSelector({
     <div
       role="tablist"
       aria-label="Date range"
-      className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card p-0.5"
+      className="inline-flex items-center gap-0.5 rounded-xl border border-white/65 bg-white/40 p-1 shadow-sm backdrop-blur-md"
     >
       {options.map((opt) => {
         const active = opt.value === value
