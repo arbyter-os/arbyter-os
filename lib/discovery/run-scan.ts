@@ -64,6 +64,7 @@ export async function runDiscoveryScan(scanId: string) {
         await updateScanSource(supabase, scanSource.id, {
           status: "skipped",
           completed_at: new Date().toISOString(),
+          findings_count: 0,
           error_message:
             "This discovery source does not have a scanner yet.",
         });
@@ -147,26 +148,38 @@ export async function runDiscoveryScan(scanId: string) {
         },
       });
 
-      if (!findingResult.duplicate) {
-        totalFindings += 1;
+      /*
+       * A duplicate means the agent was already discovered.
+       * It should NOT create another finding row,
+       * but it SHOULD count as a discovered finding for this scan.
+       */
+      totalFindings += 1;
 
-        if (findingResult.classification === "confirmed_agent") {
-          confirmedAgents += 1;
-        }
+      if (findingResult.classification === "confirmed_agent") {
+        confirmedAgents += 1;
+      }
 
-        if (findingResult.classification === "likely_agent") {
-          likelyAgents += 1;
-        }
+      if (findingResult.classification === "likely_agent") {
+        likelyAgents += 1;
+      }
 
-        if (findingResult.classification === "unknown") {
-          unknownSystems += 1;
-        }
+      if (findingResult.classification === "unknown") {
+        unknownSystems += 1;
       }
 
       await updateScanSource(supabase, scanSource.id, {
         status: "completed",
         completed_at: new Date().toISOString(),
-        findings_count: findingResult.duplicate ? 0 : 1,
+
+        // Existing findings still count as discovered.
+        findings_count: 1,
+
+        metadata: {
+          duplicate: findingResult.duplicate,
+          finding_id: findingResult.findingId,
+          classification: findingResult.classification ?? null,
+          confidence: findingResult.confidence ?? null,
+        },
       });
     } catch (error) {
       hasErrors = true;
@@ -179,6 +192,7 @@ export async function runDiscoveryScan(scanId: string) {
       await updateScanSource(supabase, scanSource.id, {
         status: "failed",
         completed_at: new Date().toISOString(),
+        findings_count: 0,
         error_message: message,
       });
     }
