@@ -44,14 +44,14 @@ export default function SettingsPage() {
       </section>
 
       {saved && (
-        <div className="flex items-center gap-2 rounded-xl border bg-card px-4 py-3 text-sm">
+        <div className="flex items-center gap-2 content-surface rounded-xl px-4 py-3 text-sm">
           <CheckCircle2 className="h-4 w-4" />
           Settings saved successfully.
         </div>
       )}
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr]">
-        <aside className="rounded-xl border bg-card p-2">
+        <aside className="content-surface rounded-xl p-2">
           <nav className="space-y-1">
             <a
               href="#organization"
@@ -98,7 +98,7 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-6">
           <section
             id="organization"
-            className="scroll-mt-6 rounded-xl border bg-card"
+            className="scroll-mt-6 content-surface rounded-xl"
           >
             <div className="border-b p-5">
               <div className="flex items-center gap-3">
@@ -167,7 +167,7 @@ export default function SettingsPage() {
 
           <section
             id="account"
-            className="scroll-mt-6 rounded-xl border bg-card"
+            className="scroll-mt-6 content-surface rounded-xl"
           >
             <div className="border-b p-5">
               <div className="flex items-center gap-3">
@@ -241,7 +241,7 @@ export default function SettingsPage() {
 
           <section
             id="notifications"
-            className="scroll-mt-6 rounded-xl border bg-card"
+            className="scroll-mt-6 content-surface rounded-xl"
           >
             <div className="border-b p-5">
               <div className="flex items-center gap-3">
@@ -327,7 +327,7 @@ export default function SettingsPage() {
 
           <section
             id="security"
-            className="scroll-mt-6 rounded-xl border bg-card"
+            className="scroll-mt-6 content-surface rounded-xl"
           >
             <div className="border-b p-5">
               <div className="flex items-center gap-3">
@@ -388,7 +388,7 @@ export default function SettingsPage() {
 
           <section
             id="api"
-            className="scroll-mt-6 rounded-xl border bg-card"
+            className="scroll-mt-6 content-surface rounded-xl"
           >
             <div className="border-b p-5">
               <div className="flex items-center gap-3">
