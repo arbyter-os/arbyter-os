@@ -32,33 +32,24 @@ function fallbackIntent(input: string): Intent {
       action: "send_report",
     }
   }
-
   throw new Error("Unable to determine a supported intent.")
 }
 
-export async function generateIntent(
-  input: string,
-  provider: LLMProvider = new GeminiProvider()
-): Promise<Intent> {
+export async function generateIntent(input: string, provider?: LLMProvider): Promise<Intent> {
   if (!input.trim()) throw new Error("Request is required.")
 
-  let raw: unknown
-  try {
-    raw = await provider.generateStructured<Intent>({
-      system: [
-        "Convert the user request into JSON only.",
-        "Allowed shape: {intent:string, entities:object<string,string>, required_capabilities:string[], action:string}.",
-        "For 'Send the sales report to Ali.', use intent send_report, required_capabilities generate_sales_report and send_email, and action send_report.",
-        "Never add capabilities that are not needed.",
-      ].join(" "),
-      input,
-    })
-  } catch (error) {
-    if (error instanceof Error && error.message === "GEMINI_API_KEY is not configured.") {
-      return fallbackIntent(input)
-    }
-    throw error
-  }
+  if (!provider && !process.env.GEMINI_API_KEY) return fallbackIntent(input)
+
+  const llm = provider ?? new GeminiProvider()
+  const raw = await llm.generateStructured<Intent>({
+    system: [
+      "Convert the user request into JSON only.",
+      "Allowed shape: {intent:string, entities:object<string,string>, required_capabilities:string[], action:string}.",
+      "For 'Send the sales report to Ali.', use intent send_report, required_capabilities generate_sales_report and send_email, and action send_report.",
+      "Never add capabilities that are not needed.",
+    ].join(" "),
+    input,
+  })
 
   if (!isIntent(raw)) throw new Error("LLM intent failed schema validation.")
   return raw
