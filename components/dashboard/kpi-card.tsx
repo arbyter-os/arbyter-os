@@ -10,7 +10,7 @@ const toneClasses: Record<Kpi['tone'], string> = {
 export function KpiCard({ kpi }: { kpi: Kpi }) {
   const Icon = kpi.icon
   return (
-    <div className="glass glass-interactive rounded-2xl p-5">
+    <div className="content-surface content-surface-interactive rounded-2xl p-5">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">{kpi.label}</p>
         <span className="flex size-8 items-center justify-center rounded-xl bg-white/45 text-muted-foreground ring-1 ring-white/60">
