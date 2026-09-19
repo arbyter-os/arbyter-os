@@ -158,7 +158,7 @@ export default function InvestigatePage() {
 
       {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Open
@@ -175,7 +175,7 @@ export default function InvestigatePage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Investigating
@@ -192,7 +192,7 @@ export default function InvestigatePage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Critical
@@ -209,7 +209,7 @@ export default function InvestigatePage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Resolved
@@ -228,7 +228,7 @@ export default function InvestigatePage() {
       </section>
 
       {/* Investigation table */}
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden glass rounded-2xl">
         <div className="flex flex-col gap-3 border-b p-4 md:flex-row md:items-center md:justify-between">
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -238,14 +238,14 @@ export default function InvestigatePage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search investigations..."
-              className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value)}
-            className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
+            className="h-10 rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
           >
             <option value="All">All statuses</option>
             <option value="Open">Open</option>
@@ -259,7 +259,7 @@ export default function InvestigatePage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
             <thead>
-              <tr className="border-b bg-muted/30 text-left text-xs font-medium text-muted-foreground">
+              <tr className="border-b border-white/55 bg-white/25 text-left text-xs font-medium text-muted-foreground">
                 <th className="px-5 py-3">
                   Investigation
                 </th>
@@ -286,7 +286,7 @@ export default function InvestigatePage() {
               {filteredInvestigations.map((item) => (
                 <tr
                   key={item.id}
-                  className="border-b last:border-0 hover:bg-muted/20"
+                  className="border-b last:border-0 hover:bg-white/35"
                 >
                   <td className="px-5 py-4 font-medium">
                     {item.title}
@@ -353,7 +353,7 @@ export default function InvestigatePage() {
       {/* New investigation modal */}
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-xl">
+          <div className="w-full max-w-lg glass-strong rounded-2xl p-6 shadow-xl">
             <div className="mb-5">
               <h2 className="text-xl font-semibold">
                 New Investigation
@@ -368,19 +368,19 @@ export default function InvestigatePage() {
               <input
                 type="text"
                 placeholder="Investigation title"
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
+                className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
               />
 
               <textarea
                 placeholder="Describe what happened..."
                 rows={4}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none"
+                className="w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 py-2 text-sm outline-none"
               />
 
               <input
                 type="text"
                 placeholder="AI agent or system"
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
+                className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
               />
             </div>
 
