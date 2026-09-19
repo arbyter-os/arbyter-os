@@ -995,104 +995,144 @@ function Intro({ phase }: { phase: number }) {
     };
   });
 
+  const unfolding = phase >= 3;
+  const unfolded = phase >= 4;
+
   return (
     <div className="fixed inset-0 z-[999] overflow-hidden bg-white">
-      {agents.map((agent, index) => {
-        const target = decagonPoints[index];
+      {/* iPhone-Duo-inspired unfold: the scene is soft at the fold, then
+          the two translucent layers pull apart and the system resolves sharply. */}
+      <div
+        className="absolute inset-0 transition-[filter] duration-[900ms] ease-out"
+        style={{
+          filter: unfolded ? "blur(0px)" : unfolding ? "blur(7px)" : "blur(0px)",
+        }}
+      >
+        {agents.map((agent, index) => {
+          const target = decagonPoints[index];
 
-        return (
-          <div
-            key={index}
-            className="absolute transition-all ease-[cubic-bezier(.77,0,.18,1)]"
-            style={{
-              left: `${phase >= 2 ? target.x : agent.x}%`,
-              top: `${phase >= 2 ? target.y : agent.y}%`,
-              transform: "translate(-50%, -50%)",
-              transitionDuration: `${900 + index * 70}ms`,
-              opacity: phase >= 4 ? 0 : 1,
-            }}
-          >
+          return (
             <div
-              className="rounded-full"
+              key={index}
+              className="absolute transition-all ease-[cubic-bezier(.77,0,.18,1)]"
               style={{
-                width: `${agent.size}px`,
-                height: `${agent.size}px`,
-                backgroundColor: index % 3 === 0 ? BLUE : "#000",
-                boxShadow:
-                  phase >= 2 ? `0 0 18px ${BLUE}` : "none",
+                left: `${phase >= 2 ? target.x : agent.x}%`,
+                top: `${phase >= 2 ? target.y : agent.y}%`,
+                transform: "translate(-50%, -50%)",
+                transitionDuration: `${900 + index * 70}ms`,
+                opacity: phase >= 4 ? 0 : 1,
               }}
-            />
-          </div>
-        );
-      })}
-
-      {/* Arbyter dot */}
-      <div
-        className={`absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 transition-all duration-[900ms] ${
-          phase >= 1 ? "scale-100 opacity-100" : "scale-0 opacity-0"
-        }`}
-      >
-        <div
-          className="h-5 w-5 rounded-full"
-          style={{
-            backgroundColor: BLUE,
-            boxShadow: `0 0 35px ${BLUE}`,
-          }}
-        />
-      </div>
-
-      {/* Decagon */}
-      <div
-        className={`absolute left-1/2 top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ${
-          phase >= 3
-            ? "scale-100 opacity-100"
-            : "scale-50 opacity-0"
-        }`}
-      >
-        <svg
-          viewBox="0 0 340 340"
-          className="h-full w-full overflow-visible"
-        >
-          <polygon
-            points={decagonPoints
-              .map((p) => {
-                const x = (p.x - 50) * 10 + 170;
-                const y = (p.y - 50) * 10 + 170;
-                return `${x},${y}`;
-              })
-              .join(" ")}
-            fill="none"
-            stroke={BLUE}
-            strokeWidth="1.5"
-          />
-
-          {decagonPoints.map((p, index) => {
-            const x = (p.x - 50) * 10 + 170;
-            const y = (p.y - 50) * 10 + 170;
-
-            return (
-              <circle
-                key={index}
-                cx={x}
-                cy={y}
-                r="5"
-                fill={index % 2 === 0 ? BLUE : "#000"}
+            >
+              <div
+                className="rounded-full"
+                style={{
+                  width: `${agent.size}px`,
+                  height: `${agent.size}px`,
+                  backgroundColor: index % 3 === 0 ? BLUE : "#000",
+                  boxShadow:
+                    phase >= 2 ? `0 0 18px ${BLUE}` : "none",
+                }}
               />
-            );
-          })}
-        </svg>
+            </div>
+          );
+        })}
+
+        {/* Arbyter dot */}
+        <div
+          className={`absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 transition-all duration-[900ms] ${
+            phase >= 1 ? "scale-100 opacity-100" : "scale-0 opacity-0"
+          }`}
+        >
+          <div
+            className="h-5 w-5 rounded-full"
+            style={{
+              backgroundColor: BLUE,
+              boxShadow: `0 0 35px ${BLUE}`,
+            }}
+          />
+        </div>
+
+        {/* Decagon */}
+        <div
+          className={`absolute left-1/2 top-1/2 h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 transition-all duration-1000 ${
+            phase >= 3 ? "scale-100 opacity-100" : "scale-50 opacity-0"
+          }`}
+        >
+          <svg
+            viewBox="0 0 340 340"
+            className="h-full w-full overflow-visible"
+          >
+            <polygon
+              points={decagonPoints
+                .map((p) => {
+                  const x = (p.x - 50) * 10 + 170;
+                  const y = (p.y - 50) * 10 + 170;
+                  return `${x},${y}`;
+                })
+                .join(" ")}
+              fill="none"
+              stroke={BLUE}
+              strokeWidth="1.5"
+            />
+
+            {decagonPoints.map((p, index) => {
+              const x = (p.x - 50) * 10 + 170;
+              const y = (p.y - 50) * 10 + 170;
+
+              return (
+                <circle
+                  key={index}
+                  cx={x}
+                  cy={y}
+                  r="5"
+                  fill={index % 2 === 0 ? BLUE : "#000"}
+                />
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Exact logo */}
+        <div
+          className={`absolute left-1/2 top-1/2 z-40 h-[110px] w-[125px] -translate-x-1/2 -translate-y-1/2 transition-all duration-[1300ms] ${
+            phase >= 4
+              ? "scale-100 opacity-100"
+              : "scale-90 opacity-0"
+          }`}
+        >
+          {LOGO}
+        </div>
       </div>
 
-      {/* Exact logo */}
+      {/* Fold layers. They start together, create the soft central seam,
+          then glide outward like two glass surfaces opening. */}
       <div
-        className={`absolute left-1/2 top-1/2 z-40 h-[110px] w-[125px] -translate-x-1/2 -translate-y-1/2 transition-all duration-[1300ms] ${
-          phase >= 4
-            ? "scale-100 opacity-100"
-            : "scale-90 opacity-0"
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 left-0 z-50 w-1/2 border-r border-white/80 bg-white/45 shadow-[12px_0_60px_rgba(19,0,186,.08)] backdrop-blur-[18px] transition-transform duration-[1400ms] ease-[cubic-bezier(.77,0,.18,1)]"
+        style={{
+          transform: unfolded ? "translateX(-100%)" : "translateX(0)",
+        }}
+      />
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-y-0 right-0 z-50 w-1/2 border-l border-white/80 bg-white/45 shadow-[-12px_0_60px_rgba(19,0,186,.08)] backdrop-blur-[18px] transition-transform duration-[1400ms] ease-[cubic-bezier(.77,0,.18,1)]"
+        style={{
+          transform: unfolded ? "translateX(100%)" : "translateX(0)",
+        }}
+      />
+
+      {/* Precision hinge / light seam */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute left-1/2 top-0 z-[60] h-full w-px -translate-x-1/2 transition-all duration-[900ms] ${
+          unfolded ? "opacity-0" : "opacity-70"
         }`}
-      >
-        {LOGO}
-      </div>
+        style={{
+          background: `linear-gradient(to bottom, transparent, ${BLUE}, transparent)`,
+          boxShadow: `0 0 22px ${BLUE}`,
+        }}
+      />
     </div>
   );
 }
