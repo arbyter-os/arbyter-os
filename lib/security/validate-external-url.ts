@@ -12,10 +12,7 @@ export type ExternalUrlValidationResult =
   | { valid: false; error: string };
 
 function ipv4ToNumber(address: string): number {
-  return address
-    .split(".")
-    .map(Number)
-    .reduce((value, octet) => value * 256 + octet, 0);
+  return address.split(".").map(Number).reduce((value, octet) => value * 256 + octet, 0);
 }
 
 function ipv4InRange(address: string, start: string, end: string): boolean {
@@ -44,37 +41,24 @@ function isUnsafeIpv4(address: string): boolean {
 
 function parseIpv6(address: string): bigint | null {
   let value = address.toLowerCase();
-
   if (value.includes(".")) {
     const lastColon = value.lastIndexOf(":");
     const ipv4 = value.slice(lastColon + 1);
     if (!net.isIPv4(ipv4)) return null;
     const numeric = ipv4ToNumber(ipv4);
-    value = `${value.slice(0, lastColon)}:${
-      (numeric >>> 16).toString(16)
-    }:${(numeric & 0xffff).toString(16)}`;
+    value = `${value.slice(0, lastColon)}:${(numeric >>> 16).toString(16)}:${(numeric & 0xffff).toString(16)}`;
   }
-
   const parts = value.split("::");
   if (parts.length > 2) return null;
-
   const left = parts[0] ? parts[0].split(":") : [];
   const right = parts[1] ? parts[1].split(":") : [];
-
   if (left.some((part) => !/^[0-9a-f]{1,4}$/.test(part))) return null;
   if (right.some((part) => !/^[0-9a-f]{1,4}$/.test(part))) return null;
-
-  const groups =
-    parts.length === 2
-      ? [...left, ...Array(8 - left.length - right.length).fill("0"), ...right]
-      : left;
-
+  const groups = parts.length === 2
+    ? [...left, ...Array(8 - left.length - right.length).fill("0"), ...right]
+    : left;
   if (groups.length !== 8) return null;
-
-  return groups.reduce(
-    (result, group) => (result << 16n) | BigInt(parseInt(group, 16)),
-    0n,
-  );
+  return groups.reduce((result, group) => (result << 16n) | BigInt(parseInt(group, 16)), 0n);
 }
 
 function ipv6InRange(address: bigint, prefix: bigint, bits: number): boolean {
@@ -85,23 +69,11 @@ function ipv6InRange(address: bigint, prefix: bigint, bits: number): boolean {
 function isUnsafeIpv6(address: string): boolean {
   const parsed = parseIpv6(address);
   if (parsed === null) return true;
-
   const ranges: Array<[string, number]> = [
-    ["::", 128],
-    ["::1", 128],
-    ["::ffff:0:0", 96],
-    ["100::", 64],
-    ["2001:2::", 48],
-    ["2001:10::", 28],
-    ["2001:20::", 28],
-    ["2001:db8::", 32],
-    ["2001::", 32],
-    ["2002::", 16],
-    ["fc00::", 7],
-    ["fe80::", 10],
-    ["ff00::", 8],
+    ["::", 128], ["::1", 128], ["::ffff:0:0", 96], ["100::", 64],
+    ["2001:2::", 48], ["2001:10::", 28], ["2001:20::", 28], ["2001:db8::", 32],
+    ["2001::", 32], ["2002::", 16], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8],
   ];
-
   return ranges.some(([prefix, bits]) => {
     const parsedPrefix = parseIpv6(prefix);
     return parsedPrefix !== null && ipv6InRange(parsed, parsedPrefix, bits);
@@ -119,30 +91,19 @@ export async function validateExternalUrl(
   options: ExternalUrlValidationOptions,
 ): Promise<ExternalUrlValidationResult> {
   let parsed: URL;
-
   try {
     parsed = new URL(rawUrl);
   } catch {
     return { valid: false, error: "The URL is not valid." };
   }
-
   if (!options.protocols.includes(parsed.protocol)) {
-    return {
-      valid: false,
-      error: `URL must use ${options.protocols.join(" or ")}.`,
-    };
+    return { valid: false, error: `URL must use ${options.protocols.join(" or ")}.` };
   }
-
   if (parsed.username || parsed.password) {
-    return {
-      valid: false,
-      error: "URLs cannot contain embedded credentials.",
-    };
+    return { valid: false, error: "URLs cannot contain embedded credentials." };
   }
-
   const hostname = parsed.hostname.replace(/^\[|\]$/g, "");
   let addresses: string[];
-
   try {
     if (net.isIP(hostname)) {
       addresses = [hostname];
@@ -151,95 +112,66 @@ export async function validateExternalUrl(
       addresses = resolved.map((entry) => entry.address);
     }
   } catch {
-    return {
-      valid: false,
-      error: "The endpoint hostname could not be resolved.",
-    };
+    return { valid: false, error: "The endpoint hostname could not be resolved." };
   }
-
   if (!addresses.length || addresses.some(isUnsafeAddress)) {
-    return {
-      valid: false,
-      error: "Private, local, reserved, or otherwise unsafe network endpoints cannot be accessed.",
-    };
+    return { valid: false, error: "Private, local, reserved, or otherwise unsafe network endpoints cannot be accessed." };
   }
-
   return { valid: true, url: parsed, addresses };
 }
 
-/**
- * Fetch a URL using exactly the public IP addresses returned by
- * validateExternalUrl(). The original hostname is retained for HTTP Host and
- * TLS SNI/certificate validation, while the socket lookup is pinned to the
- * already-validated address set. This closes the validation/fetch DNS race.
- */
+/** Pin the socket lookup to the addresses validated immediately before the request. */
 export async function fetchValidatedExternalUrl(
   validation: Extract<ExternalUrlValidationResult, { valid: true }>,
   init: RequestInit = {},
 ): Promise<Response> {
   const { url, addresses } = validation;
   const method = init.method ?? "GET";
-  const headers = new Headers(init.headers);
-  const body =
-    typeof init.body === "string"
+  const headers = Object.fromEntries(new Headers(init.headers).entries());
+  const body = typeof init.body === "string"
+    ? Buffer.from(init.body)
+    : init.body instanceof Uint8Array
       ? Buffer.from(init.body)
-      : init.body instanceof Uint8Array
+      : init.body instanceof ArrayBuffer
         ? Buffer.from(init.body)
-        : init.body instanceof ArrayBuffer
-          ? Buffer.from(init.body)
-          : undefined;
+        : undefined;
 
   const lookup = (
     _hostname: string,
     options: { family?: number },
     callback: (error: NodeJS.ErrnoException | null, address?: string, family?: number) => void,
   ) => {
-    const candidates = addresses.filter((address) => {
-      if (!options.family) return true;
-      return net.isIP(address) === options.family;
-    });
-
-    const address = candidates[0];
+    const address = addresses.find((candidate) => !options.family || net.isIP(candidate) === options.family);
     if (!address) {
       callback(new Error("No validated address is available for this connection."));
       return;
     }
-
     callback(null, address, net.isIPv6(address) ? 6 : 4);
   };
 
   return new Promise((resolve, reject) => {
     const transport = url.protocol === "https:" ? https : http;
-    const request = transport.request(
-      {
-        protocol: url.protocol,
-        hostname: url.hostname,
-        port: url.port || undefined,
-        path: `${url.pathname}${url.search}`,
-        method,
-        headers,
-        lookup,
-        servername: url.hostname,
-        signal: init.signal ?? undefined,
-      },
-      (response) => {
-        const chunks: Buffer[] = [];
-        response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-        response.on("end", () => {
-          resolve(
-            new Response(Buffer.concat(chunks), {
-              status: response.statusCode ?? 0,
-              statusText: response.statusMessage ?? "",
-              headers: response.headers as Record<string, string>,
-            }),
-          );
-        });
-        response.on("error", reject);
-      },
-    );
-
+    const request = transport.request({
+      protocol: url.protocol,
+      hostname: url.hostname,
+      port: url.port || undefined,
+      path: `${url.pathname}${url.search}`,
+      method,
+      headers,
+      lookup,
+      servername: url.hostname,
+      signal: init.signal ?? undefined,
+    }, (response) => {
+      const chunks: Buffer[] = [];
+      response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+      response.on("end", () => resolve(new Response(Buffer.concat(chunks), {
+        status: response.statusCode ?? 0,
+        statusText: response.statusMessage ?? "",
+        headers: response.headers as Record<string, string>,
+      })));
+      response.on("error", reject);
+    });
     request.on("error", reject);
-
     if (body) request.write(body);
     request.end();
   });
