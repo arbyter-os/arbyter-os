@@ -64,8 +64,8 @@ type DiscoveryFinding = {
   discovered_at: string | null;
   first_seen_at: string | null;
   last_seen_at: string | null;
+  onboarded_agent_id?: string | null;
 };
-
 export default function DiscoveryPage() {
   const supabase = createClient();
 
@@ -84,6 +84,9 @@ export default function DiscoveryPage() {
   const [selectedFinding, setSelectedFinding] =
     useState<DiscoveryFinding | null>(null);
   const [loadingFindings, setLoadingFindings] = useState(true);
+  const [reviewAction, setReviewAction] = useState<
+  "confirm" | "reject" | "onboard" | null
+>(null);
 
   const [mcpOpen, setMcpOpen] = useState(false);
   const [mcpName, setMcpName] = useState("");
@@ -537,6 +540,82 @@ export default function DiscoveryPage() {
       setStarting(false);
     }
   }
+
+async function reviewFinding(
+  action: "confirm" | "reject" | "onboard"
+) {
+  if (!selectedFinding) {
+    return;
+  }
+
+  setReviewAction(action);
+  setMessage("");
+
+  try {
+    const response = await fetch("/api/discovery/review", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        findingId: selectedFinding.id,
+        action,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result?.error || "Could not update the finding."
+      );
+    }
+
+    if (action === "onboard") {
+      setMessage(
+        "Agent onboarded successfully. It is now registered in Arbyter."
+      );
+    } else if (action === "confirm") {
+      setMessage(
+        "Finding confirmed. You can now onboard this agent."
+      );
+    } else {
+      setMessage("Finding rejected.");
+    }
+
+    await loadDiscoveryStats();
+    await loadDiscoveryFindings();
+
+    if (action === "reject") {
+      setSelectedFinding(null);
+    } else if (result.finding) {
+      setSelectedFinding((current) =>
+        current
+          ? {
+              ...current,
+              review_status:
+                result.finding.review_status,
+              onboarding_status:
+                result.finding.onboarding_status,
+              onboarded_agent_id:
+                result.finding.onboarded_agent_id ??
+                current.onboarded_agent_id,
+            }
+          : current
+      );
+    }
+  } catch (error) {
+    console.error("Review finding error:", error);
+
+    setMessage(
+      error instanceof Error
+        ? error.message
+        : "Could not update the discovery finding."
+    );
+  } finally {
+    setReviewAction(null);
+  }
+}
 
   function getToolCount(finding: DiscoveryFinding) {
     if (Array.isArray(finding.tools)) {
@@ -1024,17 +1103,49 @@ export default function DiscoveryPage() {
                   Close
                 </button>
 
-                <button
-                  onClick={() => {
-                    setMessage(
-                      "Finding review workflow is ready for the next step."
-                    );
-                    setSelectedFinding(null);
-                  }}
-                  className="rounded-xl bg-[#1300BA] px-5 py-3 text-sm font-semibold text-white hover:opacity-90"
-                >
-                  Review Finding →
-                </button>
+                {selectedFinding.review_status === "unreviewed" && (
+  <>
+    <button
+      onClick={() => reviewFinding("reject")}
+      disabled={reviewAction !== null}
+      className="rounded-xl border border-[#d8a4a4] px-5 py-3 text-sm font-semibold text-[#a32626] hover:bg-[#fff7f7] disabled:opacity-50"
+    >
+      {reviewAction === "reject"
+        ? "Rejecting..."
+        : "Reject Finding"}
+    </button>
+
+    <button
+      onClick={() => reviewFinding("confirm")}
+      disabled={reviewAction !== null}
+      className="rounded-xl bg-[#1300BA] px-5 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+    >
+      {reviewAction === "confirm"
+        ? "Confirming..."
+        : "Confirm Agent"}
+    </button>
+  </>
+)}
+
+  {selectedFinding.review_status === "confirmed" &&
+    selectedFinding.onboarding_status !== "onboarded" && (
+      <button
+      onClick={() => reviewFinding("onboard")}
+      disabled={reviewAction !== null}
+      className="rounded-xl bg-[#1300BA] px-5 py-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
+    >
+      {reviewAction === "onboard"
+        ? "Onboarding..."
+        : "Onboard Agent →"}
+    </button>
+  )}
+
+{selectedFinding.onboarding_status === "onboarded" && (
+  <div className="rounded-xl bg-[#eef9f1] px-5 py-3 text-sm font-semibold text-[#26733b]">
+    ✓ Agent onboarded
+  </div>
+)}
+
               </div>
             </div>
           </div>
