@@ -19,16 +19,20 @@ export function Menu({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (!open) return
+
     function onPointer(e: PointerEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
+
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
     }
+
     document.addEventListener('pointerdown', onPointer)
     document.addEventListener('keydown', onKey)
+
     return () => {
       document.removeEventListener('pointerdown', onPointer)
       document.removeEventListener('keydown', onKey)
@@ -54,13 +58,17 @@ export function MenuTrigger({
   'aria-label'?: string
 }) {
   const ctx = React.useContext(MenuContext)!
+
   return (
     <button
       type="button"
       aria-haspopup="menu"
       aria-expanded={ctx.open}
       aria-label={ariaLabel}
-      onClick={() => ctx.setOpen(!ctx.open)}
+      onClick={(event) => {
+        event.stopPropagation()
+        ctx.setOpen(!ctx.open)
+      }}
       className={className}
     >
       {children}
@@ -78,16 +86,19 @@ export function MenuContent({
   className?: string
 }) {
   const ctx = React.useContext(MenuContext)!
+
   if (!ctx.open) return null
+
   return (
     <div
       role="menu"
+      data-align={align}
+      onPointerDown={(event) => event.stopPropagation()}
       className={cn(
-        'absolute z-50 mt-2 min-w-56 origin-top rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-lg shadow-black/5',
-        'data-[align=end]:right-0 data-[align=start]:left-0',
+        'absolute top-full z-[100] mt-2 min-w-56 origin-top rounded-2xl border border-white/75 bg-white/78 p-1 text-popover-foreground shadow-[0_20px_60px_rgba(32,38,75,.18)] backdrop-blur-2xl',
+        align === 'end' ? 'right-0' : 'left-0',
         className,
       )}
-      data-align={align}
     >
       {children}
     </div>
@@ -103,7 +114,7 @@ export function MenuLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function MenuSeparator() {
-  return <div className="my-1 h-px bg-border" role="separator" />
+  return <div className="my-1 h-px bg-border/60" role="separator" />
 }
 
 export function MenuItem({
@@ -116,6 +127,7 @@ export function MenuItem({
   className?: string
 }) {
   const ctx = React.useContext(MenuContext)!
+
   return (
     <button
       type="button"
@@ -125,7 +137,7 @@ export function MenuItem({
         ctx.setOpen(false)
       }}
       className={cn(
-        'flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none [&_svg]:size-4 [&_svg]:text-muted-foreground',
+        'flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm text-foreground transition-colors hover:bg-white/65 focus-visible:bg-white/65 focus-visible:outline-none [&_svg]:size-4 [&_svg]:text-muted-foreground',
         className,
       )}
     >
