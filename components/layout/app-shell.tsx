@@ -49,13 +49,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute inset-y-3 left-3 w-72 max-w-[85%] overflow-hidden rounded-[1.35rem] liquid-glass-strong">
+          <div className="absolute inset-y-3 left-3 w-72 max-w-[85%] overflow-hidden rounded-[1.35rem]">
             <Sidebar onNavigate={() => setMobileOpen(false)} />
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
               aria-label="Close navigation"
-              className="absolute right-3 top-4 flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
+              className="absolute right-3 top-4 flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
             >
               <X className="size-5" />
             </button>
@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onToggleCollapse={() => setCollapsed((v) => !v)}
           onOpenMobile={() => setMobileOpen(true)}
         />
-        <main className="flex-1 px-4 py-6 md:px-6 lg:px-8 lg:py-8">
+        <main className="flex-1 px-4 py-5 md:px-6 md:py-6 lg:px-8 lg:py-8">
           <div className="mx-auto w-full max-w-[1400px]">{children}</div>
         </main>
       </div>
