@@ -25,7 +25,7 @@ function NavLink({ item, active, collapsed, onNavigate }: {
         'group relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-all duration-200',
         collapsed && 'justify-center px-0',
         active
-          ? 'bg-white/65 text-sidebar-accent-foreground shadow-sm ring-1 ring-white/70'
+          ? 'bg-white/72 text-sidebar-accent-foreground shadow-[0_8px_24px_rgba(19,0,186,.08)] ring-1 ring-white/80'
           : 'text-sidebar-foreground hover:bg-white/45 hover:text-foreground',
       )}
     >
@@ -54,7 +54,7 @@ export function Sidebar({ collapsed = false, onNavigate, className }: {
     pathname === href || pathname.startsWith(`${href}/`)
 
   return (
-    <aside className={cn('glass-strong flex h-full flex-col overflow-hidden rounded-2xl', className)}>
+    <aside className={cn('liquid-glass-strong flex h-full flex-col overflow-hidden rounded-[1.35rem] shadow-[0_24px_70px_rgba(32,38,75,.14)]', className)}>
       <div className={cn('flex h-16 items-center border-b border-white/55 px-4', collapsed && 'justify-center px-0')}>
         <Logo collapsed={collapsed} />
       </div>
