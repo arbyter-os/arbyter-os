@@ -13,6 +13,7 @@ import {
   Search,
   Settings,
   User,
+  X,
 } from 'lucide-react'
 
 import { routeTitles } from '@/lib/mock-data/navigation'
@@ -25,6 +26,8 @@ import {
   MenuTrigger,
 } from '@/components/ui/menu'
 import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
 
 const notifications: {
   title: string
@@ -45,14 +48,14 @@ export function TopBar({
 }) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
-
   const current = routeTitles[pathname] ?? 'Overview'
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [organizationName, setOrganizationName] = useState('Arbyter')
   const [loadingProfile, setLoadingProfile] = useState(true)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     async function loadProfile() {
@@ -93,12 +96,25 @@ export function TopBar({
     }
 
     loadProfile()
-  }, [router, supabase])
+  }, [router])
 
-  const displayName =
-    fullName.trim() ||
-    email.split('@')[0] ||
-    'User'
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+
+      if (event.key === 'Escape') {
+        setSearchOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const displayName = fullName.trim() || email.split('@')[0] || 'User'
 
   const initials =
     displayName
@@ -152,33 +168,20 @@ export function TopBar({
 
       <nav aria-label="Breadcrumb" className="min-w-0">
         <ol className="flex items-center gap-2 text-sm">
-          <li className="hidden text-muted-foreground sm:block">
-            Arbyter OS
-          </li>
-
-          <li
-            className="hidden text-muted-foreground/40 sm:block"
-            aria-hidden
-          >
-            /
-          </li>
-
-          <li className="truncate font-semibold text-foreground">
-            {current}
-          </li>
+          <li className="hidden text-muted-foreground sm:block">Arbyter OS</li>
+          <li className="hidden text-muted-foreground/40 sm:block" aria-hidden>/</li>
+          <li className="truncate font-semibold text-foreground">{current}</li>
         </ol>
       </nav>
 
       <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-        {/* Global search */}
         <button
           type="button"
+          onClick={() => setSearchOpen(true)}
           className="hidden h-10 w-56 items-center gap-2 rounded-xl border border-white/75 bg-white/45 px-3 text-sm text-muted-foreground shadow-inner transition-colors hover:bg-white/60 md:flex xl:w-72"
         >
           <Search className="size-4" />
-
           <span>Search…</span>
-
           <kbd className="ml-auto rounded-lg border border-white/60 bg-white/50 px-1.5 py-0.5 font-mono text-[0.625rem] font-medium text-muted-foreground">
             ⌘K
           </kbd>
@@ -186,68 +189,51 @@ export function TopBar({
 
         <button
           type="button"
+          onClick={() => setSearchOpen(true)}
           aria-label="Search"
           className="flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground md:hidden"
         >
           <Search className="size-[1.15rem]" />
         </button>
 
-        {/* Notifications */}
         <Menu>
           <MenuTrigger
             aria-label="Notifications"
             className="relative flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground aria-expanded:bg-white/60 aria-expanded:text-foreground"
           >
             <Bell className="size-[1.15rem]" />
-
             <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary ring-2 ring-white/70" />
           </MenuTrigger>
 
-          <MenuContent className="w-80">
+          <MenuContent align="end" className="w-80">
             <MenuLabel>Notifications</MenuLabel>
-
             <MenuSeparator />
-
             {notifications.map((n) => (
-              <MenuItem
-                key={n.title}
-                className="items-start gap-2.5 py-2"
-              >
+              <MenuItem key={n.title} className="items-start gap-2.5 py-2">
                 <n.icon className="mt-0.5 size-4" />
-
                 <span className="flex flex-col">
-                  <span className="text-sm text-foreground">
-                    {n.title}
-                  </span>
-
-                  <span className="text-xs text-muted-foreground">
-                    {n.meta}
-                  </span>
+                  <span className="text-sm text-foreground">{n.title}</span>
+                  <span className="text-xs text-muted-foreground">{n.meta}</span>
                 </span>
               </MenuItem>
             ))}
           </MenuContent>
         </Menu>
 
-        {/* Workspace selector */}
         <Menu>
           <MenuTrigger className="hidden h-10 items-center gap-2 rounded-xl border border-white/65 bg-white/40 px-2.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-white/60 aria-expanded:bg-white/65 sm:flex">
             <span className="flex size-5 items-center justify-center rounded-lg bg-primary/10 text-[0.625rem] font-bold text-primary">
               {workspaceInitials}
             </span>
-
             <span className="max-w-28 truncate">
               {loadingProfile ? 'Loading…' : organizationName}
             </span>
-
             <ChevronsUpDown className="size-3.5 text-muted-foreground" />
           </MenuTrigger>
 
           <MenuContent align="end">
             <MenuLabel>Workspace</MenuLabel>
-
             <MenuSeparator />
-
             <MenuItem>
               <span className="flex-1">{organizationName}</span>
               <Check className="size-4 text-primary" />
@@ -255,7 +241,6 @@ export function TopBar({
           </MenuContent>
         </Menu>
 
-        {/* User profile */}
         <Menu>
           <MenuTrigger
             aria-label="Account menu"
@@ -264,12 +249,11 @@ export function TopBar({
             {loadingProfile ? '…' : initials}
           </MenuTrigger>
 
-          <MenuContent align="end">
+          <MenuContent align="end" className="w-64">
             <div className="px-2.5 py-2">
               <p className="text-sm font-medium text-foreground">
                 {loadingProfile ? 'Loading…' : displayName}
               </p>
-
               <p className="text-xs text-muted-foreground">
                 {loadingProfile ? '' : email}
               </p>
@@ -277,7 +261,7 @@ export function TopBar({
 
             <MenuSeparator />
 
-            <MenuItem>
+            <MenuItem onSelect={() => router.push('/settings')}>
               <User />
               Profile
             </MenuItem>
@@ -299,6 +283,47 @@ export function TopBar({
           </MenuContent>
         </Menu>
       </div>
+
+      {searchOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/20 p-4 pt-20 backdrop-blur-sm">
+          <button
+            type="button"
+            aria-label="Close search"
+            onClick={() => setSearchOpen(false)}
+            className="absolute inset-0 cursor-default"
+          />
+
+          <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[1.4rem] border border-white/75 bg-white/78 shadow-[0_24px_80px_rgba(32,38,75,.2)] backdrop-blur-2xl">
+            <div className="flex items-center gap-3 border-b border-white/60 px-4">
+              <Search className="size-5 text-muted-foreground" />
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search Arbyter…"
+                className="h-14 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('')
+                  setSearchOpen(false)
+                }}
+                aria-label="Close search"
+                className="flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-white/60 hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="px-4 py-5 text-sm text-muted-foreground">
+              {searchQuery.trim()
+                ? 'Search is ready for Arbyter workforce, tasks, policies and activity.'
+                : 'Search across your Arbyter workspace.'}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </header>
   )
 }
