@@ -1,10 +1,13 @@
-import { loadGovernanceRules } from "./rule-loader"
+import { loadGovernanceRules, type GovernanceRule } from "./rule-loader"
 import {
   getApplicableRules,
   type GovernanceContext,
 } from "./applicability"
 import { getTriggeredRules } from "./evaluator"
-import { resolveConflicts } from "./conflict-resolver"
+import {
+  resolveConflicts,
+  type ConflictResolution,
+} from "./conflict-resolver"
 import { analyzeConflicts } from "./conflict-analyzer"
 import { calculateRisk } from "./risk-engine"
 import { makeGovernanceDecision } from "./decision-engine"
@@ -13,6 +16,109 @@ import { loadRegulatoryMappings } from "./regulatory-mapper"
 import { loadRegulatoryLibrary } from "./regulatory-library"
 import { generateActionRecommendations } from "./action-recommendations"
 import { persistGovernanceEvaluation } from "./audit"
+
+const CONTEXTUAL_FIELDS = [
+  "country",
+  "state",
+  "jurisdiction",
+  "sector",
+] as const
+
+type ContextualField = (typeof CONTEXTUAL_FIELDS)[number]
+
+function hasRequiredContextValue(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== ""
+}
+
+function getRuleContextRequirements(
+  rule: GovernanceRule
+): ContextualField[] {
+  const requirements = new Set<ContextualField>()
+  const scope = rule.scope ?? {}
+
+  for (const field of CONTEXTUAL_FIELDS) {
+    if (hasRequiredContextValue(scope[field])) {
+      requirements.add(field)
+    }
+  }
+
+  if (hasRequiredContextValue(rule.jurisdiction)) {
+    requirements.add("jurisdiction")
+  }
+
+  if (hasRequiredContextValue(rule.sector)) {
+    requirements.add("sector")
+  }
+
+  return [...requirements]
+}
+
+export function getMissingContextualRules(
+  rules: GovernanceRule[],
+  context: GovernanceContext
+): Array<{ rule: GovernanceRule; fields: ContextualField[] }> {
+  const now = new Date()
+
+  return rules
+    .filter((rule) => {
+      if (!rule.enabled) return false
+
+      if (
+        rule.effectiveFrom &&
+        new Date(rule.effectiveFrom) > now
+      ) {
+        return false
+      }
+
+      if (
+        rule.effectiveUntil &&
+        new Date(rule.effectiveUntil) < now
+      ) {
+        return false
+      }
+
+      return true
+    })
+    .map((rule) => {
+      const requiredFields = getRuleContextRequirements(rule)
+      const missingFields = requiredFields.filter(
+        (field) => !hasRequiredContextValue(context[field])
+      )
+
+      return { rule, fields: missingFields }
+    })
+    .filter((entry) => entry.fields.length > 0)
+}
+
+export function applyMissingContextApproval(
+  resolution: ConflictResolution,
+  missingContextRules: Array<{
+    rule: GovernanceRule
+    fields: ContextualField[]
+  }>
+): ConflictResolution {
+  if (missingContextRules.length === 0) {
+    return resolution
+  }
+
+  if (
+    resolution.effect === "block" ||
+    resolution.effect === "require_approval"
+  ) {
+    return resolution
+  }
+
+  const missing = missingContextRules[0]
+
+  return {
+    ...resolution,
+    effect: "require_approval",
+    rule: missing.rule,
+    reason: `Approval required because governance context is missing: ${missing.fields.join(
+      ", "
+    )}.`,
+  }
+}
 
 export async function evaluateGovernance(
   organizationId: string,
@@ -50,6 +156,11 @@ export async function evaluateGovernance(
           : undefined,
     })
 
+  const missingContextRules = getMissingContextualRules(
+    rules,
+    context
+  )
+
   const applicableRules = getApplicableRules(
     rules,
     context
@@ -64,8 +175,13 @@ export async function evaluateGovernance(
     triggeredRules
   )
 
-  const resolution = resolveConflicts(
+  const baseResolution = resolveConflicts(
     triggeredRules
+  )
+
+  const resolution = applyMissingContextApproval(
+    baseResolution,
+    missingContextRules
   )
 
   const risk = calculateRisk(
