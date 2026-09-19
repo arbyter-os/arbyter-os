@@ -158,7 +158,7 @@ export default function InvestigatePage() {
 
       {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Open
@@ -175,7 +175,7 @@ export default function InvestigatePage() {
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Investigating
@@ -192,7 +192,7 @@ export default function InvestigatePage() {
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Critical
@@ -209,7 +209,7 @@ export default function InvestigatePage() {
           </p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Resolved
@@ -228,7 +228,7 @@ export default function InvestigatePage() {
       </section>
 
       {/* Investigation table */}
-      <section className="overflow-hidden glass rounded-2xl">
+      <section className="overflow-hidden content-surface rounded-2xl">
         <div className="flex flex-col gap-3 border-b p-4 md:flex-row md:items-center md:justify-between">
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -353,7 +353,7 @@ export default function InvestigatePage() {
       {/* New investigation modal */}
       {showNew && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg glass-strong rounded-2xl p-6 shadow-xl">
+          <div className="w-full max-w-lg content-surface-strong rounded-2xl p-6 shadow-xl">
             <div className="mb-5">
               <h2 className="text-xl font-semibold">
                 New Investigation
