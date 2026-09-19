@@ -13,12 +13,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false)
   const pathname = usePathname()
 
-  // Close the mobile drawer whenever the route changes.
   React.useEffect(() => {
     setMobileOpen(false)
   }, [pathname])
 
-  // Lock body scroll while the mobile drawer is open.
   React.useEffect(() => {
     document.body.style.overflow = mobileOpen ? 'hidden' : ''
     return () => {
@@ -27,8 +25,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [mobileOpen])
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Desktop sidebar */}
+    <div className="relative flex min-h-screen bg-transparent">
       <div
         className={cn(
           'hidden shrink-0 transition-[width] duration-200 ease-out lg:block',
@@ -37,7 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div
           className={cn(
-            'fixed inset-y-0 left-0 transition-[width] duration-200 ease-out',
+            'fixed inset-y-3 left-3 transition-[width] duration-200 ease-out',
             collapsed ? 'w-[4.5rem]' : 'w-64',
           )}
         >
@@ -45,21 +42,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Mobile drawer */}
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"
+            className="absolute inset-0 bg-foreground/20 backdrop-blur-md"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute inset-y-0 left-0 w-72 max-w-[85%] animate-in slide-in-from-left duration-200">
+          <div className="absolute inset-y-3 left-3 w-72 max-w-[85%] overflow-hidden rounded-2xl glass-strong">
             <Sidebar onNavigate={() => setMobileOpen(false)} />
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
               aria-label="Close navigation"
-              className="absolute right-3 top-4 flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="absolute right-3 top-4 flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground"
             >
               <X className="size-5" />
             </button>
@@ -67,7 +63,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar
           onToggleCollapse={() => setCollapsed((v) => !v)}
