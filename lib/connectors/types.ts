@@ -12,6 +12,11 @@ export type ConnectorContext = {
   connectionId: string;
   agentId: string;
   organizationId: string;
+  credential?: {
+    id: string;
+    type: string;
+    secret: string;
+  };
 };
 
 export type ConnectorResult = {
