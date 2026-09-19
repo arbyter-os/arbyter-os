@@ -149,7 +149,7 @@ export default function ReportsPage() {
       </section>
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="content-surface rounded-xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Total Reports
@@ -166,7 +166,7 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="content-surface rounded-xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Ready
@@ -183,7 +183,7 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="content-surface rounded-xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Compliance
@@ -200,7 +200,7 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="content-surface rounded-xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Scheduled
@@ -229,7 +229,7 @@ export default function ReportsPage() {
             setReportPeriod('Last 30 days')
             setShowCreate(true)
           }}
-          className="group rounded-xl border bg-card p-5 text-left transition hover:bg-muted/20"
+          className="group content-surface rounded-xl p-5 text-left transition hover:bg-muted/20"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg border">
             <BarChart3 className="h-5 w-5" />
@@ -256,7 +256,7 @@ export default function ReportsPage() {
             setReportPeriod('Q3 2026')
             setShowCreate(true)
           }}
-          className="group rounded-xl border bg-card p-5 text-left transition hover:bg-muted/20"
+          className="group content-surface rounded-xl p-5 text-left transition hover:bg-muted/20"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg border">
             <ShieldCheck className="h-5 w-5" />
@@ -283,7 +283,7 @@ export default function ReportsPage() {
             setReportPeriod('Q3 2026')
             setShowCreate(true)
           }}
-          className="group rounded-xl border bg-card p-5 text-left transition hover:bg-muted/20"
+          className="group content-surface rounded-xl p-5 text-left transition hover:bg-muted/20"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg border">
             <FileText className="h-5 w-5" />
@@ -303,7 +303,7 @@ export default function ReportsPage() {
         </button>
       </section>
 
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden content-surface rounded-xl">
         <div className="border-b p-5">
           <h2 className="font-semibold">
             Report Library
@@ -371,7 +371,7 @@ export default function ReportsPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border bg-card p-5">
+      <section className="content-surface rounded-xl p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold">
