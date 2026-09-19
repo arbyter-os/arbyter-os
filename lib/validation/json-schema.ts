@@ -1,7 +1,7 @@
 export type JsonSchema = {
   type?: string
-  properties?: Record<string, JsonSchema>
-  required?: string[]
+  properties?: Readonly<Record<string, JsonSchema>>
+  required?: readonly string[]
   additionalProperties?: boolean
   items?: JsonSchema
 }
