@@ -145,29 +145,29 @@ export default function RisksPage() {
 
       {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <p className="text-sm text-muted-foreground">Total Risks</p>
           <p className="mt-2 text-2xl font-semibold">{total}</p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <p className="text-sm text-muted-foreground">Critical</p>
           <p className="mt-2 text-2xl font-semibold">{critical}</p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <p className="text-sm text-muted-foreground">High</p>
           <p className="mt-2 text-2xl font-semibold">{high}</p>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="content-surface rounded-2xl p-5">
           <p className="text-sm text-muted-foreground">Medium</p>
           <p className="mt-2 text-2xl font-semibold">{medium}</p>
         </div>
       </section>
 
       {/* Risk table */}
-      <section className="overflow-hidden glass rounded-2xl">
+      <section className="overflow-hidden content-surface rounded-2xl">
         <div className="flex flex-col gap-3 border-b p-4 md:flex-row md:items-center md:justify-between">
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -284,7 +284,7 @@ export default function RisksPage() {
       {/* New Risk modal */}
       {showNewRisk && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg glass-strong rounded-2xl p-6 shadow-xl">
+          <div className="w-full max-w-lg content-surface-strong rounded-2xl p-6 shadow-xl">
             <div className="mb-5">
               <h2 className="text-xl font-semibold">
                 New Risk
