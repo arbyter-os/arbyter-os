@@ -68,7 +68,7 @@ export default function DiscoveryPage() {
     }
 
     setStarting(true);
-    setMessage("");
+    setMessage("Preparing discovery scan...");
 
     try {
       const {
@@ -135,6 +135,8 @@ export default function DiscoveryPage() {
         sourceIds.push(created.id);
       }
 
+      setMessage("Creating discovery scan...");
+
       const { data: scan, error: scanError } = await supabase
         .from("discovery_scans")
         .insert({
@@ -165,18 +167,38 @@ export default function DiscoveryPage() {
         throw scanSourcesError;
       }
 
+      setMessage("Discovery engine starting...");
+
+      const response = await fetch("/api/discovery/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          scanId: scan.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.error ?? "The discovery engine failed to start."
+        );
+      }
+
       setMessage(
-        `Discovery scan created successfully. ${selectedSources.length} source${
-          selectedSources.length === 1 ? "" : "s"
-        } queued.`
+        `Discovery complete. ${result.totalFindings ?? 0} finding${
+          result.totalFindings === 1 ? "" : "s"
+        } discovered.`
       );
     } catch (error) {
-      console.error(error);
+      console.error("Discovery error:", error);
 
       setMessage(
         error instanceof Error
           ? error.message
-          : "Something went wrong while starting discovery."
+          : "Something went wrong while running discovery."
       );
     } finally {
       setStarting(false);
@@ -208,7 +230,7 @@ export default function DiscoveryPage() {
             disabled={starting}
             className="rounded-xl bg-[#1300BA] px-5 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {starting ? "Starting..." : "Start Discovery"}
+            {starting ? "Running Discovery..." : "Start Discovery"}
           </button>
         </div>
 
@@ -225,7 +247,10 @@ export default function DiscoveryPage() {
               key={label}
               className="rounded-2xl border border-[#e6e7eb] bg-white p-5"
             >
-              <div className="text-xs font-medium text-[#85858d]">{label}</div>
+              <div className="text-xs font-medium text-[#85858d]">
+                {label}
+              </div>
+
               <div className="mt-2 text-2xl font-semibold text-[#111113]">
                 {value}
               </div>
@@ -299,7 +324,7 @@ export default function DiscoveryPage() {
               disabled={starting || selectedSources.length === 0}
               className="rounded-xl bg-[#111113] px-5 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {starting ? "Preparing scan..." : "Begin Discovery →"}
+              {starting ? "Running Discovery..." : "Begin Discovery →"}
             </button>
           </div>
 
