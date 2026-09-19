@@ -193,6 +193,54 @@
     box-shadow: 0 24px 70px rgba(32,38,75,.15), inset 0 1px 0 rgba(255,255,255,.95);
   }
 
+  .liquid-glass-press {
+    transition: transform 160ms cubic-bezier(.2,.8,.2,1), box-shadow 160ms ease;
+  }
+
+  .liquid-glass-press:active {
+    transform: translateY(0) scale(.985);
+    box-shadow: 0 12px 34px rgba(32,38,75,.12), inset 0 1px 0 rgba(255,255,255,.88);
+  }
+
+  .liquid-glass-shimmer {
+    isolation: isolate;
+  }
+
+  .liquid-glass-shimmer::before {
+    animation: liquid-glass-shimmer 7s ease-in-out infinite;
+    transform: translateX(-18%);
+    will-change: transform, opacity;
+  }
+
+  @keyframes liquid-glass-shimmer {
+    0%, 100% {
+      transform: translateX(-18%);
+      opacity: .72;
+    }
+    50% {
+      transform: translateX(18%);
+      opacity: .96;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .glass-interactive,
+    .liquid-glass-interactive,
+    .liquid-glass-press {
+      transition: none;
+    }
+
+    .glass-interactive:hover,
+    .liquid-glass-interactive:hover,
+    .liquid-glass-press:active {
+      transform: none;
+    }
+
+    .liquid-glass-shimmer::before {
+      animation: none;
+    }
+  }
+
   @supports not (backdrop-filter: blur(1px)) {
     .glass, .glass-strong, .liquid-glass, .liquid-glass-strong, .liquid-glass-dark {
       background: rgba(255,255,255,.9);
