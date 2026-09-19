@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react'
 
-import { routeTitles } from '@/lib/mock-data/navigation'
+import { footerNav, navSections, routeTitles } from '@/lib/mock-data/navigation'
 import {
   Menu,
   MenuContent,
@@ -28,6 +28,8 @@ import {
 import { createClient } from '@/lib/supabase/client'
 
 const supabase = createClient()
+
+const searchItems = [...navSections.flatMap((section) => section.items), ...footerNav]
 
 const notifications: {
   title: string
@@ -56,6 +58,12 @@ export function TopBar({
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+
+  const searchResults = searchItems.filter((item) => {
+    const query = searchQuery.trim().toLowerCase()
+    if (!query) return true
+    return item.label.toLowerCase().includes(query) || item.href.toLowerCase().includes(query)
+  })
 
   useEffect(() => {
     async function loadProfile() {
@@ -316,10 +324,43 @@ export function TopBar({
               </button>
             </div>
 
-            <div className="px-4 py-5 text-sm text-muted-foreground">
-              {searchQuery.trim()
-                ? 'Search is ready for Arbyter workforce, tasks, policies and activity.'
-                : 'Search across your Arbyter workspace.'}
+            <div className="max-h-[55vh] overflow-y-auto p-2">
+              {searchResults.length ? (
+                <div className="space-y-1">
+                  {searchResults.map((item) => {
+                    const Icon = item.icon
+
+                    return (
+                      <button
+                        key={item.href}
+                        type="button"
+                        onClick={() => {
+                          setSearchOpen(false)
+                          setSearchQuery('')
+                          router.push(item.href)
+                        }}
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-white/65"
+                      >
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
+                          <Icon className="size-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium text-foreground">
+                            {item.label}
+                          </span>
+                          <span className="block text-xs text-muted-foreground">
+                            {item.href}
+                          </span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+                  No Arbyter pages match “{searchQuery}”.
+                </div>
+              )}
             </div>
           </div>
         </div>
