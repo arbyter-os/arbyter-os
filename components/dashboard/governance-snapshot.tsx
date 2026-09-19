@@ -5,17 +5,13 @@ import type { SnapshotNode } from '@/lib/types'
 function Node({ node }: { node: SnapshotNode }) {
   const Icon = node.icon
   return (
-    <div className="flex flex-1 flex-col items-center rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 py-4 text-center transition-colors hover:border-ring/30">
-      <span className="flex size-9 items-center justify-center rounded-lg bg-accent text-primary">
+    <div className="flex flex-1 flex-col items-center rounded-xl border border-border/70 bg-white/55 px-3 py-4 text-center shadow-[0_6px_20px_rgba(32,38,75,0.035)] transition-all hover:-translate-y-0.5 hover:border-primary/15 hover:shadow-[0_10px_28px_rgba(32,38,75,0.06)]">
+      <span className="flex size-9 items-center justify-center rounded-lg border border-primary/10 bg-primary/[0.07] text-primary">
         <Icon className="size-4.5" aria-hidden="true" />
       </span>
-      <span className="mt-2.5 text-lg font-bold tabular-nums text-foreground">
-        {node.count}
-      </span>
+      <span className="mt-2.5 text-lg font-bold tabular-nums text-foreground">{node.count}</span>
       <span className="text-sm font-medium text-foreground">{node.label}</span>
-      <span className="mt-0.5 text-[0.6875rem] leading-tight text-muted-foreground">
-        {node.description}
-      </span>
+      <span className="mt-0.5 text-[0.6875rem] leading-tight text-muted-foreground">{node.description}</span>
     </div>
   )
 }
@@ -25,25 +21,18 @@ export function GovernanceSnapshot({ nodes }: { nodes: SnapshotNode[] }) {
     <div>
       <div className="flex flex-col items-stretch gap-2 md:flex-row md:items-center">
         {nodes.map((node, i) => (
-          <div
-            key={node.id}
-            className="flex flex-col items-center md:flex-row md:flex-1"
-          >
+          <div key={node.id} className="flex flex-col items-center md:flex-row md:flex-1">
             <Node node={node} />
             {i < nodes.length - 1 ? (
-              <span
-                className="flex shrink-0 items-center justify-center py-1 text-muted-foreground/40 md:px-1 md:py-0"
-                aria-hidden="true"
-              >
+              <span className="flex shrink-0 items-center justify-center py-1 text-muted-foreground/35 md:px-1 md:py-0" aria-hidden="true">
                 <ArrowRight className="size-4 rotate-90 md:rotate-0" />
               </span>
             ) : null}
           </div>
         ))}
       </div>
-      <p className="mt-4 text-center text-xs text-muted-foreground text-pretty">
-        Every agent operates under policies, enforced by controls, measured
-        against risks, and substantiated by evidence.
+      <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground text-pretty">
+        Every agent operates under policies, enforced by controls, measured against risks, and substantiated by evidence.
       </p>
     </div>
   )
