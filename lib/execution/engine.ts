@@ -110,12 +110,13 @@ export async function executeAgentTask(
           input.organizationId
         )
         .eq("status", "connected")
-        .neq("health_status", "unhealthy")
         .maybeSingle()
 
     if (error) throw error
 
-    connection = data
+    if (data && data.health_status !== "unhealthy") {
+      connection = data
+    }
   } else {
     const { data, error } =
       await supabase
@@ -504,4 +505,4 @@ export async function executeAgentTask(
 
     throw error
   }
-} 
+}
