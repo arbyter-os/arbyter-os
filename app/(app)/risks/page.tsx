@@ -145,29 +145,29 @@ export default function RisksPage() {
 
       {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <p className="text-sm text-muted-foreground">Total Risks</p>
           <p className="mt-2 text-2xl font-semibold">{total}</p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <p className="text-sm text-muted-foreground">Critical</p>
           <p className="mt-2 text-2xl font-semibold">{critical}</p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <p className="text-sm text-muted-foreground">High</p>
           <p className="mt-2 text-2xl font-semibold">{high}</p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <p className="text-sm text-muted-foreground">Medium</p>
           <p className="mt-2 text-2xl font-semibold">{medium}</p>
         </div>
       </section>
 
       {/* Risk table */}
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden glass rounded-2xl">
         <div className="flex flex-col gap-3 border-b p-4 md:flex-row md:items-center md:justify-between">
           <div className="relative max-w-sm flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -177,14 +177,14 @@ export default function RisksPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search risks..."
-              className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+              className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           <select
             value={severity}
             onChange={(event) => setSeverity(event.target.value)}
-            className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
+            className="h-10 rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
           >
             <option value="All">All severities</option>
             <option value="Critical">Critical</option>
@@ -197,7 +197,7 @@ export default function RisksPage() {
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm">
             <thead>
-              <tr className="border-b bg-muted/30 text-left text-xs font-medium text-muted-foreground">
+              <tr className="border-b border-white/55 bg-white/25 text-left text-xs font-medium text-muted-foreground">
                 <th className="px-5 py-3">Risk</th>
                 <th className="px-5 py-3">AI System</th>
                 <th className="px-5 py-3">Category</th>
@@ -213,7 +213,7 @@ export default function RisksPage() {
               {filteredRisks.map((risk) => (
                 <tr
                   key={risk.id}
-                  className="border-b last:border-0 hover:bg-muted/20"
+                  className="border-b last:border-0 hover:bg-white/35"
                 >
                   <td className="px-5 py-4 font-medium">
                     {risk.name}
@@ -284,7 +284,7 @@ export default function RisksPage() {
       {/* New Risk modal */}
       {showNewRisk && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-xl">
+          <div className="w-full max-w-lg glass-strong rounded-2xl p-6 shadow-xl">
             <div className="mb-5">
               <h2 className="text-xl font-semibold">
                 New Risk
@@ -299,22 +299,22 @@ export default function RisksPage() {
               <input
                 type="text"
                 placeholder="Risk name"
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
+                className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
               />
 
               <textarea
                 placeholder="Description"
                 rows={3}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none"
+                className="w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 py-2 text-sm outline-none"
               />
 
               <input
                 type="text"
                 placeholder="AI system"
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
+                className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
               />
 
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none">
+              <select className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none">
                 <option value="Critical">Critical</option>
                 <option value="High">High</option>
                 <option value="Medium">Medium</option>
