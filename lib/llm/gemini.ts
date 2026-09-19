@@ -1,4 +1,4 @@
-import type { LLMProvider, LLMStructuredRequest } from "./types"
+import type { LLMProvider, LLMStructuredRequest } from "./types.ts"
 
 export class GeminiProvider implements LLMProvider {
   private readonly apiKey: string
