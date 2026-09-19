@@ -34,7 +34,7 @@ export async function scanMCPServer(
 
   try {
     const validation = await validateExternalUrl(serverUrl, {
-      protocols: ["https:"],
+      protocols: ["https:", "http:"],
     });
 
     if (!validation.valid) {
@@ -139,7 +139,7 @@ async function listMCPItems(
 ) {
   try {
     const validation = await validateExternalUrl(serverUrl, {
-      protocols: ["https:"],
+      protocols: ["https:", "http:"],
     });
 
     if (!validation.valid) {
