@@ -18,83 +18,45 @@ import { AttentionList } from '@/components/dashboard/attention-list'
 import { ActivityList } from '@/components/dashboard/activity-list'
 import { GovernanceSnapshot } from '@/components/dashboard/governance-snapshot'
 import ApprovalList from '@/components/dashboard/approval-list'
-import {
-  RangeSelector,
-  type RangeValue,
-} from '@/components/dashboard/range-selector'
+import { RangeSelector, type RangeValue } from '@/components/dashboard/range-selector'
 import { createClient } from '@/lib/supabase/client'
 import { loadPendingApprovals } from '@/lib/approvals/client'
 import type { Approval } from '@/lib/approvals/types'
 
 export default function OverviewPage() {
-  const [range, setRange] =
-    React.useState<RangeValue>('30d')
-
-  const [agentCount, setAgentCount] =
-    React.useState<number>(0)
-
-  const [approvals, setApprovals] =
-    React.useState<Approval[]>([])
-
-  const [approvalsLoading, setApprovalsLoading] =
-    React.useState(true)
+  const [range, setRange] = React.useState<RangeValue>('30d')
+  const [agentCount, setAgentCount] = React.useState(0)
+  const [approvals, setApprovals] = React.useState<Approval[]>([])
+  const [approvalsLoading, setApprovalsLoading] = React.useState(true)
 
   React.useEffect(() => {
     async function loadAgentCount() {
       const supabase = createClient()
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
 
       if (userError || !user) {
-        console.error(
-          'Failed to get current user:',
-          userError
-        )
+        console.error('Failed to get current user:', userError)
         return
       }
 
-      const {
-        data: userRecord,
-        error: userRecordError,
-      } = await supabase
+      const { data: userRecord, error: userRecordError } = await supabase
         .from('users')
         .select('organization_id')
         .eq('id', user.id)
         .single()
 
-      if (
-        userRecordError ||
-        !userRecord?.organization_id
-      ) {
-        console.error(
-          'Failed to get user organization:',
-          userRecordError
-        )
+      if (userRecordError || !userRecord?.organization_id) {
+        console.error('Failed to get user organization:', userRecordError)
         return
       }
 
-      const {
-        count,
-        error: agentsError,
-      } = await supabase
+      const { count, error: agentsError } = await supabase
         .from('ai_agents')
-        .select('id', {
-          count: 'exact',
-          head: true,
-        })
-        .eq(
-          'organization_id',
-          userRecord.organization_id
-        )
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', userRecord.organization_id)
 
       if (agentsError) {
-        console.error(
-          'Failed to load agent count:',
-          agentsError
-        )
+        console.error('Failed to load agent count:', agentsError)
         return
       }
 
@@ -107,16 +69,9 @@ export default function OverviewPage() {
   async function loadApprovals() {
     try {
       setApprovalsLoading(true)
-
-      const pending =
-        await loadPendingApprovals()
-
-      setApprovals(pending)
+      setApprovals(await loadPendingApprovals())
     } catch (error) {
-      console.error(
-        'Failed to load pending approvals:',
-        error
-      )
+      console.error('Failed to load pending approvals:', error)
     } finally {
       setApprovalsLoading(false)
     }
@@ -126,95 +81,71 @@ export default function OverviewPage() {
     loadApprovals()
   }, [])
 
-  const liveKpis = React.useMemo(() => {
-    return kpis.map((kpi) =>
-      kpi.id === 'agents'
-        ? {
-            ...kpi,
-            value: String(agentCount),
-            delta: `${
-              agentCount === 1
-                ? '1 agent'
-                : `${agentCount} agents`
-            } in your organization`,
-          }
-        : kpi
-    )
-  }, [agentCount])
-
-  const liveSnapshotNodes =
-    React.useMemo(() => {
-      return snapshotNodes.map((node) =>
-        node.id === 'agents'
+  const liveKpis = React.useMemo(
+    () =>
+      kpis.map((kpi) =>
+        kpi.id === 'agents'
           ? {
-              ...node,
-              count: agentCount,
+              ...kpi,
+              value: String(agentCount),
+              delta: agentCount === 1 ? '1 agent in your organization' : `${agentCount} agents in your organization`,
             }
-          : node
-      )
-    }, [agentCount])
+          : kpi,
+      ),
+    [agentCount],
+  )
+
+  const liveSnapshotNodes = React.useMemo(
+    () =>
+      snapshotNodes.map((node) =>
+        node.id === 'agents' ? { ...node, count: agentCount } : node,
+      ),
+    [agentCount],
+  )
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8 pb-4">
       <PageHeader
         greeting={greeting}
         title="AI Governance Overview"
         description="Monitor your AI environment, manage risk, and keep governance controls under control."
-        actions={
-          <RangeSelector
-            value={range}
-            onChange={setRange}
-          />
-        }
+        actions={<RangeSelector value={range} onChange={setRange} />}
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Governance metrics" className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {liveKpis.map((kpi) => (
-          <KpiCard
-            key={kpi.id}
-            kpi={kpi}
-          />
+          <KpiCard key={kpi.id} kpi={kpi} />
         ))}
-      </div>
+      </section>
 
-      {/* Pending approvals */}
-      {!approvalsLoading &&
-        approvals.length > 0 && (
+      {!approvalsLoading && approvals.length > 0 ? (
+        <section aria-label="Pending approvals">
           <Panel
             title="Pending Approvals"
-            description={`${approvals.length} ${
-              approvals.length === 1
-                ? 'action'
-                : 'actions'
-            } require human authorization`}
+            description={`${approvals.length} ${approvals.length === 1 ? 'action' : 'actions'} require human authorization`}
             bodyClassName="pt-1"
           >
-            <ApprovalList
-              approvals={approvals}
-              onResolved={loadApprovals}
-            />
+            <ApprovalList approvals={approvals} onResolved={loadApprovals} />
           </Panel>
-        )}
+        </section>
+      ) : null}
 
-      {/* Governance health */}
-      <Panel
-        title="AI Risk & Control Health"
-        description="Risk exposure, control coverage, and compliance posture over time"
-      >
-        <HealthChart data={trend} />
-      </Panel>
+      <section aria-label="Governance health">
+        <Panel
+          title="AI Risk & Control Health"
+          description="Risk exposure, control coverage, and compliance posture over time"
+        >
+          <HealthChart data={trend} />
+        </Panel>
+      </section>
 
-      {/* Attention + Activity */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <section aria-label="Operational activity" className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Panel
           title="Needs Attention"
           description="Issues requiring governance review"
           bodyClassName="pt-1"
         >
-          <AttentionList
-            items={attentionItems}
-          />
+          <AttentionList items={attentionItems} />
         </Panel>
 
         <Panel
@@ -222,21 +153,18 @@ export default function OverviewPage() {
           description="Recent actions across your AI agents"
           bodyClassName="pt-1"
         >
-          <ActivityList
-            items={activityItems}
-          />
+          <ActivityList items={activityItems} />
         </Panel>
-      </div>
+      </section>
 
-      {/* Governance snapshot */}
-      <Panel
-        title="Governance Snapshot"
-        description="How agents, policies, controls, risks, and evidence connect"
-      >
-        <GovernanceSnapshot
-          nodes={liveSnapshotNodes}
-        />
-      </Panel>
+      <section aria-label="Governance snapshot">
+        <Panel
+          title="Governance Snapshot"
+          description="How agents, policies, controls, risks, and evidence connect"
+        >
+          <GovernanceSnapshot nodes={liveSnapshotNodes} />
+        </Panel>
+      </section>
     </div>
   )
 }
