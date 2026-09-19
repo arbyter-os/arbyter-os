@@ -8,21 +8,17 @@ export function ActivityList({ items }: { items: ActivityItem[] }) {
         <li
           key={item.id}
           data-first={i === 0}
-          className="flex items-center gap-3 py-3.5 data-[first=false]:border-t data-[first=false]:border-white/55"
+          className="group flex items-center gap-3 rounded-lg py-3.5 transition-colors hover:bg-black/[0.02] data-[first=false]:border-t data-[first=false]:border-border/55"
         >
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[0.625rem] font-semibold text-primary">
-            {item.agent
-              .split(' ')
-              .map((w) => w[0])
-              .join('')
-              .slice(0, 2)}
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-primary/10 bg-primary/[0.07] text-[0.625rem] font-semibold text-primary">
+            {item.agent.split(' ').map((w) => w[0]).join('').slice(0, 2)}
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm text-foreground">
               <span className="font-medium">{item.agent}</span>{' '}
               <span className="text-muted-foreground">{item.action}</span>
             </p>
-            <p className="text-xs text-muted-foreground/80">{item.timestamp}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground/80">{item.timestamp}</p>
           </div>
           <StatusBadge status={item.status} />
         </li>
