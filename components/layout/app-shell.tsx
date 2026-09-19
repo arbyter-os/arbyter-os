@@ -45,11 +45,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
-            className="absolute inset-0 bg-foreground/20 backdrop-blur-md"
+            className="absolute inset-0 bg-black/20 backdrop-blur-md"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute inset-y-3 left-3 w-72 max-w-[85%] overflow-hidden rounded-2xl glass-strong">
+          <div className="absolute inset-y-3 left-3 w-72 max-w-[85%] overflow-hidden rounded-[1.35rem] liquid-glass-strong">
             <Sidebar onNavigate={() => setMobileOpen(false)} />
             <button
               type="button"
