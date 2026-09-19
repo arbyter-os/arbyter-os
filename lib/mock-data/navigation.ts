@@ -1,6 +1,7 @@
 import {
   Bot,
   LayoutGrid,
+  MessageCircle,
   Settings,
   Plug,
 } from 'lucide-react'
@@ -11,6 +12,7 @@ export const navSections: NavSection[] = [
   {
     label: 'Arbyter',
     items: [
+      { label: 'Chat', href: '/chat', icon: MessageCircle },
       { label: 'Overview', href: '/overview', icon: LayoutGrid },
       { label: 'AI Workforce', href: '/agents', icon: Bot },
       { label: 'Connections', href: '/connections', icon: Plug },
