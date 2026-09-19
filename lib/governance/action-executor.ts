@@ -25,18 +25,18 @@ export async function executeGovernanceAction(
   switch (context.action) {
     case "approve":
       return {
-        success: true,
+        success: false,
         action: "approve",
-        message: "Governance approved the action.",
-        requiresHuman: false,
+        message: "Approval must be performed through the approval resolution workflow.",
+        requiresHuman: true,
       }
 
     case "block":
       return {
-        success: true,
+        success: false,
         action: "block",
-        message: "The governed action has been blocked.",
-        requiresHuman: false,
+        message: "Blocking must be performed through the execution/governance workflow.",
+        requiresHuman: true,
       }
 
     case "request_approval": {
@@ -44,8 +44,7 @@ export async function executeGovernanceAction(
         return {
           success: false,
           action: "request_approval",
-          message:
-            "Agent and task are required to request approval.",
+          message: "Agent and task are required to request approval.",
           requiresHuman: true,
         }
       }
@@ -60,10 +59,11 @@ export async function executeGovernanceAction(
         })
 
       if (error) {
+        console.error("Governance approval request failed:", error)
         return {
           success: false,
           action: "request_approval",
-          message: error.message,
+          message: "Unable to create the approval request.",
           requiresHuman: true,
         }
       }
@@ -71,8 +71,7 @@ export async function executeGovernanceAction(
       return {
         success: true,
         action: "request_approval",
-        message:
-          "Human approval has been requested before execution.",
+        message: "Human approval has been requested before execution.",
         requiresHuman: true,
       }
     }
@@ -87,17 +86,29 @@ export async function executeGovernanceAction(
         }
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("ai_agents")
         .update({ status: "paused" })
         .eq("id", context.agentId)
         .eq("organization_id", context.organizationId)
+        .select("id")
+        .maybeSingle()
 
       if (error) {
+        console.error("Governance pause-agent failed:", error)
         return {
           success: false,
           action: "pause_agent",
-          message: error.message,
+          message: "Unable to pause the agent.",
+          requiresHuman: true,
+        }
+      }
+
+      if (!data) {
+        return {
+          success: false,
+          action: "pause_agent",
+          message: "Agent was not found in the organization.",
           requiresHuman: true,
         }
       }
@@ -115,24 +126,35 @@ export async function executeGovernanceAction(
         return {
           success: false,
           action: "disable_tool",
-          message:
-            "Agent ID and tool are required.",
+          message: "Agent ID and tool are required.",
           requiresHuman: true,
         }
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("agent_permissions")
         .update({ enabled: false })
         .eq("agent_id", context.agentId)
         .eq("organization_id", context.organizationId)
         .eq("tool", context.tool)
+        .select("id")
+        .maybeSingle()
 
       if (error) {
+        console.error("Governance disable-tool failed:", error)
         return {
           success: false,
           action: "disable_tool",
-          message: error.message,
+          message: "Unable to disable the tool.",
+          requiresHuman: true,
+        }
+      }
+
+      if (!data) {
+        return {
+          success: false,
+          action: "disable_tool",
+          message: "Tool permission was not found for the agent.",
           requiresHuman: true,
         }
       }
@@ -140,55 +162,23 @@ export async function executeGovernanceAction(
       return {
         success: true,
         action: "disable_tool",
-        message:
-          "Tool access has been disabled for the agent.",
+        message: "Tool access has been disabled for the agent.",
         requiresHuman: true,
       }
     }
 
+    // These actions previously returned success even though no state change
+    // occurred. Fail closed until their concrete workflows are implemented.
     case "modify_policy":
-      return {
-        success: true,
-        action: "modify_policy",
-        message:
-          "Policy modification requires an authorized administrator.",
-        requiresHuman: true,
-      }
-
     case "retest":
-      return {
-        success: true,
-        action: "retest",
-        message:
-          "The action should be evaluated again against the current governance state.",
-        requiresHuman: false,
-      }
-
     case "investigate":
-      return {
-        success: true,
-        action: "investigate",
-        message:
-          "The action has been marked for governance investigation.",
-        requiresHuman: true,
-      }
-
     case "create_remediation":
-      return {
-        success: true,
-        action: "create_remediation",
-        message:
-          "A remediation workflow should be created for this governance finding.",
-        requiresHuman: true,
-      }
-
     case "view_regulation":
       return {
-        success: true,
-        action: "view_regulation",
-        message:
-          "The applicable regulation should be displayed for review.",
-        requiresHuman: false,
+        success: false,
+        action: context.action,
+        message: "This governance action is not implemented yet.",
+        requiresHuman: context.action !== "retest" && context.action !== "view_regulation",
       }
 
     default:
