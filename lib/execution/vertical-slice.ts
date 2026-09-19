@@ -26,7 +26,7 @@ export async function executeUserRequest(requestText: string) {
   const candidates = await registry.discover(intent.required_capabilities)
   const agent = selectAgent(intent, candidates)
 
-  const toolNames = ["generate_sales_report", "send_email"]
+  const toolNames = intent.required_capabilities
   const policy = evaluatePolicy({
     userId: user.id,
     intent: intent.intent,
