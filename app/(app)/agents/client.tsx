@@ -548,7 +548,7 @@ export default function AgentsClient() {
               endpoint_url:
                 connectionForm.endpointUrl.trim() || null,
               environment: connectionForm.environment,
-              status: 'created',
+              status: 'pending',
               configuration,
               capabilities,
             })
@@ -574,7 +574,7 @@ export default function AgentsClient() {
           .insert({
             organization_id: userRecord.organization_id,
             agent_id: selectedAgent.id,
-            connection_id: newConnection.id,
+            agent_connection_id: newConnection.id,
             event_type: 'created',
             metadata: {
               source: 'agents_ui',
