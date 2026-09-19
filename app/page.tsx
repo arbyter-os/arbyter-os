@@ -993,7 +993,7 @@ function Intro({ phase }: { phase: number }) {
       {/* The intro is intentionally reduced to only the glass unfold and logo. */}
       <div
         className={`absolute inset-0 transition-[filter] duration-[900ms] ease-out ${
-          unfolded ? "blur-0" : "blur-[7px]"
+          unfolded ? "blur-none" : "blur-[7px]"
         }`}
       >
         {/* Exact Arbyter logo as a 3D glass object */}
@@ -1010,11 +1010,6 @@ function Intro({ phase }: { phase: number }) {
               : "none",
           }}
         >
-          <div
-            className="absolute inset-[6%] rounded-[28px] border border-white/80 bg-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,.95),inset_0_-18px_35px_rgba(255,255,255,.18),0_0_0_1px_rgba(19,0,186,.08)] backdrop-blur-xl"
-            style={{ transform: "translateZ(-18px)" }}
-          />
-
           {[16, 12, 8, 4].map((depth) => (
             <div
               key={depth}
@@ -1045,15 +1040,6 @@ function Intro({ phase }: { phase: number }) {
             style={{ transform: "translateZ(22px)" }}
           />
 
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 rounded-[28px] border border-white/55"
-            style={{
-              transform: "translateZ(24px)",
-              boxShadow:
-                "inset 0 0 24px rgba(255,255,255,.3), 0 0 28px rgba(19,0,186,.08)",
-            }}
-          />
         </div>
       </div>
 
