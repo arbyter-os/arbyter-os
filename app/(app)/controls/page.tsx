@@ -193,7 +193,7 @@ export default function ControlsPage() {
 
       {/* Summary */}
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Total Controls
@@ -210,7 +210,7 @@ export default function ControlsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Effective
@@ -227,7 +227,7 @@ export default function ControlsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Needs Attention
@@ -244,7 +244,7 @@ export default function ControlsPage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Avg. Coverage
@@ -263,7 +263,7 @@ export default function ControlsPage() {
       </section>
 
       {/* Coverage */}
-      <section className="rounded-xl border bg-card p-5">
+      <section className="glass rounded-2xl p-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold">
@@ -289,7 +289,7 @@ export default function ControlsPage() {
       </section>
 
       {/* Filters */}
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden glass rounded-2xl">
         <div className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative max-w-md flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -299,7 +299,7 @@ export default function ControlsPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search controls..."
-              className="h-10 w-full rounded-lg border bg-background pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
+              className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm pl-9 pr-3 text-sm outline-none transition focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -307,7 +307,7 @@ export default function ControlsPage() {
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value)}
-              className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
+              className="h-10 rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
             >
               <option value="All">All statuses</option>
               <option value="Effective">Effective</option>
@@ -318,7 +318,7 @@ export default function ControlsPage() {
             <select
               value={framework}
               onChange={(event) => setFramework(event.target.value)}
-              className="h-10 rounded-lg border bg-background px-3 text-sm outline-none"
+              className="h-10 rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
             >
               <option value="All">All frameworks</option>
               <option value="EU AI Act">EU AI Act</option>
@@ -330,7 +330,7 @@ export default function ControlsPage() {
       </section>
 
       {/* Controls */}
-      <section className="overflow-hidden rounded-xl border bg-card">
+      <section className="overflow-hidden glass rounded-2xl">
         <div className="border-b p-5">
           <h2 className="font-semibold">
             Control Registry
@@ -345,9 +345,9 @@ export default function ControlsPage() {
           {filteredControls.map((control) => (
             <div
               key={control.id}
-              className="flex flex-col gap-4 p-5 transition hover:bg-muted/20 xl:flex-row xl:items-center"
+              className="flex flex-col gap-4 p-5 transition hover:bg-white/35 xl:flex-row xl:items-center"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-background">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm">
                 <ShieldCheck className="h-4 w-4" />
               </div>
 
@@ -429,7 +429,7 @@ export default function ControlsPage() {
       {/* Add control modal */}
       {showNewControl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-2xl border bg-background p-6 shadow-xl">
+          <div className="w-full max-w-lg glass-strong rounded-2xl p-6 shadow-xl">
             <div className="mb-5">
               <h2 className="text-xl font-semibold">
                 Add Control
@@ -444,16 +444,16 @@ export default function ControlsPage() {
               <input
                 type="text"
                 placeholder="Control name"
-                className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none"
+                className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none"
               />
 
               <textarea
                 placeholder="Describe what this control enforces..."
                 rows={4}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none"
+                className="w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 py-2 text-sm outline-none"
               />
 
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none">
+              <select className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none">
                 <option>Human Oversight</option>
                 <option>Data Privacy</option>
                 <option>Security</option>
@@ -462,7 +462,7 @@ export default function ControlsPage() {
                 <option>Incident Management</option>
               </select>
 
-              <select className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none">
+              <select className="h-10 w-full rounded-xl border border-white/65 bg-white/40 backdrop-blur-sm px-3 text-sm outline-none">
                 <option>EU AI Act</option>
                 <option>NIST AI RMF</option>
                 <option>ISO/IEC 42001</option>
