@@ -92,7 +92,7 @@ export default function CompliancePage() {
 
       {/* Compliance score */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Compliance Score
@@ -109,7 +109,7 @@ export default function CompliancePage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Controls Covered
@@ -126,7 +126,7 @@ export default function CompliancePage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Open Gaps
@@ -143,7 +143,7 @@ export default function CompliancePage() {
           </p>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Upcoming
@@ -163,7 +163,7 @@ export default function CompliancePage() {
 
       {/* Frameworks */}
       {showFrameworks && (
-        <section className="rounded-xl border bg-card">
+        <section className="glass rounded-2xl">
           <div className="border-b p-5">
             <h2 className="font-semibold">
               Compliance Frameworks
@@ -226,7 +226,7 @@ export default function CompliancePage() {
       )}
 
       {/* Compliance gaps */}
-      <section className="rounded-xl border bg-card">
+      <section className="glass rounded-2xl">
         <div className="flex items-center justify-between border-b p-5">
           <div>
             <h2 className="font-semibold">
@@ -277,7 +277,7 @@ export default function CompliancePage() {
 
       {/* Evidence */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <h2 className="font-semibold">
             Evidence Collection
           </h2>
@@ -316,7 +316,7 @@ export default function CompliancePage() {
           </div>
         </div>
 
-        <div className="rounded-xl border bg-card p-5">
+        <div className="glass rounded-2xl p-5">
           <h2 className="font-semibold">
             Compliance Activity
           </h2>
