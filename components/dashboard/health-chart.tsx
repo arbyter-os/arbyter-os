@@ -200,7 +200,7 @@ export function HealthChart({ data }: { data: TrendPoint[] }) {
       </div>
 
       {/* Legend */}
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border pt-4">
+      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/55 pt-4">
         {series.map((s) => (
           <div key={s.key} className="flex items-center gap-2">
             <span
