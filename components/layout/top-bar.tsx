@@ -136,7 +136,7 @@ export function TopBar({
         type="button"
         onClick={onOpenMobile}
         aria-label="Open navigation"
-        className="flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground lg:hidden"
+        className="flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground lg:hidden"
       >
         <MenuIcon className="size-5" />
       </button>
@@ -145,7 +145,7 @@ export function TopBar({
         type="button"
         onClick={onToggleCollapse}
         aria-label="Toggle sidebar"
-        className="hidden size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground lg:flex"
+        className="hidden size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground lg:flex"
       >
         <PanelLeft className="size-[1.15rem]" />
       </button>
@@ -187,7 +187,7 @@ export function TopBar({
         <button
           type="button"
           aria-label="Search"
-          className="flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground md:hidden"
+          className="flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground md:hidden"
         >
           <Search className="size-[1.15rem]" />
         </button>
@@ -196,7 +196,7 @@ export function TopBar({
         <Menu>
           <MenuTrigger
             aria-label="Notifications"
-            className="relative flex size-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground aria-expanded:bg-white/60 aria-expanded:text-foreground"
+            className="relative flex size-11 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-white/50 hover:text-foreground aria-expanded:bg-white/60 aria-expanded:text-foreground"
           >
             <Bell className="size-[1.15rem]" />
 
