@@ -71,7 +71,7 @@ export async function executeUserRequest(requestText: string) {
 
     const emailTool = getTool("send_email")
     const emailInput = {
-      recipient: intent.entities.recipient ?? "Ali",
+      recipient: intent.parameters.recipient ?? "Ali",
       subject: "Sales report",
       text: typeof report === "object" && report && "report" in report ? String((report as { report: unknown }).report) : String(report),
     }
