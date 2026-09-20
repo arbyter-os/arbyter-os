@@ -20,12 +20,7 @@ function World({progress}:{progress:number}){
   const project=(a:number,b:number,z:number,cam:number)=>{const depth=Math.max(90,z-cam),s=820/depth;return{x:innerWidth/2+a*s,y:innerHeight/2+b*s,s,depth}};
   const drawLine=(a:any,b:any,alpha:number,width=1)=>{x.strokeStyle=`rgba(76,66,190,${alpha})`;x.lineWidth=width;x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke()};
   const draw=()=>{t+=.012;const p=progress,cam=p*3900-300,w=innerWidth,h=innerHeight;x.clearRect(0,0,w,h);
-   const g=x.createRadialGradient(w/2,h/2,10,w/2,h/2,Math.max(w,h)*.78);
-   g.addColorStop(0,p>.62?"rgba(130,120,245,.34)":"rgba(110,130,255,.24)");
-   g.addColorStop(.28,"rgba(238,242,255,.92)");
-   g.addColorStop(.68,"rgba(220,227,246,.98)");
-   g.addColorStop(1,"#f7f9fd");
-   x.fillStyle=g;x.fillRect(0,0,w,h);
+   const g=x.createRadialGradient(w/2,h/2,10,w/2,h/2,Math.max(w,h)*.78);g.addColorStop(0,p>.62?"rgba(130,120,245,.34)":"rgba(110,130,255,.24)");g.addColorStop(.28,"rgba(238,242,255,.92)");g.addColorStop(.68,"rgba(220,227,246,.98)");g.addColorStop(1,"#f7f9fd");x.fillStyle=g;x.fillRect(0,0,w,h);
    STARS.forEach((s,i)=>{const q=project(s.x,s.y,s.z,cam);if(q.depth>80&&q.depth<4200){const tw=.18+.28*(Math.sin(t*1.4+s.phase)+1);x.fillStyle=`rgba(19,0,186,${tw})`;x.beginPath();x.arc(q.x,q.y,Math.max(.35,s.size*q.s),0,Math.PI*2);x.fill()}});
    for(let z=Math.floor(cam/180)*180;z<cam+2500;z+=180)drawLine(project(-1300,430,z,cam),project(1300,430,z,cam),.045);
    for(let a=-1200;a<=1400;a+=180)drawLine(project(a,-450,cam+250,cam),project(a,450,cam+2000,cam),.022);
@@ -41,7 +36,54 @@ function World({progress}:{progress:number}){
  },[progress]);return <canvas ref={ref} className="absolute inset-0 h-full w-full"/>;
 }
 
-function Intro({phase}:{phase:number}){const open=phase>=4,show=phase>=3;return <div className="fixed inset-0 z-[999] bg-white"><div className="absolute inset-0"><div className={"absolute left-1/2 top-1/2 h-[150px] w-[168px] -translate-x-1/2 -translate-y-1/2 transition-all duration-400 "+(show?"scale-100 opacity-100":"scale-[.72] opacity-0")}>{LOGO}</div></div><div className="absolute inset-y-0 left-0 w-1/2 border-r bg-white/45 backdrop-blur-[18px] transition-transform duration-500" style={{transform:open?"translateX(-100%)":"translateX(0)"}}/><div className="absolute inset-y-0 right-0 w-1/2 border-l bg-white/45 backdrop-blur-[18px] transition-transform duration-500" style={{transform:open?"translateX(100%)":"translateX(0)"}}/><div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-[#1300BA] opacity-60"/></div>}
+function Intro({phase,onDone}:{phase:number;onDone:()=>void}){
+ const ref=useRef<HTMLCanvasElement>(null);
+ useEffect(()=>{
+  const c=ref.current;if(!c)return;const x=c.getContext("2d");if(!x)return;let raf=0,t=0;
+  const start=performance.now();
+  const resize=()=>{const d=Math.min(devicePixelRatio||1,2);c.width=innerWidth*d;c.height=innerHeight*d;x.setTransform(d,0,0,d,0,0)};
+  const draw=()=>{
+   t+=.016;const elapsed=performance.now()-start,p=Math.min(1,elapsed/2500),w=innerWidth,h=innerHeight;
+   x.clearRect(0,0,w,h);
+   const bg=x.createRadialGradient(w*.5,h*.48,20,w*.5,h*.5,Math.max(w,h)*.82);
+   bg.addColorStop(0,"rgba(130,120,245,.18)");bg.addColorStop(.3,"rgba(238,242,255,.88)");bg.addColorStop(.7,"rgba(220,227,246,.98)");bg.addColorStop(1,"#f7f9fd");
+   x.fillStyle=bg;x.fillRect(0,0,w,h);
+   for(let i=0;i<150;i++){const z=220+((i*97)%1500);const sx=((i*83)%w),sy=((i*137)%h);const tw=.18+.22*(Math.sin(t*1.2+i)+1);x.fillStyle=`rgba(19,0,186,${tw})`;x.beginPath();x.arc(sx,sy,Math.max(.5,(i%3===0?1.5:.7)),0,Math.PI*2);x.fill();}
+   const cy=h*.5+Math.sin(t*.9)*8;
+   const reveal=Math.max(0,Math.min(1,(p-.22)/.58));
+   const circleX=w*.08+reveal*w*.84;
+   const radius=Math.min(44,Math.max(30,w*.035));
+   const pelletStart=w*.24,pelletGap=w*.13;
+   for(let i=0;i<5;i++){
+    const px=pelletStart+i*pelletGap;
+    const eaten=Math.max(0,Math.min(1,(circleX-(px-20))/55));
+    if(eaten<1){const pulse=.75+.25*Math.sin(t*3+i);x.save();x.shadowBlur=18;x.shadowColor="rgba(19,0,186,.55)";const pg=x.createRadialGradient(px-3,cy-4,1,px,cy,8);pg.addColorStop(0,"rgba(255,255,255,.95)");pg.addColorStop(.32,"rgba(86,72,220,.9)");pg.addColorStop(1,"rgba(19,0,186,.82)");x.fillStyle=pg;x.globalAlpha=pulse;x.beginPath();x.arc(px,cy,7,0,Math.PI*2);x.fill();x.restore();}
+   }
+   const eatenCount=Math.min(5,Math.floor(Math.max(0,(circleX-pelletStart)/pelletGap)+.15));
+   const logoX=w*.5,logoY=cy;
+   const revealLogo=Math.max(0,Math.min(1,(eatenCount-1)/4));
+   x.save();x.translate(logoX,logoY);x.scale(Math.min(1,w/900),Math.min(1,w/900));x.globalAlpha=.16+.84*revealLogo;
+   x.filter="drop-shadow(0 18px 45px rgba(19,0,186,.16))";
+   x.fillStyle="#111";x.beginPath();x.moveTo(-190,-170);x.lineTo(-40,-170);x.lineTo(190,170);x.lineTo(55,170);x.lineTo(20,120);x.lineTo(-135,120);x.closePath();x.fill();
+   x.restore();
+   if(eatenCount>=5){x.save();x.translate(w*.5,cy);x.scale(Math.min(1,w/900),Math.min(1,w/900));x.globalAlpha=Math.min(1,(p-.78)/.18);x.fillStyle=BLUE;x.beginPath();x.arc(148,-145,49,0,Math.PI*2);x.fill();x.restore();}
+   const glass=Math.sin(t*1.5)*1.5;
+   x.save();x.translate(circleX,cy+glass);
+   x.shadowBlur=34;x.shadowColor="rgba(19,0,186,.28)";
+   const cg=x.createRadialGradient(-radius*.3,-radius*.35,radius*.08,radius*.1,radius*.05,radius*1.15);cg.addColorStop(0,"rgba(255,255,255,.82)");cg.addColorStop(.2,"rgba(180,190,255,.62)");cg.addColorStop(.62,"rgba(19,0,186,.38)");cg.addColorStop(1,"rgba(19,0,186,.72)");
+   x.fillStyle=cg;x.beginPath();x.arc(0,0,radius,0,Math.PI*2);x.fill();
+   x.strokeStyle="rgba(255,255,255,.9)";x.lineWidth=2;x.stroke();
+   x.globalAlpha=.42;x.fillStyle="rgba(255,255,255,.95)";x.beginPath();x.ellipse(-radius*.28,-radius*.38,radius*.42,radius*.18,-.45,0,Math.PI*2);x.fill();
+   x.globalAlpha=.35;x.beginPath();x.arc(radius*.28,radius*.25,radius*.16,0,Math.PI*2);x.fill();x.restore();
+   if(p>.92){const a=Math.min(1,(p-.92)/.08);x.fillStyle=`rgba(255,255,255,${a*.42})`;x.fillRect(0,0,w,h);}
+   raf=requestAnimationFrame(draw);
+  };
+  resize();addEventListener("resize",resize);raf=requestAnimationFrame(draw);
+  const done=setTimeout(onDone,2850);
+  return()=>{cancelAnimationFrame(raf);clearTimeout(done);removeEventListener("resize",resize)};
+ },[onDone]);
+ return <div className="fixed inset-0 z-[999] bg-[#f7f9fd]"><canvas ref={ref} className="absolute inset-0 h-full w-full"/></div>;
+}
 
 const STAGES=[
  ["DISCOVER","DISCOVER EVERY AGENT.","Find AI agents, tools and workflows across your organization before they become invisible infrastructure."],
@@ -55,4 +97,20 @@ const STAGES=[
  ["ARBYTER OS","ENTER THE COMMAND LAYER.","Orchestrate. Govern. Secure. Control your AI workforce from one place."]
 ];
 
-export default function Home(){const[introDone,setIntroDone]=useState(false),[phase,setPhase]=useState(0),[progress,setProgress]=useState(0);useEffect(()=>{const q=[250,600,1000,1350].map((ms,i)=>setTimeout(()=>setPhase(i+1),ms));const done=setTimeout(()=>setIntroDone(true),2500);const s=()=>setProgress(scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight));addEventListener("scroll",s,{passive:true});s();return()=>{q.forEach(clearTimeout);clearTimeout(done);removeEventListener("scroll",s)}},[]);const stage=Math.min(STAGES.length-1,Math.floor(progress*STAGES.length));return <main className="min-h-[920vh] bg-[#f7f9fd] text-[#111322]">{!introDone&&<Intro phase={phase}/>}<div className={introDone?"opacity-100 transition-opacity duration-700":"opacity-0"}><header className="fixed left-0 right-0 top-0 z-50 flex h-[72px] items-center justify-between px-6 md:px-10"><Link href="/" className="flex items-center gap-3"><div className="h-8 w-9">{LOGO}</div><div className="hidden md:block"><b className="text-sm">ARBYTER OS</b><div className="text-[7px] tracking-[.3em] text-black/35">COMMAND LAYER</div></div></Link><Link href="/login" className="pointer-events-auto rounded-full border border-[#1300BA]/15 bg-white/55 px-5 py-2.5 text-xs text-[#111322] shadow-[0_10px_35px_rgba(19,0,186,.08)] backdrop-blur-xl hover:bg-[#1300BA] hover:text-white">Enter</Link></header><div className="fixed inset-0 z-0"><World progress={progress}/></div><div className="pointer-events-none fixed bottom-7 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-full border border-[#1300BA]/10 bg-white/45 px-4 py-2 shadow-[0_10px_35px_rgba(19,0,186,.08)] backdrop-blur-xl">{STAGES.map((_,i)=><span key={i} className={"h-1.5 rounded-full transition-all "+(i===stage?"w-9 bg-[#1300BA]":"w-2 bg-[#1300BA]/15")}/>)}</div><div className="pointer-events-none fixed inset-0 z-30">{STAGES.map((s,i)=><div key={s[0]} className={"absolute top-1/2 max-w-[480px] -translate-y-1/2 px-6 transition-all duration-700 "+(i===0?"left-6 md:left-12":i%2?"right-6 md:right-12":"left-6 md:left-12")+" "+(i===stage?"translate-x-0 opacity-100":"translate-x-10 opacity-0")}><div className="rounded-[2rem] border border-white/70 bg-white/45 p-7 shadow-[0_24px_80px_rgba(19,0,186,.10)] backdrop-blur-xl md:p-9"><div className="text-[9px] font-bold tracking-[.4em] text-[#1300BA]">{s[0]}</div><h1 className="mt-5 text-5xl font-black leading-[.82] tracking-[-.07em] text-[#111322] md:text-7xl">{s[1]}</h1><p className="mt-6 max-w-md text-sm leading-6 text-[#111322]/50">{s[2]}</p></div></div>)}<div className={"absolute bottom-8 left-1/2 -translate-x-1/2 text-[8px] font-bold tracking-[.35em] text-[#1300BA]/60 "+(progress>.05?"opacity-0":"opacity-100")}><span className="inline-block animate-bounce">↓</span> SCROLL TO ENTER</div></div><div className="relative z-20 h-[920vh]">{STAGES.map((_,i)=><section key={i} className="h-[102.2vh]"/>)}</div><section className="relative z-40 bg-white/80 px-6 py-32 text-[#111322] backdrop-blur-xl"><div className="mx-auto max-w-6xl text-center"><div className="mx-auto h-14 w-16">{LOGO}</div><div className="mt-7 text-[9px] font-bold tracking-[.4em] text-[#1300BA]">ARBYTER OS</div><div className="mx-auto max-w-3xl text-xs leading-6 text-[#111322]/30">AI agent governance · AI workforce management · AI security · agent orchestration · autonomous AI control · policy enforcement · AI compliance · agent monitoring · AI risk management · runtime governance</div><h2 className="mt-5 text-5xl font-black leading-[.82] tracking-[-.075em] md:text-8xl">LET YOUR AI<br/>WORKFORCE MOVE.</h2><p className="mx-auto mt-8 max-w-xl text-sm leading-6 text-[#111322]/45">Command the workforce. Govern the rules. Control the actions. Keep the evidence.</p><Link href="/login" className="pointer-events-auto mt-9 inline-flex rounded-full bg-[#1300BA] px-8 py-4 text-sm font-semibold text-white shadow-[0_16px_45px_rgba(19,0,186,.22)] hover:bg-[#0e008a]">Enter Arbyter →</Link></div><footer className="mx-auto mt-28 flex max-w-7xl flex-col gap-4 border-t border-[#1300BA]/10 pt-8 text-xs text-[#111322]/35 md:flex-row md:justify-between"><b className="text-[#111322]">ARBYTER OS</b><a href="mailto:arbyteros@gmail.com">arbyteros@gmail.com</a><span className="text-[8px] tracking-[.3em]">ORCHESTRATE · GOVERN · SECURE</span><a href="https://instagram.com/arbyter.os" target="_blank" rel="noreferrer" className="hover:text-[#1300BA]">@arbyter.os</a></footer></section></div></main>}
+export default function Home(){
+ const[introDone,setIntroDone]=useState(false),[progress,setProgress]=useState(0);
+ const finishIntro=()=>setIntroDone(true);
+ useEffect(()=>{const s=()=>setProgress(scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight));addEventListener("scroll",s,{passive:true});s();return()=>removeEventListener("scroll",s)},[]);
+ const stage=Math.min(STAGES.length-1,Math.floor(progress*STAGES.length));
+ return <main className="min-h-[920vh] bg-[#f7f9fd] text-[#111322]">
+  {!introDone&&<Intro phase={0} onDone={finishIntro}/>}
+  <div className={introDone?"opacity-100 transition-opacity duration-700":"opacity-0"}>
+   <header className="fixed left-0 right-0 top-0 z-50 flex h-[72px] items-center justify-between px-6 md:px-10"><Link href="/" className="flex items-center gap-3"><div className="h-8 w-9">{LOGO}</div><div className="hidden md:block"><b className="text-sm">ARBYTER OS</b><div className="text-[7px] tracking-[.3em] text-black/35">COMMAND LAYER</div></div></Link><Link href="/login" className="pointer-events-auto rounded-full border border-[#1300BA]/15 bg-white/55 px-5 py-2.5 text-xs text-[#111322] shadow-[0_10px_35px_rgba(19,0,186,.08)] backdrop-blur-xl hover:bg-[#1300BA] hover:text-white">Enter</Link></header>
+   <div className="fixed inset-0 z-0"><World progress={progress}/></div>
+   <div className="pointer-events-none fixed bottom-7 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-full border border-[#1300BA]/10 bg-white/45 px-4 py-2 shadow-[0_10px_35px_rgba(19,0,186,.08)] backdrop-blur-xl">{STAGES.map((_,i)=><span key={i} className={"h-1.5 rounded-full transition-all "+(i===stage?"w-9 bg-[#1300BA]":"w-2 bg-[#1300BA]/15")}/>)}</div>
+   <div className="pointer-events-none fixed inset-0 z-30">{STAGES.map((s,i)=><div key={s[0]} className={"absolute top-1/2 max-w-[480px] -translate-y-1/2 px-6 transition-all duration-700 "+(i===0?"left-6 md:left-12":i%2?"right-6 md:right-12":"left-6 md:left-12")+" "+(i===stage?"translate-x-0 opacity-100":"translate-x-10 opacity-0")}><div className="rounded-[2rem] border border-white/70 bg-white/45 p-7 shadow-[0_24px_80px_rgba(19,0,186,.10)] backdrop-blur-xl md:p-9"><div className="text-[9px] font-bold tracking-[.4em] text-[#1300BA]">{s[0]}</div><h1 className="mt-5 text-5xl font-black leading-[.82] tracking-[-.07em] text-[#111322] md:text-7xl">{s[1]}</h1><p className="mt-6 max-w-md text-sm leading-6 text-[#111322]/50">{s[2]}</p></div></div>)}<div className={"absolute bottom-8 left-1/2 -translate-x-1/2 text-[8px] font-bold tracking-[.35em] text-[#1300BA]/60 "+(progress>.05?"opacity-0":"opacity-100")}><span className="inline-block animate-bounce">↓</span> SCROLL TO ENTER</div></div>
+   <div className="relative z-20 h-[920vh]">{STAGES.map((_,i)=><section key={i} className="h-[102.2vh]"/>)}</div>
+   <section className="relative z-40 bg-white/80 px-6 py-32 text-[#111322] backdrop-blur-xl"><div className="mx-auto max-w-6xl text-center"><div className="mx-auto h-14 w-16">{LOGO}</div><div className="mt-7 text-[9px] font-bold tracking-[.4em] text-[#1300BA]">ARBYTER OS</div><div className="mx-auto max-w-3xl text-xs leading-6 text-[#111322]/30">AI agent governance · AI workforce management · AI security · agent orchestration · autonomous AI control · policy enforcement · AI compliance · agent monitoring · AI risk management · runtime governance</div><h2 className="mt-5 text-5xl font-black leading-[.82] tracking-[-.075em] md:text-8xl">LET YOUR AI<br/>WORKFORCE MOVE.</h2><p className="mx-auto mt-8 max-w-xl text-sm leading-6 text-[#111322]/45">Command the workforce. Govern the rules. Control the actions. Keep the evidence.</p><Link href="/login" className="pointer-events-auto mt-9 inline-flex rounded-full bg-[#1300BA] px-8 py-4 text-sm font-semibold text-white shadow-[0_16px_45px_rgba(19,0,186,.22)] hover:bg-[#0e008a]">Enter Arbyter →</Link></div><footer className="mx-auto mt-28 flex max-w-7xl flex-col gap-4 border-t border-[#1300BA]/10 pt-8 text-xs text-[#111322]/35 md:flex-row md:justify-between"><b className="text-[#111322]">ARBYTER OS</b><a href="mailto:arbyteros@gmail.com">arbyteros@gmail.com</a><span className="text-[8px] tracking-[.3em]">ORCHESTRATE · GOVERN · SECURE</span><a href="https://instagram.com/arbyter.os" target="_blank" rel="noreferrer" className="hover:text-[#1300BA]">@arbyter.os</a></footer></section>
+  </div>
+ </main>;
+}
