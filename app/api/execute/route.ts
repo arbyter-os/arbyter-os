@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { orchestrateUserRequest } from "@/lib/orchestration"
 import type { OrchestrationResult } from "@/lib/orchestration"
+import { isConnectorExecutionAuthorizationError } from "@/lib/security/authorize-connector-execution"
 
 type Orchestrator = (message: string) => Promise<OrchestrationResult>
 
@@ -39,6 +40,13 @@ export async function handleExecuteRequest(
     const result = await orchestrate(message)
     return NextResponse.json(result)
   } catch (error) {
+    if (isConnectorExecutionAuthorizationError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 },
+      )
+    }
+
     console.error("Execution orchestration error:", error)
     return NextResponse.json(
       {
