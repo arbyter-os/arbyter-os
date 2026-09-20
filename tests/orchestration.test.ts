@@ -193,3 +193,25 @@ test("multiple required capabilities are rejected before discovery or execution"
   assert.equal(discovered, false)
   assert.equal(executed, false)
 })
+
+test("execution authorization is checked before intent generation", async () => {
+  let generated = false
+
+  await assert.rejects(
+    orchestrateUserRequestWithDependencies(
+      "Send an email.",
+      dependencies({
+        authorizeExecution: async () => {
+          throw new Error("forbidden")
+        },
+        generateIntent: async () => {
+          generated = true
+          return intent
+        },
+      })
+    ),
+    /forbidden/
+  )
+
+  assert.equal(generated, false)
+})
