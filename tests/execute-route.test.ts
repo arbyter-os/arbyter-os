@@ -38,13 +38,21 @@ export async function orchestrateUserRequest() {
 }
 `
 
+const authorizationStub = `
+export function isConnectorExecutionAuthorizationError(error) {
+  return error?.code === "CONNECTOR_EXECUTION_FORBIDDEN"
+}
+`
+
 const loader = `
 const nextServer = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(nextServerStub)}`)}
 const orchestration = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(orchestrationStub)}`)}
+const authorization = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(authorizationStub)}`)}
 
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === "next/server") return { url: nextServer, shortCircuit: true }
   if (specifier === "@/lib/orchestration") return { url: orchestration, shortCircuit: true }
+  if (specifier === "@/lib/security/authorize-connector-execution") return { url: authorization, shortCircuit: true }
   return nextResolve(specifier, context)
 }
 `
