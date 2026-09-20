@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert"
 import { test } from "node:test"
+import { GeminiProvider } from "../lib/llm/gemini.ts"
 import { generateIntent, validateIntent } from "../lib/intent/index.ts"
 import type { LLMProvider } from "../lib/llm/types.ts"
 
@@ -88,4 +89,18 @@ test("intent validation rejects other malformed Gemini output", () => {
     parameters: { recipient: "Ali", document: "sales report" },
     required_capabilities: ["send_email"],
   }))
+})
+
+test("Gemini provider makes a real request when GEMINI_API_KEY is configured", { skip: !process.env.GEMINI_API_KEY }, async () => {
+  const provider = new GeminiProvider()
+  const result = await provider.generateStructured({
+    system: "Return JSON only with a single key named ok whose value is the string yes.",
+    input: "Respond with the requested JSON.",
+  })
+
+  assert.deepEqual(result, { ok: "yes" })
+})
+
+test("Gemini provider fails clearly when GEMINI_API_KEY is missing", () => {
+  assert.throws(() => new GeminiProvider(""), /GEMINI_API_KEY is not configured/)
 })
