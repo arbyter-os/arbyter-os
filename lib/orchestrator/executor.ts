@@ -3,22 +3,6 @@ import type {
   OrchestrationRequest,
   OrchestrationResult,
 } from './types'
-import {
-  fetchValidatedExternalUrl,
-  validateExternalUrl,
-} from '../security/validate-external-url'
-
-async function validateExecutionEndpoint(endpointUrl: string) {
-  const validation = await validateExternalUrl(endpointUrl, {
-    protocols: ['https:', 'http:'],
-  })
-
-  if (!validation.valid) {
-    throw new Error(validation.error)
-  }
-
-  return validation
-}
 
 export async function executeProvider(
   route: ProviderRoute,
@@ -46,7 +30,6 @@ export async function executeProvider(
       return {
         success: false,
         status: 'failed',
-        provider: route.provider,
         error: 'Unsupported execution provider.',
       }
   }
@@ -65,8 +48,7 @@ async function executeApi(
     }
   }
 
-  const validation = await validateExecutionEndpoint(route.endpointUrl)
-  const response = await fetchValidatedExternalUrl(validation, {
+  const response = await fetch(route.endpointUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -119,8 +101,7 @@ async function executeWebhook(
     }
   }
 
-  const validation = await validateExecutionEndpoint(route.endpointUrl)
-  const response = await fetchValidatedExternalUrl(validation, {
+  const response = await fetch(route.endpointUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
