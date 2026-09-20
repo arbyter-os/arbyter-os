@@ -215,3 +215,19 @@ test("execution authorization is checked before intent generation", async () => 
 
   assert.equal(generated, false)
 })
+
+test("authenticated user id is forwarded to the intent provider context", async () => {
+  let receivedContext: unknown
+
+  await orchestrateUserRequestWithDependencies(
+    "Send an email to test@example.com saying hello.",
+    dependencies({
+      generateIntent: async (_requestText, _provider, context) => {
+        receivedContext = context
+        return intent
+      },
+    })
+  )
+
+  assert.deepEqual(receivedContext, { userId: "user-1" })
+})

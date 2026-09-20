@@ -1,5 +1,5 @@
 import { GeminiProvider } from "../llm/gemini.ts"
-import type { LLMProvider } from "../llm/types.ts"
+import type { LLMProvider, LLMRequestContext } from "../llm/types.ts"
 import type { ConnectorCapability } from "../connectors/types.ts"
 import { assertJsonSchema } from "../validation/json-schema.ts"
 
@@ -46,7 +46,11 @@ export function validateIntent(value: unknown): asserts value is Intent {
   }
 }
 
-export async function generateIntent(input: string, provider?: LLMProvider): Promise<Intent> {
+export async function generateIntent(
+  input: string,
+  provider?: LLMProvider,
+  context?: LLMRequestContext,
+): Promise<Intent> {
   if (typeof input !== "string" || !input.trim()) {
     throw new Error("Request is required.")
   }
@@ -64,6 +68,7 @@ export async function generateIntent(input: string, provider?: LLMProvider): Pro
       "Do not invent values or capabilities that are not present or reasonably implied by the user's request.",
     ].join(" "),
     input: input.trim(),
+    context,
   })
 
   validateIntent(raw)

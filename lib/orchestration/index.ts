@@ -3,12 +3,17 @@ import type { AgentDiscoveryResult } from "../discovery/index.ts"
 import type { AgentSelectionResult } from "../selection/index.ts"
 import type { ConnectorCapability } from "../connectors/types.ts"
 import type { ExecutionInput } from "../execution/engine.ts"
+import type { LLMProvider, LLMRequestContext } from "../llm/types.ts"
 
 export type OrchestrationDependencies = {
   getCurrentUser: () => Promise<{ id: string } | null>
   getOrganizationId: (userId: string) => Promise<string | null>
   authorizeExecution?: (userId: string, organizationId: string) => Promise<void>
-  generateIntent: (requestText: string) => Promise<Intent>
+  generateIntent: (
+    requestText: string,
+    provider?: LLMProvider,
+    context?: LLMRequestContext,
+  ) => Promise<Intent>
   discoverAgents: (input: {
     organizationId: string
     requiredCapabilities: ConnectorCapability[]
@@ -106,7 +111,9 @@ export async function orchestrateUserRequestWithDependencies(
     await dependencies.authorizeExecution(user.id, organizationId)
   }
 
-  const intent = await dependencies.generateIntent(requestText)
+  const intent = await dependencies.generateIntent(requestText, undefined, {
+    userId: user.id,
+  })
 
   if (intent.required_capabilities.length !== 1) {
     return {
