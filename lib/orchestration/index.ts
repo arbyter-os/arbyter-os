@@ -7,7 +7,7 @@ import type { ExecutionInput } from "../execution/engine.ts"
 export type OrchestrationDependencies = {
   getCurrentUser: () => Promise<{ id: string } | null>
   getOrganizationId: (userId: string) => Promise<string | null>
-  authorizeExecution: (userId: string, organizationId: string) => Promise<void>
+  authorizeExecution?: (userId: string, organizationId: string) => Promise<void>
   generateIntent: (requestText: string) => Promise<Intent>
   discoverAgents: (input: {
     organizationId: string
@@ -102,7 +102,9 @@ export async function orchestrateUserRequestWithDependencies(
     throw new Error("No organization is associated with your account.")
   }
 
-  await dependencies.authorizeExecution(user.id, organizationId)
+  if (dependencies.authorizeExecution) {
+    await dependencies.authorizeExecution(user.id, organizationId)
+  }
 
   const intent = await dependencies.generateIntent(requestText)
 
