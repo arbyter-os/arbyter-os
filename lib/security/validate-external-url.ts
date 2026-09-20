@@ -138,10 +138,21 @@ export async function fetchValidatedExternalUrl(
 
   const lookup = (
     _hostname: string,
-    options: { family?: number },
+    options: { family?: number | "IPv4" | "IPv6" },
     callback: (error: NodeJS.ErrnoException | null, address?: string, family?: number) => void,
   ) => {
-    const address = addresses.find((candidate) => !options.family || net.isIP(candidate) === options.family);
+    const requestedFamily =
+      options.family === "IPv4"
+        ? 4
+        : options.family === "IPv6"
+          ? 6
+          : options.family;
+
+    const address = addresses.find(
+      (candidate) =>
+        !requestedFamily ||
+        net.isIP(candidate) === requestedFamily,
+    );
     if (!address) {
       callback(new Error("No validated address is available for this connection."));
       return;
