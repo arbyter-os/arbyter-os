@@ -237,7 +237,7 @@ export async function POST(request: Request) {
         connection.endpoint_url,
       );
 
-      if (!endpointValidation.valid || !endpointValidation.url) {
+      if (!endpointValidation.valid) {
         const checkedAt = new Date().toISOString();
         const currentFailures = Number(
           connection.consecutive_failures || 0,
@@ -538,10 +538,7 @@ export async function POST(request: Request) {
       connection.endpoint_url,
     );
 
-    if (
-      !endpointValidation.valid ||
-      !endpointValidation.url
-    ) {
+    if (!endpointValidation.valid) {
       const checkedAt = new Date().toISOString();
 
       const currentFailures = Number(
