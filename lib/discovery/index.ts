@@ -1,7 +1,6 @@
 import { initializeConnectors } from "../connectors/index.ts"
 import { getConnector } from "../connectors/registry.ts"
 import type { ConnectorCapability } from "../connectors/types.ts"
-import { createClient } from "../supabase/server.ts"
 
 export type AgentDiscoveryResult = {
   agentId: string
@@ -92,6 +91,7 @@ export async function discoverAgents({
   organizationId: string
   requiredCapabilities: ConnectorCapability[]
 }): Promise<AgentDiscoveryResult[]> {
+  const { createClient } = await import("../supabase/server.ts")
   const supabase = await createClient()
 
   const { data, error } = await supabase
