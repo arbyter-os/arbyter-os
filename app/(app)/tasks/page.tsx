@@ -15,7 +15,7 @@ type Task = {
     ai_agents?: {
       id: string
       name: string
-    } | null
+    }[] | null
   }[]
 }
 
@@ -268,7 +268,7 @@ export default function TasksPage() {
   }
 
   function getAgent(task: Task) {
-    return task.agent_tasks?.[0]?.ai_agents?.name ?? 'Unassigned'
+    return task.agent_tasks?.[0]?.ai_agents?.[0]?.name ?? 'Unassigned'
   }
 
   function statusLabel(status: string) {
