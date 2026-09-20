@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { orchestrateUserRequest } from "@/lib/orchestration"
 import type { OrchestrationResult } from "@/lib/orchestration"
 import { isConnectorExecutionAuthorizationError } from "@/lib/security/authorize-connector-execution"
+import { validateMessageSize } from "@/lib/security/validate-request-size"
 
 type Orchestrator = (message: string) => Promise<OrchestrationResult>
 
@@ -33,6 +34,13 @@ export async function handleExecuteRequest(
     return NextResponse.json(
       { error: "message is required." },
       { status: 400 },
+    )
+  }
+
+  if (!validateMessageSize(message)) {
+    return NextResponse.json(
+      { error: "Message is too large." },
+      { status: 413 },
     )
   }
 

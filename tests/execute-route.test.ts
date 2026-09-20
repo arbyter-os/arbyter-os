@@ -44,15 +44,24 @@ export function isConnectorExecutionAuthorizationError(error) {
 }
 `
 
+const requestSizeStub = `
+export const MAX_MESSAGE_BYTES = 32 * 1024
+export function validateMessageSize(message) {
+  return Buffer.byteLength(message, "utf8") <= MAX_MESSAGE_BYTES
+}
+`
+
 const loader = `
 const nextServer = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(nextServerStub)}`)}
 const orchestration = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(orchestrationStub)}`)}
 const authorization = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(authorizationStub)}`)}
+const requestSize = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(requestSizeStub)}`)}
 
 export async function resolve(specifier, context, nextResolve) {
   if (specifier === "next/server") return { url: nextServer, shortCircuit: true }
   if (specifier === "@/lib/orchestration") return { url: orchestration, shortCircuit: true }
   if (specifier === "@/lib/security/authorize-connector-execution") return { url: authorization, shortCircuit: true }
+  if (specifier === "@/lib/security/validate-request-size") return { url: requestSize, shortCircuit: true }
   return nextResolve(specifier, context)
 }
 `
@@ -113,6 +122,71 @@ test("non-string message returns 400", async () => {
 test("malformed JSON returns 400", async () => {
   const response = await run("{\"message\":", async () => result)
   assert.equal(response.status, 400)
+})
+
+test("message exactly at 32 KiB is accepted", async () => {
+  const message = "a".repeat(32 * 1024)
+  let called = false
+
+  const response = await run(
+    JSON.stringify({ message }),
+    async () => {
+      called = true
+      return result
+    },
+  )
+
+  assert.equal(response.status, 200)
+  assert.equal(called, true)
+})
+
+test("message over 32 KiB returns 413", async () => {
+  const message = "a".repeat(32 * 1024 + 1)
+  let called = false
+
+  const response = await run(
+    JSON.stringify({ message }),
+    async () => {
+      called = true
+      return result
+    },
+  )
+
+  assert.equal(response.status, 413)
+  assert.deepEqual(await json(response), { error: "Message is too large." })
+  assert.equal(called, false)
+})
+
+test("multibyte UTF-8 message within 32 KiB is accepted", async () => {
+  const message = "\u00e9".repeat(16 * 1024)
+  let received = ""
+
+  const response = await run(
+    JSON.stringify({ message }),
+    async (value) => {
+      received = value
+      return result
+    },
+  )
+
+  assert.equal(response.status, 200)
+  assert.equal(received, message)
+})
+
+test("multibyte UTF-8 message over 32 KiB returns 413", async () => {
+  const message = "\u00e9".repeat(16 * 1024 + 1)
+  let called = false
+
+  const response = await run(
+    JSON.stringify({ message }),
+    async () => {
+      called = true
+      return result
+    },
+  )
+
+  assert.equal(response.status, 413)
+  assert.equal(called, false)
 })
 
 test("orchestration failure returns 500 with the error", async () => {
