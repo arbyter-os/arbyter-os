@@ -9,7 +9,7 @@ import {
 function validation(port: number) {
   return {
     valid: true as const,
-    url: new URL(`http://example.test:${port}/`),
+    url: new URL(`http://127.0.0.1:${port}/`),
     addresses: ["127.0.0.1"],
   };
 }
