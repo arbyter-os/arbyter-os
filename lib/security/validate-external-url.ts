@@ -12,6 +12,8 @@ export type ExternalUrlValidationResult =
   | { valid: true; url: URL; addresses: string[] }
   | { valid: false; error: string };
 
+export const MAX_EXTERNAL_RESPONSE_BYTES = 1024 * 1024;
+
 function ipv4ToNumber(address: string): number {
   return address.split(".").map(Number).reduce((value, octet) => value * 256 + octet, 0);
 }
@@ -166,14 +168,51 @@ export async function fetchValidatedExternalUrl(
       signal: init.signal ?? undefined,
     };
     const handleResponse = (response: http.IncomingMessage) => {
+      const contentLengthHeader = response.headers["content-length"];
+      const contentLength = typeof contentLengthHeader === "string"
+        ? Number(contentLengthHeader)
+        : Array.isArray(contentLengthHeader)
+          ? Number(contentLengthHeader[0])
+          : undefined;
+      if (contentLength !== undefined && Number.isFinite(contentLength) && contentLength > MAX_EXTERNAL_RESPONSE_BYTES) {
+        response.destroy();
+        reject(new Error(`External response exceeds the ${MAX_EXTERNAL_RESPONSE_BYTES}-byte limit.`));
+        return;
+      }
+
       const chunks: Buffer[] = [];
-      response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-      response.on("end", () => resolve(new Response(Buffer.concat(chunks), {
-        status: response.statusCode ?? 0,
-        statusText: response.statusMessage ?? "",
-        headers: response.headers as Record<string, string>,
-      })));
-      response.on("error", reject);
+      let totalBytes = 0;
+      let settled = false;
+      const rejectTooLarge = () => {
+        if (settled) return;
+        settled = true;
+        response.destroy();
+        reject(new Error(`External response exceeds the ${MAX_EXTERNAL_RESPONSE_BYTES}-byte limit.`));
+      };
+
+      response.on("data", (chunk) => {
+        const buffer = Buffer.from(chunk);
+        totalBytes += buffer.length;
+        if (totalBytes > MAX_EXTERNAL_RESPONSE_BYTES) {
+          rejectTooLarge();
+          return;
+        }
+        chunks.push(buffer);
+      });
+      response.on("end", () => {
+        if (settled) return;
+        settled = true;
+        resolve(new Response(Buffer.concat(chunks), {
+          status: response.statusCode ?? 0,
+          statusText: response.statusMessage ?? "",
+          headers: response.headers as Record<string, string>,
+        }));
+      });
+      response.on("error", (error) => {
+        if (settled) return;
+        settled = true;
+        reject(error);
+      });
     };
     const request = url.protocol === "https:"
       ? https.request(requestOptions, handleResponse)
