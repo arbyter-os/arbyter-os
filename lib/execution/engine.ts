@@ -5,12 +5,15 @@ import { executeConnectorAction } from "@/lib/connectors/runtime"
 import { getConnector } from "@/lib/connectors/registry"
 import { resolveConnectionCredential } from "@/lib/credentials/runtime"
 import { recordExecutionAudit } from "./audit"
+import { resolveExecutionCapability } from "./capability"
+import type { ConnectorCapability } from "@/lib/connectors/types"
 
 export type ExecutionInput = {
   organizationId: string
   agentId: string
   taskId?: string
   agentConnectionId?: string
+  requestedCapability?: ConnectorCapability
   environment?: string
   country?: string
   state?: string
@@ -202,16 +205,11 @@ export async function executeAgentTask(
         >)
       : {}
 
-  const action = connector.capabilities.find(
-    (capability) =>
-      capabilities[capability] === true
-  )
-
-  if (!action) {
-    throw new Error(
-      "No executable connector capability is configured."
-    )
-  }
+  const action = resolveExecutionCapability({
+    requestedCapability: input.requestedCapability,
+    enabledCapabilities: capabilities,
+    connectorCapabilities: connector.capabilities,
+  })
 
   const executionInput = {
     task: task
