@@ -3,7 +3,7 @@ import type {
   ConnectorAction,
   ConnectorContext,
   ConnectorResult,
-} from "./types";
+} from "./types.ts";
 
 const AGENTMAIL_INBOX = "creatorai@agentmail.to";
 
