@@ -13,6 +13,7 @@ test("intent engine transforms natural language into the expected structured res
           recipient: "Ali",
           document: "sales report",
         },
+        required_capabilities: ["send_email"],
       }
     },
   }
@@ -26,6 +27,7 @@ test("intent engine transforms natural language into the expected structured res
       recipient: "Ali",
       document: "sales report",
     },
+    required_capabilities: ["send_email"],
   })
 })
 
@@ -42,22 +44,41 @@ test("intent engine rejects invalid input before calling Gemini", async () => {
   assert.equal(called, false)
 })
 
-test("intent validation rejects malformed Gemini output", () => {
+test("intent validation requires required_capabilities", () => {
   assert.throws(() => validateIntent({
     intent: "send_report",
     action: "send_email",
-  }))
-
-  assert.throws(() => validateIntent({
-    intent: "send_report",
-    action: "send_email",
-    parameters: { recipient: 42 },
+    parameters: { recipient: "Ali" },
   }))
 
   assert.throws(() => validateIntent({
     intent: "send_report",
     action: "send_email",
     parameters: { recipient: "Ali" },
+    required_capabilities: [""],
+  }))
+
+  assert.throws(() => validateIntent({
+    intent: "send_report",
+    action: "send_email",
+    parameters: { recipient: "Ali" },
+    required_capabilities: [42],
+  }))
+})
+
+test("intent validation rejects other malformed Gemini output", () => {
+  assert.throws(() => validateIntent({
+    intent: "send_report",
+    action: "send_email",
+    parameters: { recipient: 42 },
+    required_capabilities: ["send_email"],
+  }))
+
+  assert.throws(() => validateIntent({
+    intent: "send_report",
+    action: "send_email",
+    parameters: { recipient: "Ali" },
+    required_capabilities: ["send_email"],
     extra: true,
   }))
 
@@ -65,5 +86,6 @@ test("intent validation rejects malformed Gemini output", () => {
     intent: "send_report",
     action: "send_email",
     parameters: { recipient: "Ali", document: "sales report" },
+    required_capabilities: ["send_email"],
   }))
 })
