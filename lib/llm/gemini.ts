@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai"
 import type { LLMProvider, LLMStructuredRequest } from "./types.ts"
+import { consumeGeminiBudget } from "../security/gemini-budget.ts"
 
 export class GeminiProvider implements LLMProvider {
   private readonly client: GoogleGenAI
@@ -11,8 +12,13 @@ export class GeminiProvider implements LLMProvider {
     this.model = model
   }
 
-  async generateStructured<T>({ system, input }: LLMStructuredRequest): Promise<unknown> {
+  async generateStructured<T>({ system, input, context }: LLMStructuredRequest): Promise<unknown> {
+    if (!context?.userId) {
+      throw new Error("Gemini request context is required.")
+    }
+
     try {
+      consumeGeminiBudget(context.userId)
       const response = await this.client.models.generateContent({
         model: this.model,
         contents: input,
@@ -32,6 +38,9 @@ export class GeminiProvider implements LLMProvider {
       }
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Gemini returned ")) {
+        throw error
+      }
+      if (error instanceof Error && (error.name === "GeminiBudgetExceededError" || error.message === "Gemini request context is required.")) {
         throw error
       }
       throw new Error("Gemini request failed.", { cause: error })
