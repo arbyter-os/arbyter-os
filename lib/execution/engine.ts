@@ -28,7 +28,8 @@ async function updateTaskStatus(
     return
   }
 
-  const { error } = await createClient()
+  const supabase = await createClient()
+  const { error } = await supabase
     .from("tasks")
     .update({
       status,
@@ -52,7 +53,8 @@ async function claimTask(
     return
   }
 
-  const { data, error } = await createClient()
+  const supabase = await createClient()
+  const { data, error } = await supabase
     .from("tasks")
     .update({
       status: "running",
@@ -311,8 +313,7 @@ export async function executeAgentTask(
         }
       )
 
-    const riskLevel =
-      governance.risk?.level ?? "low"
+    const riskLevel = governance.risk
 
     if (
       governance.decision.decision ===
