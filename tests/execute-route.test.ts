@@ -1,12 +1,9 @@
 import { strict as assert } from "node:assert"
 import { test } from "node:test"
 import { handleExecuteRequest } from "../app/api/execute/route.ts"
+import type { OrchestrationResult } from "../lib/orchestration/index.ts"
 
-type Result = Parameters<Parameters<typeof handleExecuteRequest>[1]>[0] extends never
-  ? never
-  : Awaited<ReturnType<Parameters<typeof handleExecuteRequest>[1]>>
-
-const result: Result = {
+const result: OrchestrationResult = {
   intent: {
     intent: "send_email",
     action: "send_email",
