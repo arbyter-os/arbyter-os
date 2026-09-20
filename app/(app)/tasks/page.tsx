@@ -104,8 +104,10 @@ export default function TasksPage() {
         agent_tasks: (task.agent_tasks ?? []).map((assignment) => ({
           agent_id: assignment.agent_id,
           ai_agents: Array.isArray(assignment.ai_agents)
-            ? assignment.ai_agents[0] ?? null
-            : assignment.ai_agents ?? null,
+            ? assignment.ai_agents
+            : assignment.ai_agents
+              ? [assignment.ai_agents]
+              : [],
         })),
       }))
 
