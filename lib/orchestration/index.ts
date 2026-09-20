@@ -7,6 +7,7 @@ import type { ExecutionInput } from "../execution/engine.ts"
 export type OrchestrationDependencies = {
   getCurrentUser: () => Promise<{ id: string } | null>
   getOrganizationId: (userId: string) => Promise<string | null>
+  authorizeExecution: (userId: string, organizationId: string) => Promise<void>
   generateIntent: (requestText: string) => Promise<Intent>
   discoverAgents: (input: {
     organizationId: string
@@ -34,9 +35,10 @@ export type OrchestrationResult = {
 }
 
 async function defaultDependencies(): Promise<OrchestrationDependencies> {
-  const [{ createClient }, { generateIntent }, { discoverAgents }, { selectAgent }, { executeAgentTask }] =
+  const [{ createClient }, { authorizeConnectorExecution }, { generateIntent }, { discoverAgents }, { selectAgent }, { executeAgentTask }] =
     await Promise.all([
       import("../supabase/server.ts"),
+      import("../security/authorize-connector-execution.ts"),
       import("../intent/index.ts"),
       import("../discovery/index.ts"),
       import("../selection/index.ts"),
@@ -59,6 +61,14 @@ async function defaultDependencies(): Promise<OrchestrationDependencies> {
         .maybeSingle()
       if (error) throw error
       return data?.organization_id ?? null
+    },
+    authorizeExecution: async (userId, organizationId) => {
+      const supabase = await createClient()
+      await authorizeConnectorExecution({
+        supabase,
+        userId,
+        organizationId,
+      })
     },
     generateIntent,
     discoverAgents,
@@ -91,6 +101,8 @@ export async function orchestrateUserRequestWithDependencies(
   if (!organizationId) {
     throw new Error("No organization is associated with your account.")
   }
+
+  await dependencies.authorizeExecution(user.id, organizationId)
 
   const intent = await dependencies.generateIntent(requestText)
 
