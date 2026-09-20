@@ -14,7 +14,7 @@ test("intent engine transforms natural language into the expected structured res
           recipient: "Ali",
           document: "sales report",
         },
-        required_capabilities: ["send_email"],
+        required_capabilities: ["messages.send"],
       }
     },
   }
@@ -28,8 +28,34 @@ test("intent engine transforms natural language into the expected structured res
       recipient: "Ali",
       document: "sales report",
     },
-    required_capabilities: ["send_email"],
+    required_capabilities: ["messages.send"],
   })
+})
+
+test("intent engine transforms email requests to the canonical send capability", async () => {
+  const provider: LLMProvider = {
+    async generateStructured() {
+      return {
+        intent: "send_email",
+        action: "send_email",
+        parameters: {
+          recipient: "test@example.com",
+          message: "hello",
+        },
+        required_capabilities: ["messages.send"],
+      }
+    },
+  }
+
+  const intent = await generateIntent("Send an email to test@example.com saying hello.", provider)
+
+  assert.equal(intent.intent, "send_email")
+  assert.equal(intent.action, "send_email")
+  assert.deepEqual(intent.parameters, {
+    recipient: "test@example.com",
+    message: "hello",
+  })
+  assert.deepEqual(intent.required_capabilities, ["messages.send"])
 })
 
 test("intent engine rejects invalid input before calling Gemini", async () => {
@@ -65,6 +91,13 @@ test("intent validation requires required_capabilities", () => {
     parameters: { recipient: "Ali" },
     required_capabilities: [42],
   }))
+
+  assert.throws(() => validateIntent({
+    intent: "send_report",
+    action: "send_email",
+    parameters: { recipient: "Ali" },
+    required_capabilities: ["send_email"],
+  }))
 })
 
 test("intent validation rejects other malformed Gemini output", () => {
@@ -72,14 +105,14 @@ test("intent validation rejects other malformed Gemini output", () => {
     intent: "send_report",
     action: "send_email",
     parameters: { recipient: 42 },
-    required_capabilities: ["send_email"],
+    required_capabilities: ["messages.send"],
   }))
 
   assert.throws(() => validateIntent({
     intent: "send_report",
     action: "send_email",
     parameters: { recipient: "Ali" },
-    required_capabilities: ["send_email"],
+    required_capabilities: ["messages.send"],
     extra: true,
   }))
 
@@ -87,7 +120,7 @@ test("intent validation rejects other malformed Gemini output", () => {
     intent: "send_report",
     action: "send_email",
     parameters: { recipient: "Ali", document: "sales report" },
-    required_capabilities: ["send_email"],
+    required_capabilities: ["messages.send"],
   }))
 })
 
