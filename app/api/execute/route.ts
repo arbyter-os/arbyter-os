@@ -1,21 +1,47 @@
-import { NextResponse } from "next/server"
-import { executeUserRequest } from "@/lib/execution/vertical-slice"
+import { NextRequest, NextResponse } from "next/server"
+import { orchestrateUserRequest } from "@/lib/orchestration"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  let body: unknown
+
   try {
-    const body = await request.json()
-    const text = typeof body?.request === "string" ? body.request.trim() : ""
-    if (!text || text.length > 4000) {
-      return NextResponse.json({ error: "request must be a non-empty string of at most 4000 characters." }, { status: 400 })
-    }
+    body = await request.json()
+  } catch {
+    return NextResponse.json(
+      { error: "Malformed JSON request body." },
+      { status: 400 },
+    )
+  }
 
-    const result = await executeUserRequest(text)
-    return NextResponse.json(result, {
-      status: result.status === "awaiting_approval" ? 202 : result.status === "blocked" ? 403 : result.status === "failed" ? 502 : 200,
-    })
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json(
+      { error: "Request body must be a JSON object." },
+      { status: 400 },
+    )
+  }
+
+  const message = (body as { message?: unknown }).message
+
+  if (typeof message !== "string" || !message.trim()) {
+    return NextResponse.json(
+      { error: "message is required." },
+      { status: 400 },
+    )
+  }
+
+  try {
+    const result = await orchestrateUserRequest(message)
+    return NextResponse.json(result)
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Execution failed."
-    const status = message === "You must be signed in." ? 401 : message.startsWith("No agent") ? 404 : 500
-    return NextResponse.json({ error: message }, { status })
+    console.error("Execution orchestration error:", error)
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Execution orchestration failed.",
+      },
+      { status: 500 },
+    )
   }
 }
