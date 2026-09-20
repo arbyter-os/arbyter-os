@@ -26,7 +26,11 @@ export type OrchestrationResult = {
   execution: unknown | null
   executionId?: string
   latencyMs: number
-  status: "completed" | "no_compatible_agent" | "no_agent_selected"
+  status:
+    | "completed"
+    | "no_compatible_agent"
+    | "no_agent_selected"
+    | "unsupported_multiple_capabilities"
 }
 
 async function defaultDependencies(): Promise<OrchestrationDependencies> {
@@ -89,6 +93,19 @@ export async function orchestrateUserRequestWithDependencies(
   }
 
   const intent = await dependencies.generateIntent(requestText)
+
+  if (intent.required_capabilities.length !== 1) {
+    return {
+      intent,
+      candidates: [],
+      selectedAgent: null,
+      execution: null,
+      latencyMs: Date.now() - started,
+      status: "unsupported_multiple_capabilities",
+    }
+  }
+
+  const [requestedCapability] = intent.required_capabilities
   const candidates = await dependencies.discoverAgents({
     organizationId,
     requiredCapabilities: intent.required_capabilities,
@@ -125,6 +142,7 @@ export async function orchestrateUserRequestWithDependencies(
     organizationId,
     agentId: selectedAgent.agentId,
     agentConnectionId: selectedAgent.connectionId,
+    requestedCapability,
     data: intent.parameters,
   })
 
