@@ -6,6 +6,7 @@ export type Intent = {
   intent: string
   action: string
   parameters: Record<string, string>
+  required_capabilities: string[]
 }
 
 const intentSchema = {
@@ -14,8 +15,9 @@ const intentSchema = {
     intent: { type: "string" },
     action: { type: "string" },
     parameters: { type: "object", additionalProperties: true },
+    required_capabilities: { type: "array", items: { type: "string" } },
   },
-  required: ["intent", "action", "parameters"],
+  required: ["intent", "action", "parameters", "required_capabilities"],
   additionalProperties: false,
 } as const
 
@@ -32,6 +34,10 @@ export function validateIntent(value: unknown): asserts value is Intent {
       throw new Error("Gemini intent failed schema validation: parameters must be non-empty string key/value pairs.")
     }
   }
+
+  if (item.required_capabilities.some((capability) => !capability.trim())) {
+    throw new Error("Gemini intent failed schema validation: required_capabilities must contain only non-empty strings.")
+  }
 }
 
 export async function generateIntent(input: string, provider?: LLMProvider): Promise<Intent> {
@@ -44,10 +50,11 @@ export async function generateIntent(input: string, provider?: LLMProvider): Pro
     system: [
       "Convert the user's request into a single structured intent/action result.",
       "Return JSON only; do not return markdown, explanations, or extra fields.",
-      "The exact shape is {intent:string, action:string, parameters:object<string,string>}.",
+      "The exact shape is {intent:string, action:string, parameters:object<string,string>, required_capabilities:string[]}.",
       "Use parameters for information extracted from the user's request, such as recipient or document.",
-      "Example: 'Send the sales report to Ali' => {intent:'send_report', action:'send_email', parameters:{recipient:'Ali', document:'sales report'}}.",
-      "Do not invent values that are not present or reasonably implied by the user's request.",
+      "required_capabilities must list the capabilities an agent must have to fulfill the requested action.",
+      "Example: 'Send the sales report to Ali' => {intent:'send_report', action:'send_email', parameters:{recipient:'Ali', document:'sales report'}, required_capabilities:['send_email']}.",
+      "Do not invent values or capabilities that are not present or reasonably implied by the user's request.",
     ].join(" "),
     input: input.trim(),
   })
