@@ -28,16 +28,18 @@ export async function updateSession(request: NextRequest) {
     if (pathname.startsWith("/api/discovery/mcp")) rateLimitKey = `discovery:mcp:${user.id}`
     else if (pathname.startsWith("/api/discovery/run")) rateLimitKey = `discovery:run:${user.id}`
     else if (pathname.startsWith("/api/agents/verify")) rateLimitKey = `agents:verify:${user.id}`
+    else if (pathname === "/api/execute") rateLimitKey = `execute:${user.id}`
 
     if (rateLimitKey) {
-      const limit = checkRateLimit(rateLimitKey, 10, 60_000)
+      const limitValue = pathname === "/api/execute" ? 30 : 10
+      const limit = checkRateLimit(rateLimitKey, limitValue, 60_000)
       if (!limit.allowed) {
         return NextResponse.json(
           { error: "Rate limit exceeded. Please try again later." },
-          { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds), "X-RateLimit-Limit": "10", "X-RateLimit-Remaining": "0" } }
+          { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds), "X-RateLimit-Limit": String(limitValue), "X-RateLimit-Remaining": "0" } }
         )
       }
-      response.headers.set("X-RateLimit-Limit", "10")
+      response.headers.set("X-RateLimit-Limit", String(limitValue))
       response.headers.set("X-RateLimit-Remaining", String(limit.remaining))
     }
   }
