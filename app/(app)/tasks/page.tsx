@@ -99,7 +99,17 @@ export default function TasksPage() {
 
       if (agentError) throw agentError
 
-      setTasks((taskData ?? []) as Task[])
+      const normalizedTasks: Task[] = (taskData ?? []).map((task) => ({
+        ...task,
+        agent_tasks: (task.agent_tasks ?? []).map((assignment) => ({
+          agent_id: assignment.agent_id,
+          ai_agents: Array.isArray(assignment.ai_agents)
+            ? assignment.ai_agents[0] ?? null
+            : assignment.ai_agents ?? null,
+        })),
+      }))
+
+      setTasks(normalizedTasks)
       setAgents((agentData ?? []) as Agent[])
     } catch (err) {
       console.error('Failed to load tasks:', err)
