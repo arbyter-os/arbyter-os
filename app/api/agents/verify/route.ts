@@ -237,7 +237,7 @@ export async function POST(request: Request) {
         connection.endpoint_url,
       );
 
-      if (!endpointValidation.valid || !endpointValidation.url) {
+      if (!endpointValidation.valid) {
         const checkedAt = new Date().toISOString();
         const currentFailures = Number(
           connection.consecutive_failures || 0,
@@ -308,6 +308,10 @@ export async function POST(request: Request) {
           },
           { status: 400 },
         );
+      }
+
+      if (!endpointValidation.valid) {
+        throw new Error("Endpoint validation failed unexpectedly.");
       }
 
       const startedAt = Date.now();
@@ -538,10 +542,7 @@ export async function POST(request: Request) {
       connection.endpoint_url,
     );
 
-    if (
-      !endpointValidation.valid ||
-      !endpointValidation.url
-    ) {
+    if (!endpointValidation.valid) {
       const checkedAt = new Date().toISOString();
 
       const currentFailures = Number(
@@ -615,6 +616,10 @@ export async function POST(request: Request) {
         },
         { status: 400 },
       );
+    }
+
+    if (!endpointValidation.valid) {
+      throw new Error("Endpoint validation failed unexpectedly.");
     }
 
     const targetUrl = endpointValidation.url.toString();
