@@ -165,7 +165,7 @@ export async function fetchValidatedExternalUrl(
       path: `${url.pathname}${url.search}`,
       method,
       headers,
-      lookup,
+      lookup: lookup as any,
       servername: url.hostname,
       signal: init.signal ?? undefined,
     };
