@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { executeAgentTask } from "@/lib/execution/engine"
+import {
+  authorizeConnectorExecution,
+  isConnectorExecutionAuthorizationError,
+} from "@/lib/security/authorize-connector-execution"
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -29,6 +33,19 @@ export async function POST(request: Request) {
 
     if (!userRecord?.organization_id) {
       return NextResponse.json({ error: "No organization is associated with your account." }, { status: 403 })
+    }
+
+    try {
+      await authorizeConnectorExecution({
+        supabase,
+        userId: user.id,
+        organizationId: userRecord.organization_id,
+      })
+    } catch (error) {
+      if (isConnectorExecutionAuthorizationError(error)) {
+        return NextResponse.json({ error: error.message }, { status: 403 })
+      }
+      throw error
     }
 
     if (typeof body?.agentId !== "string" || !body.agentId) {
