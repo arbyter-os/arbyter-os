@@ -85,6 +85,7 @@ test("matching candidate is passed to execution", async () => {
     organizationId: "org-1",
     agentId: "agent-1",
     agentConnectionId: "connection-1",
+    requestedCapability: "messages.send",
     data: intent.parameters,
   })
 })
@@ -162,4 +163,33 @@ test("execution failure is surfaced", async () => {
     ),
     /connector failed/
   )
+})
+
+test("multiple required capabilities are rejected before discovery or execution", async () => {
+  let discovered = false
+  let executed = false
+  const multiCapabilityIntent: Intent = {
+    ...intent,
+    required_capabilities: ["messages.send", "messages.read"],
+  }
+
+  const result = await orchestrateUserRequestWithDependencies(
+    "Send and read messages.",
+    dependencies({
+      generateIntent: async () => multiCapabilityIntent,
+      discoverAgents: async () => {
+        discovered = true
+        return [candidate()]
+      },
+      executeAgentTask: async () => {
+        executed = true
+        return { success: true }
+      },
+    })
+  )
+
+  assert.equal(result.status, "unsupported_multiple_capabilities")
+  assert.equal(result.execution, null)
+  assert.equal(discovered, false)
+  assert.equal(executed, false)
 })
