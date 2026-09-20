@@ -1,7 +1,7 @@
-import { initializeConnectors } from "@/lib/connectors"
-import { getConnector } from "@/lib/connectors/registry"
-import type { ConnectorCapability } from "@/lib/connectors/types"
-import { createClient } from "@/lib/supabase/server"
+import { initializeConnectors } from "../connectors/index.ts"
+import { getConnector } from "../connectors/registry.ts"
+import type { ConnectorCapability } from "../connectors/types.ts"
+import { createClient } from "../supabase/server.ts"
 
 export type AgentDiscoveryResult = {
   agentId: string
