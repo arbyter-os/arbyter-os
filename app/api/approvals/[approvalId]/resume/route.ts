@@ -363,7 +363,7 @@ export async function POST(
     })
 
     if (execution.task_id) {
-      await supabase
+      const { error: taskError } = await supabase
         .from("tasks")
         .update({
           status: "completed",
@@ -371,6 +371,10 @@ export async function POST(
         })
         .eq("id", execution.task_id)
         .eq("organization_id", organizationId)
+
+      if (taskError) {
+        throw taskError
+      }
     }
 
     return NextResponse.json({

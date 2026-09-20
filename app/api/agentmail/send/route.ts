@@ -60,6 +60,36 @@ export async function POST(request: NextRequest) {
 
     const recipients = Array.isArray(to) ? to : [to];
 
+    if (
+      recipients.length === 0 ||
+      recipients.length > 100 ||
+      recipients.some(
+        (recipient) =>
+          typeof recipient !== "string" ||
+          recipient.trim().length === 0 ||
+          recipient.length > 320
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Provide between 1 and 100 valid recipient addresses." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      typeof subject !== "string" ||
+      typeof text !== "string" ||
+      subject.trim().length === 0 ||
+      text.trim().length === 0 ||
+      subject.length > 998 ||
+      text.length > 100_000
+    ) {
+      return NextResponse.json(
+        { error: "Subject or message content is invalid or too large." },
+        { status: 400 }
+      );
+    }
+
     const { data: connection, error: connectionError } =
       await supabase
         .from("agent_connections")

@@ -15,7 +15,7 @@ type Task = {
     ai_agents?: {
       id: string
       name: string
-    } | null
+    }[] | null
   }[]
 }
 
@@ -134,6 +134,11 @@ export default function TasksPage() {
       return
     }
 
+    if (!agents.some((agent) => agent.id === agentId)) {
+      setError('Select an agent from your organization.')
+      return
+    }
+
     setCreating(true)
 
     try {
@@ -181,7 +186,19 @@ export default function TasksPage() {
           agent_id: agentId,
         })
 
-      if (assignmentError) throw assignmentError
+      if (assignmentError) {
+        const { error: cleanupError } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', task.id)
+          .eq('organization_id', organizationId)
+
+        if (cleanupError) {
+          console.error('Failed to remove unassigned task:', cleanupError)
+        }
+
+        throw assignmentError
+      }
 
       setTitle('')
       setDescription('')
@@ -268,7 +285,7 @@ export default function TasksPage() {
   }
 
   function getAgent(task: Task) {
-    return task.agent_tasks?.[0]?.ai_agents?.name ?? 'Unassigned'
+    return task.agent_tasks?.[0]?.ai_agents?.[0]?.name ?? 'Unassigned'
   }
 
   function statusLabel(status: string) {
