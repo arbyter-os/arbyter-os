@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { executeAgentTask } from "@/lib/execution/engine"
+import { authorizeConnectorExecution, isConnectorExecutionAuthorizationError } from "@/lib/security/authorize-connector-execution"
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -46,6 +47,12 @@ export async function POST(request: Request) {
         { status: 403 }
       )
     }
+
+    await authorizeConnectorExecution({
+      supabase,
+      userId: user.id,
+      organizationId: userRecord.organization_id,
+    })
 
     const organizationId = userRecord.organization_id
 
@@ -182,6 +189,13 @@ export async function POST(request: Request) {
       audit: result.audit,
     })
   } catch (error) {
+    if (isConnectorExecutionAuthorizationError(error)) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 403 }
+      )
+    }
+
     console.error("Task execution failed:", error)
 
     return NextResponse.json(
