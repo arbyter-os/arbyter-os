@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { orchestrateUserRequest } from "@/lib/orchestration"
+import type { OrchestrationResult } from "@/lib/orchestration"
 
-export async function POST(request: NextRequest) {
+type Orchestrator = (message: string) => Promise<OrchestrationResult>
+
+export async function handleExecuteRequest(
+  request: Request,
+  orchestrate: Orchestrator = orchestrateUserRequest,
+) {
   let body: unknown
 
   try {
@@ -30,7 +36,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await orchestrateUserRequest(message)
+    const result = await orchestrate(message)
     return NextResponse.json(result)
   } catch (error) {
     console.error("Execution orchestration error:", error)
@@ -44,4 +50,8 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     )
   }
+}
+
+export async function POST(request: NextRequest) {
+  return handleExecuteRequest(request)
 }
