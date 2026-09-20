@@ -545,6 +545,10 @@ export async function POST(request: Request) {
         connection.consecutive_failures || 0,
       );
 
+      const validationError = endpointValidation.valid
+        ? "Endpoint validation failed."
+        : endpointValidation.error;
+
       await supabase
         .from("agent_health_checks")
         .insert({
@@ -555,7 +559,7 @@ export async function POST(request: Request) {
           latency_ms: 0,
           response_status: null,
           error_code: "INVALID_ENDPOINT",
-          error_message: endpointValidation.error,
+          error_message: validationError,
           details: {
             verification_stage: "endpoint_validation",
             provider: connection.provider,
@@ -594,7 +598,7 @@ export async function POST(request: Request) {
           agent_connection_id: connection.id,
           event_type: "connection_failed",
           status: "error",
-          message: endpointValidation.error,
+          message: validationError,
           metadata: {
             reason: "invalid_or_unsafe_endpoint",
             identity_verified: false,
@@ -605,7 +609,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message: endpointValidation.error,
+          message: validationError,
           connectionStatus: "error",
           healthStatus: "unhealthy",
           verified: false,
