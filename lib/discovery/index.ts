@@ -34,30 +34,12 @@ type DiscoveryRow = {
     | null
 }
 
-export async function discoverAgents({
-  organizationId,
-  requiredCapabilities,
-}: {
-  organizationId: string
+export function filterDiscoveryCandidates(
+  rows: DiscoveryRow[],
+  organizationId: string,
   requiredCapabilities: ConnectorCapability[]
-}): Promise<AgentDiscoveryResult[]> {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from("agent_connections")
-    .select(
-      "id, agent_id, provider, status, health_status, capabilities, ai_agents!inner(id, name, status, organization_id)"
-    )
-    .eq("organization_id", organizationId)
-    .eq("ai_agents.organization_id", organizationId)
-
-  if (error) {
-    throw error
-  }
-
-  initializeConnectors()
-
-  return ((data ?? []) as DiscoveryRow[])
+): AgentDiscoveryResult[] {
+  return rows
     .filter((connection) => {
       if (connection.status !== "connected") return false
       if (connection.health_status === "unhealthy") return false
@@ -101,4 +83,34 @@ export async function discoverAgents({
         capabilities,
       }
     })
+}
+
+export async function discoverAgents({
+  organizationId,
+  requiredCapabilities,
+}: {
+  organizationId: string
+  requiredCapabilities: ConnectorCapability[]
+}): Promise<AgentDiscoveryResult[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("agent_connections")
+    .select(
+      "id, agent_id, provider, status, health_status, capabilities, ai_agents!inner(id, name, status, organization_id)"
+    )
+    .eq("organization_id", organizationId)
+    .eq("ai_agents.organization_id", organizationId)
+
+  if (error) {
+    throw error
+  }
+
+  initializeConnectors()
+
+  return filterDiscoveryCandidates(
+    (data ?? []) as DiscoveryRow[],
+    organizationId,
+    requiredCapabilities
+  )
 }
