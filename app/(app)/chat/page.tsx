@@ -1,4 +1,4 @@
-='use client'
+'use client'
 
 import * as React from 'react'
 import { Mic, MicOff, X } from 'lucide-react'
@@ -68,7 +68,6 @@ export default function ChatPage() {
                 <X className="size-5" />
               </button>
             </div>
-
             <div className="relative z-10 flex flex-1 items-center justify-center">
               <div className={listening ? 'relative flex size-64 items-center justify-center md:size-80' : 'relative flex size-64 items-center justify-center md:size-80'}>
                 <span className={listening ? 'absolute size-64 animate-ping rounded-full border border-primary/20 md:size-80' : 'absolute size-64 rounded-full border border-primary/10 md:size-80'} />
