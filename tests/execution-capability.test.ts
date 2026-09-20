@@ -58,7 +58,3 @@ test("a requested capability unsupported by the connector is rejected", () => {
     /not supported by the connector/
   )
 })
-
-test("multiple required capabilities are rejected by orchestration", () => {
-  assert.equal(2, 2)
-})
