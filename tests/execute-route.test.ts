@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert"
 import { register } from "node:module"
 import { test } from "node:test"
 import type { OrchestrationResult } from "../lib/orchestration/index.ts"
+import { ConnectorExecutionAuthorizationError } from "../lib/security/authorize-connector-execution.ts"
 
 const result: OrchestrationResult = {
   intent: {
@@ -113,4 +114,15 @@ test("orchestration failure returns 500 with the error", async () => {
 
   assert.equal(response.status, 500)
   assert.deepEqual(await json(response), { error: "connector failed" })
+})
+
+test("execution authorization failure returns 403", async () => {
+  const response = await run(JSON.stringify({ message: "Send an email." }), async () => {
+    throw new ConnectorExecutionAuthorizationError()
+  })
+
+  assert.equal(response.status, 403)
+  assert.deepEqual(await json(response), {
+    error: "Only an owner or admin can execute connectors.",
+  })
 })
