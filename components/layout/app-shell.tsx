@@ -31,9 +31,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="relative flex items-center rounded-full border border-black/[0.08] bg-[#f5f5f7]/[0.88] p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[#f5f5f7]/[0.72]">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute left-1.5 top-1.5 h-11 w-11 rounded-full bg-[#1300BA] shadow-[0_2px_8px_rgba(19,0,186,0.18)] transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] sm:w-[104px]"
+            className="pointer-events-none absolute left-1.5 top-1.5 h-11 w-11 rounded-full bg-[#1300BA] shadow-[0_2px_8px_rgba(19,0,186,0.18)] transition-transform duration-[420ms] ease-[cubic-bezier(0.22,1,0.36,1)] [transform:translateX(calc(var(--active-index)*46px))] sm:w-[104px] sm:[transform:translateX(calc(var(--active-index)*104px))]"
             style={{
-              transform: `translateX(${items.findIndex(({ href }) => pathname === href || pathname.startsWith(`${href}/`)) * 46}px)`,
+              '--active-index': items.findIndex(({ href }) => pathname === href || pathname.startsWith(`${href}/`)),
             }}
           />
 
