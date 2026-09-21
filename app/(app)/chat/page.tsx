@@ -160,37 +160,6 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Floating navigation dock */}
-        <nav className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2">
-          <div className="flex items-center gap-0.5 rounded-full border border-black/[0.08] bg-[#f5f5f7]/[0.82] p-1.5 backdrop-blur-2xl">
-
-            <DockItem
-              icon={<LayoutDashboard size={18} />}
-              label="Overview"
-              href="/overview"
-            />
-
-            <DockItem
-              icon={<Search size={18} />}
-              label="Discovery"
-              href="/discovery"
-            />
-
-            <DockItem
-              icon={<MessageSquare size={18} />}
-              label="Chat"
-              href="/chat"
-              active
-            />
-
-            <DockItem
-              icon={<Settings size={18} />}
-              label="Settings"
-              href="/settings"
-            />
-
-          </div>
-        </nav>
       </section>
 
       {/* Voice overlay */}
