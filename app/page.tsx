@@ -476,6 +476,8 @@ function Intro({
     let audio: AudioContext | null = null;
 
     const eaten = new Set<number>();
+    let finalFadeStart = -1;
+    const FINAL_FADE_MS = 360;
 
     const resumeAudio = () => {
       try {
