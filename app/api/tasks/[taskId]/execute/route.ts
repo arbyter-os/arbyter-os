@@ -1,6 +1,33 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server"
+import { assertApiParam } from "@/lib/validation/api-schemas"
 import { createClient } from "@/lib/supabase/server"
 import { executeAgentTask } from "@/lib/execution/engine"
+import type { ConnectorCapability } from "@/lib/connectors/types"
+
+type TaskExecutionBody = {
+  taskId?: unknown
+  capability?: unknown
+  agentConnectionId?: unknown
+  environment?: unknown
+  country?: unknown
+  state?: unknown
+  jurisdiction?: unknown
+  sector?: unknown
+  data?: unknown
+}
+
+const CONNECTOR_CAPABILITIES: readonly ConnectorCapability[] = [
+  "messages.send",
+  "messages.read",
+  "messages.reply",
+]
+
+function isConnectorCapability(value: unknown): value is ConnectorCapability {
+  return typeof value === "string" && (CONNECTOR_CAPABILITIES as readonly string[]).includes(value)
+}
 
 type RouteContext = {
   params: Promise<{
@@ -34,6 +61,7 @@ export async function POST(
     }
 
     const { taskId } = await context.params
+    assertApiParam(taskId, "uuid", "taskId")
 
     if (!taskId) {
       return NextResponse.json(
@@ -44,9 +72,11 @@ export async function POST(
       )
     }
 
-    const body = await request.json().catch(
-      () => ({})
+    const body: TaskExecutionBody = await readJsonBody<TaskExecutionBody>(request).catch(
+      () => ({}) as TaskExecutionBody
     )
+
+    assertApiBody(body, "tasks:execute")
 
     const {
       data: userRecord,
@@ -98,6 +128,13 @@ export async function POST(
       )
     }
 
+    if (!isConnectorCapability(body.capability)) {
+      return NextResponse.json(
+        { error: "A valid connector capability is required." },
+        { status: 400 },
+      )
+    }
+
     const { data: assignment, error: assignmentError } =
       await supabase
         .from("agent_tasks")
@@ -124,6 +161,7 @@ export async function POST(
         userRecord.organization_id,
       agentId: assignment.agent_id,
       taskId,
+      requestedCapability: body.capability,
 
       agentConnectionId:
         typeof body?.agentConnectionId === "string"
@@ -159,7 +197,7 @@ export async function POST(
         body?.data &&
         typeof body.data === "object" &&
         !Array.isArray(body.data)
-          ? body.data
+          ? body.data as Record<string, unknown>
           : undefined,
     })
 
@@ -192,6 +230,8 @@ export async function POST(
       { status }
     )
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error(
       "Task execution failed:",
       error
@@ -199,10 +239,7 @@ export async function POST(
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Task execution failed.",
+        error: "Task execution failed.",
       },
       { status: 500 }
     )

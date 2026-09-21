@@ -1,6 +1,12 @@
+import { createHash } from "node:crypto"
+import { assertApiBody, assertApiHeader } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
+import { readJsonBody } from "@/lib/security/request-body";
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { executeAgentTask } from "@/lib/execution/engine"
+import { assertTaskAssignedToAgent } from "@/lib/execution/task-agent-authorization"
+import type { ConnectorCapability } from "@/lib/connectors/types"
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -15,7 +21,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 })
     }
 
-    const body = await request.json()
+    const body = await readJsonBody(request)
+    assertApiBody(body, "connectors:execute")
     const { data: userRecord, error: userError } = await supabase
       .from("users")
       .select("organization_id, role")
@@ -46,8 +53,94 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Task ID must be a string." }, { status: 400 })
     }
 
+    let idempotencyKey = ""
+    try {
+      const rawIdempotencyKey = request.headers.get("Idempotency-Key")
+      if (rawIdempotencyKey !== null) idempotencyKey = assertApiHeader(rawIdempotencyKey, "Idempotency-Key")
+    } catch {
+      return NextResponse.json({ error: "Invalid Idempotency-Key." }, { status: 400 })
+    }
+    if (!body.taskId && !idempotencyKey) {
+      return NextResponse.json({ error: "Idempotency-Key is required when taskId is omitted." }, { status: 400 })
+    }
     if (body.agentConnectionId !== undefined && typeof body.agentConnectionId !== "string") {
       return NextResponse.json({ error: "Agent connection ID must be a string." }, { status: 400 })
+    }
+
+    if (typeof body.capability !== "string" || !["messages.send", "messages.read", "messages.reply"].includes(body.capability)) {
+      return NextResponse.json({ error: "A valid connector capability is required." }, { status: 400 })
+    }
+
+    if (typeof body.taskId === "string") {
+      try {
+        await assertTaskAssignedToAgent(supabase, body.taskId, body.agentId)
+      } catch (error) {
+        console.error("Connector task-agent authorization failed:", error)
+        return NextResponse.json(
+          { error: "The requested task is not assigned to this agent." },
+          { status: 403 },
+        )
+      }
+    }
+
+    const admin = !body.taskId ? (await import("@/lib/supabase/admin")).createAdminClient() : null
+    const requestHash = !body.taskId
+      ? createHash("sha256").update(JSON.stringify({
+          agentId: body.agentId,
+          agentConnectionId: body.agentConnectionId ?? null,
+          capability: body.capability,
+          environment: body.environment ?? null,
+          country: body.country ?? null,
+          state: body.state ?? null,
+          jurisdiction: body.jurisdiction ?? null,
+          sector: body.sector ?? null,
+          data: body.data ?? null,
+        })).digest("hex")
+      : null
+
+    if (admin && requestHash) {
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      const { data: existing, error: existingError } = await admin
+        .from("connector_execution_idempotency")
+        .select("id, request_hash, execution_id, expires_at")
+        .eq("organization_id", userRecord.organization_id)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle()
+
+      if (existingError) throw existingError
+      if (existing && new Date(existing.expires_at).getTime() > Date.now()) {
+        if (existing.request_hash !== requestHash) {
+          return NextResponse.json({ error: "Idempotency-Key was already used for a different request." }, { status: 409 })
+        }
+        return NextResponse.json({
+          error: "This idempotent connector execution has already been accepted.",
+          executionId: existing.execution_id ?? undefined,
+        }, { status: 409 })
+      }
+
+      if (existing) {
+        await admin.from("connector_execution_idempotency")
+          .delete()
+          .eq("organization_id", userRecord.organization_id)
+          .eq("idempotency_key", idempotencyKey)
+          .lt("expires_at", new Date().toISOString())
+      }
+
+      const { error: reserveError } = await admin
+        .from("connector_execution_idempotency")
+        .insert({
+          organization_id: userRecord.organization_id,
+          idempotency_key: idempotencyKey,
+          request_hash: requestHash,
+          expires_at: expiresAt,
+        })
+
+      if (reserveError) {
+        if (reserveError.code === "23505") {
+          return NextResponse.json({ error: "This idempotent connector execution is already in progress." }, { status: 409 })
+        }
+        throw reserveError
+      }
     }
 
     const result = await executeAgentTask({
@@ -55,6 +148,7 @@ export async function POST(request: Request) {
       agentId: body.agentId,
       taskId: typeof body.taskId === "string" ? body.taskId : undefined,
       agentConnectionId: typeof body.agentConnectionId === "string" ? body.agentConnectionId : undefined,
+      requestedCapability: body.capability as ConnectorCapability,
       environment: typeof body.environment === "string" ? body.environment : undefined,
       country: typeof body.country === "string" ? body.country : undefined,
       state: typeof body.state === "string" ? body.state : undefined,
@@ -62,6 +156,18 @@ export async function POST(request: Request) {
       sector: typeof body.sector === "string" ? body.sector : undefined,
       data: body.data && typeof body.data === "object" && !Array.isArray(body.data) ? body.data : undefined,
     })
+
+    if (admin && requestHash && result.executionId) {
+      const { error: idempotencyUpdateError } = await admin
+        .from("connector_execution_idempotency")
+        .update({ execution_id: result.executionId })
+        .eq("organization_id", userRecord.organization_id)
+        .eq("idempotency_key", idempotencyKey)
+        .eq("request_hash", requestHash)
+      if (idempotencyUpdateError) {
+        console.error("Connector idempotency state update failed:", idempotencyUpdateError.message)
+      }
+    }
 
     const status = result.status === "awaiting_approval"
       ? 202
@@ -81,6 +187,8 @@ export async function POST(request: Request) {
       result: "result" in result ? result.result : undefined,
     }, { status })
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("Connector execution failed:", error)
     return NextResponse.json({ error: "Connector execution failed." }, { status: 500 })
   }

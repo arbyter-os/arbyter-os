@@ -1,36 +1,53 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { scanMCPServer } from "@/lib/discovery/scanners/mcp";
 import { processDiscoveryFinding } from "@/lib/discovery/process-finding";
+import { resolveMcpSourceAuthorization } from "@/lib/credentials/mcp";
 
-export async function runDiscoveryScan(scanId: string) {
+export async function runDiscoveryScan(scanId: string, organizationId: string) {
+  if (!organizationId) {
+    throw new Error("Discovery scan organization context is required.");
+  }
   const supabase = await createClient();
 
   const { data: scan, error: scanError } = await supabase
     .from("discovery_scans")
     .select("*")
     .eq("id", scanId)
+    .eq("organization_id", organizationId)
     .single();
 
   if (scanError || !scan) {
     throw new Error("Discovery scan not found.");
   }
 
-  await updateScan(supabase, scanId, {
+  await updateScan(supabase, scanId, organizationId, {
     status: "preparing",
     started_at: new Date().toISOString(),
     error_message: null,
   });
 
-  const { data: scanSources, error: sourcesError } = await supabase
+  // discovery_sources SELECT is owner/admin-only under RLS (it carries
+  // credential_reference and endpoint_url), but running a scan is a member
+  // action: app/api/discovery/run/route.ts already authorizes the caller
+  // against this exact scanId/organizationId (and scan.requested_by) before
+  // calling here. Use the service-role client for this one read, scoped
+  // defensively to both scan_id and organization_id even though RLS is
+  // bypassed, rather than widen the discovery_sources SELECT policy back to
+  // all members.
+  const admin = createAdminClient();
+  const { data: scanSources, error: sourcesError } = await admin
     .from("discovery_scan_sources")
     .select(`
       *,
       discovery_sources (*)
     `)
-    .eq("scan_id", scanId);
+    .eq("scan_id", scanId)
+    .eq("organization_id", organizationId);
 
   if (sourcesError) {
-    await failScan(supabase, scanId, sourcesError.message);
+    console.error("Discovery scan sources lookup failed:", sourcesError);
+    await failScan(supabase, scanId, organizationId, "Discovery sources could not be loaded.");
     throw sourcesError;
   }
 
@@ -50,18 +67,18 @@ export async function runDiscoveryScan(scanId: string) {
     }
 
     try {
-      await updateScanSource(supabase, scanSource.id, {
+      await updateScanSource(supabase, scanSource.id, organizationId, {
         status: "connecting",
         started_at: new Date().toISOString(),
         error_message: null,
       });
 
-      await updateScan(supabase, scanId, {
+      await updateScan(supabase, scanId, organizationId, {
         status: "connecting",
       });
 
       if (source.source_type !== "mcp") {
-        await updateScanSource(supabase, scanSource.id, {
+        await updateScanSource(supabase, scanSource.id, organizationId, {
           status: "skipped",
           completed_at: new Date().toISOString(),
           findings_count: 0,
@@ -76,23 +93,22 @@ export async function runDiscoveryScan(scanId: string) {
         throw new Error("MCP source does not have an endpoint URL.");
       }
 
-      await updateScanSource(supabase, scanSource.id, {
+      await updateScanSource(supabase, scanSource.id, organizationId, {
         status: "scanning",
       });
 
-      await updateScan(supabase, scanId, {
+      await updateScan(supabase, scanId, organizationId, {
         status: "scanning",
       });
 
       const headers: Record<string, string> = {};
+      const mcpAuthorization = await resolveMcpSourceAuthorization({
+        organizationId: scan.organization_id,
+        sourceId: source.id,
+      });
 
-      const configuration = source.configuration ?? {};
-
-      if (
-        typeof configuration.authorization === "string" &&
-        configuration.authorization.trim()
-      ) {
-        headers.Authorization = configuration.authorization.trim();
+      if (mcpAuthorization) {
+        headers.Authorization = mcpAuthorization;
       }
 
       const result = await scanMCPServer({
@@ -104,7 +120,7 @@ export async function runDiscoveryScan(scanId: string) {
         throw new Error(result.error ?? "MCP scan failed.");
       }
 
-      await updateScan(supabase, scanId, {
+      await updateScan(supabase, scanId, organizationId, {
         status: "analyzing",
       });
 
@@ -167,7 +183,7 @@ export async function runDiscoveryScan(scanId: string) {
         unknownSystems += 1;
       }
 
-      await updateScanSource(supabase, scanSource.id, {
+      await updateScanSource(supabase, scanSource.id, organizationId, {
         status: "completed",
         completed_at: new Date().toISOString(),
 
@@ -184,12 +200,11 @@ export async function runDiscoveryScan(scanId: string) {
     } catch (error) {
       hasErrors = true;
 
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unknown discovery error.";
+      // Full detail stays in server logs; the stored (user-visible) message is generic.
+      console.error("Discovery scan source failed:", error);
+      const message = "Discovery failed for this source.";
 
-      await updateScanSource(supabase, scanSource.id, {
+      await updateScanSource(supabase, scanSource.id, organizationId, {
         status: "failed",
         completed_at: new Date().toISOString(),
         findings_count: 0,
@@ -198,7 +213,7 @@ export async function runDiscoveryScan(scanId: string) {
     }
   }
 
-  await updateScan(supabase, scanId, {
+  await updateScan(supabase, scanId, organizationId, {
     status: hasErrors ? "partial" : "completed",
     completed_at: new Date().toISOString(),
 
@@ -226,12 +241,14 @@ export async function runDiscoveryScan(scanId: string) {
 async function updateScan(
   supabase: any,
   scanId: string,
+  organizationId: string,
   values: Record<string, unknown>
 ) {
   const { error } = await supabase
     .from("discovery_scans")
     .update(values)
-    .eq("id", scanId);
+    .eq("id", scanId)
+    .eq("organization_id", organizationId);
 
   if (error) {
     throw error;
@@ -241,21 +258,32 @@ async function updateScan(
 async function updateScanSource(
   supabase: any,
   scanSourceId: string,
+  organizationId: string,
   values: Record<string, unknown>
 ) {
+  const { data: scanSource, error: lookupError } = await supabase
+    .from("discovery_scan_sources")
+    .select("id, scan_id, discovery_scans!inner(organization_id)")
+    .eq("id", scanSourceId)
+    .eq("discovery_scans.organization_id", organizationId)
+    .maybeSingle();
+
+  if (lookupError) throw lookupError;
+  if (!scanSource) throw new Error("Discovery scan source not found.");
+
   const { error } = await supabase
     .from("discovery_scan_sources")
     .update(values)
-    .eq("id", scanSourceId);
+    .eq("id", scanSourceId)
+    .eq("scan_id", scanSource.scan_id);
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 }
 
 async function failScan(
   supabase: any,
   scanId: string,
+  organizationId: string,
   message: string
 ) {
   await supabase
@@ -265,5 +293,6 @@ async function failScan(
       completed_at: new Date().toISOString(),
       error_message: message,
     })
-    .eq("id", scanId);
+    .eq("id", scanId)
+    .eq("organization_id", organizationId);
 }

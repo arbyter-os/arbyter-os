@@ -145,10 +145,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to load approvals.",
+        error: "Failed to load approvals.",
       },
       { status: 500 }
     )

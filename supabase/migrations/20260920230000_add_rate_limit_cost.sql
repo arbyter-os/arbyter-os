@@ -1,0 +1,66 @@
+create or replace function public.check_rate_limit_cost(
+  p_key text,
+  p_cost integer,
+  p_limit integer,
+  p_window_seconds integer
+)
+returns table (
+  allowed boolean,
+  remaining integer,
+  retry_after_seconds integer
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  now_at timestamptz := clock_timestamp();
+  bucket_count integer;
+  bucket_reset_at timestamptz;
+begin
+  if p_key is null or length(p_key) = 0 or p_cost <= 0 or p_limit <= 0 or p_window_seconds <= 0 then
+    raise exception 'Invalid rate limit parameters';
+  end if;
+
+  if p_cost > p_limit then
+    raise exception 'Rate limit cost exceeds bucket limit';
+  end if;
+
+  insert into public.rate_limit_buckets (key, count, reset_at)
+  values (p_key, 0, now_at)
+  on conflict (key) do nothing;
+
+  select b.count, b.reset_at
+    into bucket_count, bucket_reset_at
+    from public.rate_limit_buckets b
+   where b.key = p_key
+   for update;
+
+  if bucket_reset_at <= now_at then
+    update public.rate_limit_buckets
+       set count = p_cost,
+           reset_at = now_at + make_interval(secs => p_window_seconds)
+     where key = p_key;
+
+    return query select true, greatest(0, p_limit - p_cost), 0;
+    return;
+  end if;
+
+  if bucket_count > p_limit - p_cost then
+    return query select false, greatest(0, p_limit - bucket_count),
+      greatest(1, ceil(extract(epoch from (bucket_reset_at - now_at)))::integer);
+    return;
+  end if;
+
+  update public.rate_limit_buckets
+     set count = bucket_count + p_cost
+   where key = p_key;
+
+  return query select true, greatest(0, p_limit - bucket_count - p_cost), 0;
+end;
+$$;
+
+revoke all on function public.check_rate_limit_cost(text, integer, integer, integer) from public;
+revoke all on function public.check_rate_limit_cost(text, integer, integer, integer) from anon;
+revoke all on function public.check_rate_limit_cost(text, integer, integer, integer) from authenticated;
+grant execute on function public.check_rate_limit_cost(text, integer, integer, integer) to service_role;

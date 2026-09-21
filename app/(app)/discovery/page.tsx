@@ -300,41 +300,35 @@ export default function DiscoveryPage() {
       }
 
       if (existing) {
-        const { error } = await supabase
-          .from("discovery_sources")
-          .update({
+        const response = await fetch('/api/discovery/sources', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceId: existing.id,
             name: mcpName.trim(),
-            provider: "MCP",
+            provider: 'MCP',
             environment: mcpEnvironment,
-            status: "pending",
-            access_mode: "read_only",
-            endpoint_url: mcpUrl.trim(),
+            endpointUrl: mcpUrl.trim(),
             configuration,
-          })
-          .eq("id", existing.id);
-
-        if (error) {
-          throw error;
-        }
+          }),
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result?.error || 'Could not update MCP server.')
       } else {
-        const { error } = await supabase
-          .from("discovery_sources")
-          .insert({
-            organization_id: organizationId,
+        const response = await fetch('/api/discovery/sources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceType: 'mcp',
             name: mcpName.trim(),
-            source_type: "mcp",
-            provider: "MCP",
+            provider: 'MCP',
             environment: mcpEnvironment,
-            status: "pending",
-            access_mode: "read_only",
-            endpoint_url: mcpUrl.trim(),
+            endpointUrl: mcpUrl.trim(),
             configuration,
-            created_by: user.id,
-          });
-
-        if (error) {
-          throw error;
-        }
+          }),
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result?.error || 'Could not save MCP server.')
       }
 
       setSelectedSources((current) =>
@@ -436,69 +430,38 @@ export default function DiscoveryPage() {
 
       for (const sourceType of selectedSources) {
         const existing = existingSources?.find(
-          (source) =>
-            source.source_type === sourceType &&
-            (sourceType !== "mcp" || Boolean(source.endpoint_url))
+          (source) => source.source_type === sourceType && (sourceType !== 'mcp' || Boolean(source.endpoint_url))
         );
-
         if (existing) {
           sourceIds.push(existing.id);
           continue;
         }
 
         const source = sources.find((item) => item.id === sourceType);
-
-        const { data: created, error: createError } = await supabase
-          .from("discovery_sources")
-          .insert({
-            organization_id: organizationId,
+        const response = await fetch('/api/discovery/sources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sourceType,
             name: source?.name ?? sourceType,
-            source_type: sourceType,
-            status: "pending",
-            access_mode: "read_only",
-            created_by: user.id,
-          })
-          .select("id")
-          .single();
-
-        if (createError) {
-          throw createError;
-        }
-
-        sourceIds.push(created.id);
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result?.error || 'Could not create discovery source.');
+        sourceIds.push(result.id);
       }
 
-      setMessage("Creating discovery scan...");
+      setMessage('Creating discovery scan...');
 
-      const { data: scan, error: scanError } = await supabase
-        .from("discovery_scans")
-        .insert({
-          organization_id: organizationId,
-          requested_by: user.id,
-          status: "queued",
-          sources_requested: selectedSources,
-        })
-        .select("id")
-        .single();
+      const scanResponse = await fetch('/api/discovery/scans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceIds, sourcesRequested: selectedSources }),
+      });
+      const scanResult = await scanResponse.json();
+      if (!scanResponse.ok) throw new Error(scanResult?.error || 'Could not create discovery scan.');
 
-      if (scanError) {
-        throw scanError;
-      }
-
-      const scanSources = sourceIds.map((sourceId) => ({
-        organization_id: organizationId,
-        scan_id: scan.id,
-        source_id: sourceId,
-        status: "queued",
-      }));
-
-      const { error: scanSourcesError } = await supabase
-        .from("discovery_scan_sources")
-        .insert(scanSources);
-
-      if (scanSourcesError) {
-        throw scanSourcesError;
-      }
+      const scanId = scanResult.id;
 
       setMessage("Discovery engine starting...");
 
@@ -508,7 +471,7 @@ export default function DiscoveryPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          scanId: scan.id,
+          scanId,
         }),
       });
 

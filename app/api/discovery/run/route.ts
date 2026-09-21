@@ -1,3 +1,6 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { runDiscoveryScan } from "@/lib/discovery/run-scan";
@@ -18,7 +21,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
+    const body = await readJsonBody(request)
+    assertApiBody(body, "discovery:run");
 
     const scanId =
       typeof body?.scanId === "string"
@@ -82,18 +86,17 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await runDiscoveryScan(scanId);
+    const result = await runDiscoveryScan(scanId, profile.organization_id);
 
     return NextResponse.json(result);
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("Discovery run error:", error);
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to run discovery scan.",
+        error: "Failed to run discovery scan.",
       },
       { status: 500 }
     );

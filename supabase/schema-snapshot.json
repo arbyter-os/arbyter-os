@@ -1,0 +1,3181 @@
+{
+  "columns": [
+    {
+      "column": "id",
+      "table": "agent_activity",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_activity",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_activity",
+      "type": "uuid"
+    },
+    {
+      "column": "task_id",
+      "table": "agent_activity",
+      "type": "uuid"
+    },
+    {
+      "column": "action",
+      "table": "agent_activity",
+      "type": "text"
+    },
+    {
+      "column": "description",
+      "table": "agent_activity",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "agent_activity",
+      "type": "text"
+    },
+    {
+      "column": "input_data",
+      "table": "agent_activity",
+      "type": "jsonb"
+    },
+    {
+      "column": "output_data",
+      "table": "agent_activity",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_activity",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_capabilities",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_capabilities",
+      "type": "uuid"
+    },
+    {
+      "column": "capability_key",
+      "table": "agent_capabilities",
+      "type": "text"
+    },
+    {
+      "column": "capability_name",
+      "table": "agent_capabilities",
+      "type": "text"
+    },
+    {
+      "column": "description",
+      "table": "agent_capabilities",
+      "type": "text"
+    },
+    {
+      "column": "risk_level",
+      "table": "agent_capabilities",
+      "type": "text"
+    },
+    {
+      "column": "allowed",
+      "table": "agent_capabilities",
+      "type": "boolean"
+    },
+    {
+      "column": "metadata",
+      "table": "agent_capabilities",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_capabilities",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_capabilities",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_connection_events",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_connection_events",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_connection_events",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_connection_events",
+      "type": "uuid"
+    },
+    {
+      "column": "event_type",
+      "table": "agent_connection_events",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "agent_connection_events",
+      "type": "text"
+    },
+    {
+      "column": "message",
+      "table": "agent_connection_events",
+      "type": "text"
+    },
+    {
+      "column": "metadata",
+      "table": "agent_connection_events",
+      "type": "jsonb"
+    },
+    {
+      "column": "occurred_at",
+      "table": "agent_connection_events",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_connection_events",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_connections",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_connections",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_connections",
+      "type": "uuid"
+    },
+    {
+      "column": "connection_type",
+      "table": "agent_connections",
+      "type": "text"
+    },
+    {
+      "column": "provider",
+      "table": "agent_connections",
+      "type": "text"
+    },
+    {
+      "column": "endpoint_url",
+      "table": "agent_connections",
+      "type": "text"
+    },
+    {
+      "column": "protocol_version",
+      "table": "agent_connections",
+      "type": "text"
+    },
+    {
+      "column": "environment",
+      "table": "agent_connections",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "agent_connections",
+      "type": "text"
+    },
+    {
+      "column": "capabilities",
+      "table": "agent_connections",
+      "type": "jsonb"
+    },
+    {
+      "column": "configuration",
+      "table": "agent_connections",
+      "type": "jsonb"
+    },
+    {
+      "column": "last_connected_at",
+      "table": "agent_connections",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "last_seen_at",
+      "table": "agent_connections",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_connections",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_connections",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "capability_schema",
+      "table": "agent_connections",
+      "type": "jsonb"
+    },
+    {
+      "column": "health_status",
+      "table": "agent_connections",
+      "type": "text"
+    },
+    {
+      "column": "last_health_check_at",
+      "table": "agent_connections",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "consecutive_failures",
+      "table": "agent_connections",
+      "type": "integer"
+    },
+    {
+      "column": "id",
+      "table": "agent_credentials",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_credentials",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_credentials",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "table": "agent_credentials",
+      "type": "text"
+    },
+    {
+      "column": "credential_type",
+      "table": "agent_credentials",
+      "type": "text"
+    },
+    {
+      "column": "secret_reference",
+      "table": "agent_credentials",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "agent_credentials",
+      "type": "text"
+    },
+    {
+      "column": "expires_at",
+      "table": "agent_credentials",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "last_rotated_at",
+      "table": "agent_credentials",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "metadata",
+      "table": "agent_credentials",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_credentials",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_credentials",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_decisions",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_decisions",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_decisions",
+      "type": "uuid"
+    },
+    {
+      "column": "task_id",
+      "table": "agent_decisions",
+      "type": "uuid"
+    },
+    {
+      "column": "decision",
+      "table": "agent_decisions",
+      "type": "text"
+    },
+    {
+      "column": "reasoning",
+      "table": "agent_decisions",
+      "type": "text"
+    },
+    {
+      "column": "risk_level",
+      "table": "agent_decisions",
+      "type": "text"
+    },
+    {
+      "column": "approved",
+      "table": "agent_decisions",
+      "type": "boolean"
+    },
+    {
+      "column": "approved_by",
+      "table": "agent_decisions",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_decisions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_deployments",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_deployments",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_deployments",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_version_id",
+      "table": "agent_deployments",
+      "type": "uuid"
+    },
+    {
+      "column": "environment",
+      "table": "agent_deployments",
+      "type": "text"
+    },
+    {
+      "column": "deployment_target",
+      "table": "agent_deployments",
+      "type": "text"
+    },
+    {
+      "column": "deployment_id",
+      "table": "agent_deployments",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "agent_deployments",
+      "type": "text"
+    },
+    {
+      "column": "initiated_by",
+      "table": "agent_deployments",
+      "type": "uuid"
+    },
+    {
+      "column": "started_at",
+      "table": "agent_deployments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "completed_at",
+      "table": "agent_deployments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "error_message",
+      "table": "agent_deployments",
+      "type": "text"
+    },
+    {
+      "column": "metadata",
+      "table": "agent_deployments",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_deployments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_endpoints",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_endpoints",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_endpoints",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "table": "agent_endpoints",
+      "type": "text"
+    },
+    {
+      "column": "endpoint_type",
+      "table": "agent_endpoints",
+      "type": "text"
+    },
+    {
+      "column": "url",
+      "table": "agent_endpoints",
+      "type": "text"
+    },
+    {
+      "column": "method",
+      "table": "agent_endpoints",
+      "type": "text"
+    },
+    {
+      "column": "enabled",
+      "table": "agent_endpoints",
+      "type": "boolean"
+    },
+    {
+      "column": "timeout_ms",
+      "table": "agent_endpoints",
+      "type": "integer"
+    },
+    {
+      "column": "configuration",
+      "table": "agent_endpoints",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_endpoints",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_endpoints",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_environments",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_environments",
+      "type": "uuid"
+    },
+    {
+      "column": "environment",
+      "table": "agent_environments",
+      "type": "text"
+    },
+    {
+      "column": "enabled",
+      "table": "agent_environments",
+      "type": "boolean"
+    },
+    {
+      "column": "approval_required",
+      "table": "agent_environments",
+      "type": "boolean"
+    },
+    {
+      "column": "max_risk_level",
+      "table": "agent_environments",
+      "type": "text"
+    },
+    {
+      "column": "configuration",
+      "table": "agent_environments",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_environments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_environments",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_events",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_events",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_events",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_events",
+      "type": "uuid"
+    },
+    {
+      "column": "execution_id",
+      "table": "agent_events",
+      "type": "uuid"
+    },
+    {
+      "column": "event_type",
+      "table": "agent_events",
+      "type": "text"
+    },
+    {
+      "column": "severity",
+      "table": "agent_events",
+      "type": "text"
+    },
+    {
+      "column": "message",
+      "table": "agent_events",
+      "type": "text"
+    },
+    {
+      "column": "payload",
+      "table": "agent_events",
+      "type": "jsonb"
+    },
+    {
+      "column": "occurred_at",
+      "table": "agent_events",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_events",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_executions",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_executions",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_executions",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_executions",
+      "type": "uuid"
+    },
+    {
+      "column": "execution_type",
+      "table": "agent_executions",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "agent_executions",
+      "type": "text"
+    },
+    {
+      "column": "input_data",
+      "table": "agent_executions",
+      "type": "jsonb"
+    },
+    {
+      "column": "output_data",
+      "table": "agent_executions",
+      "type": "jsonb"
+    },
+    {
+      "column": "risk_level",
+      "table": "agent_executions",
+      "type": "text"
+    },
+    {
+      "column": "started_at",
+      "table": "agent_executions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "completed_at",
+      "table": "agent_executions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "error_message",
+      "table": "agent_executions",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_executions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "conversation_id",
+      "table": "agent_executions",
+      "type": "uuid"
+    },
+    {
+      "column": "message_id",
+      "table": "agent_executions",
+      "type": "uuid"
+    },
+    {
+      "column": "intent",
+      "table": "agent_executions",
+      "type": "text"
+    },
+    {
+      "column": "selected_capability_id",
+      "table": "agent_executions",
+      "type": "uuid"
+    },
+    {
+      "column": "id",
+      "table": "agent_health_checks",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_health_checks",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_health_checks",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_health_checks",
+      "type": "uuid"
+    },
+    {
+      "column": "endpoint_id",
+      "table": "agent_health_checks",
+      "type": "uuid"
+    },
+    {
+      "column": "status",
+      "table": "agent_health_checks",
+      "type": "text"
+    },
+    {
+      "column": "latency_ms",
+      "table": "agent_health_checks",
+      "type": "integer"
+    },
+    {
+      "column": "response_status",
+      "table": "agent_health_checks",
+      "type": "integer"
+    },
+    {
+      "column": "error_code",
+      "table": "agent_health_checks",
+      "type": "text"
+    },
+    {
+      "column": "error_message",
+      "table": "agent_health_checks",
+      "type": "text"
+    },
+    {
+      "column": "details",
+      "table": "agent_health_checks",
+      "type": "jsonb"
+    },
+    {
+      "column": "checked_at",
+      "table": "agent_health_checks",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_identities",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_identities",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_identities",
+      "type": "uuid"
+    },
+    {
+      "column": "external_agent_id",
+      "table": "agent_identities",
+      "type": "text"
+    },
+    {
+      "column": "external_name",
+      "table": "agent_identities",
+      "type": "text"
+    },
+    {
+      "column": "provider",
+      "table": "agent_identities",
+      "type": "text"
+    },
+    {
+      "column": "version",
+      "table": "agent_identities",
+      "type": "text"
+    },
+    {
+      "column": "owner_id",
+      "table": "agent_identities",
+      "type": "uuid"
+    },
+    {
+      "column": "identity_metadata",
+      "table": "agent_identities",
+      "type": "jsonb"
+    },
+    {
+      "column": "verified",
+      "table": "agent_identities",
+      "type": "boolean"
+    },
+    {
+      "column": "verified_at",
+      "table": "agent_identities",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_identities",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_identities",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_permissions",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_permissions",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_permissions",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_tool_id",
+      "table": "agent_permissions",
+      "type": "uuid"
+    },
+    {
+      "column": "permission_key",
+      "table": "agent_permissions",
+      "type": "text"
+    },
+    {
+      "column": "permission_name",
+      "table": "agent_permissions",
+      "type": "text"
+    },
+    {
+      "column": "effect",
+      "table": "agent_permissions",
+      "type": "text"
+    },
+    {
+      "column": "risk_level",
+      "table": "agent_permissions",
+      "type": "text"
+    },
+    {
+      "column": "conditions",
+      "table": "agent_permissions",
+      "type": "jsonb"
+    },
+    {
+      "column": "enabled",
+      "table": "agent_permissions",
+      "type": "boolean"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_permissions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_permissions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_tools",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_tools",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_tools",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "table": "agent_tools",
+      "type": "text"
+    },
+    {
+      "column": "tool_type",
+      "table": "agent_tools",
+      "type": "text"
+    },
+    {
+      "column": "description",
+      "table": "agent_tools",
+      "type": "text"
+    },
+    {
+      "column": "endpoint_url",
+      "table": "agent_tools",
+      "type": "text"
+    },
+    {
+      "column": "enabled",
+      "table": "agent_tools",
+      "type": "boolean"
+    },
+    {
+      "column": "risk_level",
+      "table": "agent_tools",
+      "type": "text"
+    },
+    {
+      "column": "configuration",
+      "table": "agent_tools",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_tools",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_tools",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_versions",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_versions",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "agent_versions",
+      "type": "uuid"
+    },
+    {
+      "column": "version",
+      "table": "agent_versions",
+      "type": "text"
+    },
+    {
+      "column": "environment",
+      "table": "agent_versions",
+      "type": "text"
+    },
+    {
+      "column": "release_status",
+      "table": "agent_versions",
+      "type": "text"
+    },
+    {
+      "column": "release_notes",
+      "table": "agent_versions",
+      "type": "text"
+    },
+    {
+      "column": "configuration_snapshot",
+      "table": "agent_versions",
+      "type": "jsonb"
+    },
+    {
+      "column": "deployed_at",
+      "table": "agent_versions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "retired_at",
+      "table": "agent_versions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_versions",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "agent_webhooks",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "agent_webhooks",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "agent_webhooks",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "table": "agent_webhooks",
+      "type": "text"
+    },
+    {
+      "column": "event_type",
+      "table": "agent_webhooks",
+      "type": "text"
+    },
+    {
+      "column": "webhook_path",
+      "table": "agent_webhooks",
+      "type": "text"
+    },
+    {
+      "column": "secret_reference",
+      "table": "agent_webhooks",
+      "type": "text"
+    },
+    {
+      "column": "enabled",
+      "table": "agent_webhooks",
+      "type": "boolean"
+    },
+    {
+      "column": "verification_method",
+      "table": "agent_webhooks",
+      "type": "text"
+    },
+    {
+      "column": "last_received_at",
+      "table": "agent_webhooks",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "failure_count",
+      "table": "agent_webhooks",
+      "type": "integer"
+    },
+    {
+      "column": "configuration",
+      "table": "agent_webhooks",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "agent_webhooks",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "agent_webhooks",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "ai_agents",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "ai_agents",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "table": "ai_agents",
+      "type": "text"
+    },
+    {
+      "column": "description",
+      "table": "ai_agents",
+      "type": "text"
+    },
+    {
+      "column": "agent_type",
+      "table": "ai_agents",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "ai_agents",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "ai_agents",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "connector_request_logs",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "connector_request_logs",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_id",
+      "table": "connector_request_logs",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "connector_request_logs",
+      "type": "uuid"
+    },
+    {
+      "column": "endpoint_id",
+      "table": "connector_request_logs",
+      "type": "uuid"
+    },
+    {
+      "column": "execution_id",
+      "table": "connector_request_logs",
+      "type": "uuid"
+    },
+    {
+      "column": "request_method",
+      "table": "connector_request_logs",
+      "type": "text"
+    },
+    {
+      "column": "request_id",
+      "table": "connector_request_logs",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "connector_request_logs",
+      "type": "text"
+    },
+    {
+      "column": "response_status",
+      "table": "connector_request_logs",
+      "type": "integer"
+    },
+    {
+      "column": "latency_ms",
+      "table": "connector_request_logs",
+      "type": "integer"
+    },
+    {
+      "column": "error_code",
+      "table": "connector_request_logs",
+      "type": "text"
+    },
+    {
+      "column": "error_message",
+      "table": "connector_request_logs",
+      "type": "text"
+    },
+    {
+      "column": "request_metadata",
+      "table": "connector_request_logs",
+      "type": "jsonb"
+    },
+    {
+      "column": "response_metadata",
+      "table": "connector_request_logs",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "connector_request_logs",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "completed_at",
+      "table": "connector_request_logs",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "conversations",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "conversations",
+      "type": "uuid"
+    },
+    {
+      "column": "user_id",
+      "table": "conversations",
+      "type": "uuid"
+    },
+    {
+      "column": "title",
+      "table": "conversations",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "conversations",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "conversations",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "discovery_findings",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "discovery_findings",
+      "type": "uuid"
+    },
+    {
+      "column": "scan_id",
+      "table": "discovery_findings",
+      "type": "uuid"
+    },
+    {
+      "column": "source_id",
+      "table": "discovery_findings",
+      "type": "uuid"
+    },
+    {
+      "column": "fingerprint",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "name",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "description",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "classification",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "confidence",
+      "table": "discovery_findings",
+      "type": "numeric"
+    },
+    {
+      "column": "provider",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "framework",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "environment",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "endpoint",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "owner_name",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "owner_reference",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "identity_reference",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "tools",
+      "table": "discovery_findings",
+      "type": "jsonb"
+    },
+    {
+      "column": "capabilities",
+      "table": "discovery_findings",
+      "type": "jsonb"
+    },
+    {
+      "column": "data_access",
+      "table": "discovery_findings",
+      "type": "jsonb"
+    },
+    {
+      "column": "evidence",
+      "table": "discovery_findings",
+      "type": "jsonb"
+    },
+    {
+      "column": "raw_metadata",
+      "table": "discovery_findings",
+      "type": "jsonb"
+    },
+    {
+      "column": "duplicate_of",
+      "table": "discovery_findings",
+      "type": "uuid"
+    },
+    {
+      "column": "review_status",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "onboarding_status",
+      "table": "discovery_findings",
+      "type": "text"
+    },
+    {
+      "column": "onboarded_agent_id",
+      "table": "discovery_findings",
+      "type": "uuid"
+    },
+    {
+      "column": "discovered_at",
+      "table": "discovery_findings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "first_seen_at",
+      "table": "discovery_findings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "last_seen_at",
+      "table": "discovery_findings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "created_at",
+      "table": "discovery_findings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "discovery_findings",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "discovery_scan_sources",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "discovery_scan_sources",
+      "type": "uuid"
+    },
+    {
+      "column": "scan_id",
+      "table": "discovery_scan_sources",
+      "type": "uuid"
+    },
+    {
+      "column": "source_id",
+      "table": "discovery_scan_sources",
+      "type": "uuid"
+    },
+    {
+      "column": "status",
+      "table": "discovery_scan_sources",
+      "type": "text"
+    },
+    {
+      "column": "started_at",
+      "table": "discovery_scan_sources",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "completed_at",
+      "table": "discovery_scan_sources",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "findings_count",
+      "table": "discovery_scan_sources",
+      "type": "integer"
+    },
+    {
+      "column": "error_message",
+      "table": "discovery_scan_sources",
+      "type": "text"
+    },
+    {
+      "column": "metadata",
+      "table": "discovery_scan_sources",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "discovery_scan_sources",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "discovery_scans",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "discovery_scans",
+      "type": "uuid"
+    },
+    {
+      "column": "status",
+      "table": "discovery_scans",
+      "type": "text"
+    },
+    {
+      "column": "requested_by",
+      "table": "discovery_scans",
+      "type": "uuid"
+    },
+    {
+      "column": "started_at",
+      "table": "discovery_scans",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "completed_at",
+      "table": "discovery_scans",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "sources_requested",
+      "table": "discovery_scans",
+      "type": "jsonb"
+    },
+    {
+      "column": "total_findings",
+      "table": "discovery_scans",
+      "type": "integer"
+    },
+    {
+      "column": "confirmed_agents",
+      "table": "discovery_scans",
+      "type": "integer"
+    },
+    {
+      "column": "likely_agents",
+      "table": "discovery_scans",
+      "type": "integer"
+    },
+    {
+      "column": "ai_services",
+      "table": "discovery_scans",
+      "type": "integer"
+    },
+    {
+      "column": "unknown_systems",
+      "table": "discovery_scans",
+      "type": "integer"
+    },
+    {
+      "column": "error_message",
+      "table": "discovery_scans",
+      "type": "text"
+    },
+    {
+      "column": "metadata",
+      "table": "discovery_scans",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "discovery_scans",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "discovery_scans",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "discovery_sources",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "discovery_sources",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "source_type",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "provider",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "environment",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "status",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "access_mode",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "endpoint_url",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "credential_reference",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "configuration",
+      "table": "discovery_sources",
+      "type": "jsonb"
+    },
+    {
+      "column": "last_scan_at",
+      "table": "discovery_sources",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "last_error",
+      "table": "discovery_sources",
+      "type": "text"
+    },
+    {
+      "column": "created_by",
+      "table": "discovery_sources",
+      "type": "uuid"
+    },
+    {
+      "column": "created_at",
+      "table": "discovery_sources",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "updated_at",
+      "table": "discovery_sources",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "execution_steps",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "execution_steps",
+      "type": "uuid"
+    },
+    {
+      "column": "execution_id",
+      "table": "execution_steps",
+      "type": "uuid"
+    },
+    {
+      "column": "step_order",
+      "table": "execution_steps",
+      "type": "integer"
+    },
+    {
+      "column": "agent_id",
+      "table": "execution_steps",
+      "type": "uuid"
+    },
+    {
+      "column": "agent_connection_id",
+      "table": "execution_steps",
+      "type": "uuid"
+    },
+    {
+      "column": "capability_id",
+      "table": "execution_steps",
+      "type": "uuid"
+    },
+    {
+      "column": "step_type",
+      "table": "execution_steps",
+      "type": "text"
+    },
+    {
+      "column": "input_data",
+      "table": "execution_steps",
+      "type": "jsonb"
+    },
+    {
+      "column": "output_data",
+      "table": "execution_steps",
+      "type": "jsonb"
+    },
+    {
+      "column": "status",
+      "table": "execution_steps",
+      "type": "text"
+    },
+    {
+      "column": "error_message",
+      "table": "execution_steps",
+      "type": "text"
+    },
+    {
+      "column": "started_at",
+      "table": "execution_steps",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "completed_at",
+      "table": "execution_steps",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "created_at",
+      "table": "execution_steps",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "messages",
+      "type": "uuid"
+    },
+    {
+      "column": "conversation_id",
+      "table": "messages",
+      "type": "uuid"
+    },
+    {
+      "column": "role",
+      "table": "messages",
+      "type": "text"
+    },
+    {
+      "column": "content",
+      "table": "messages",
+      "type": "text"
+    },
+    {
+      "column": "metadata",
+      "table": "messages",
+      "type": "jsonb"
+    },
+    {
+      "column": "created_at",
+      "table": "messages",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "organizations",
+      "type": "uuid"
+    },
+    {
+      "column": "name",
+      "table": "organizations",
+      "type": "text"
+    },
+    {
+      "column": "slug",
+      "table": "organizations",
+      "type": "text"
+    },
+    {
+      "column": "plan",
+      "table": "organizations",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "organizations",
+      "type": "timestamp with time zone"
+    },
+    {
+      "column": "id",
+      "table": "users",
+      "type": "uuid"
+    },
+    {
+      "column": "organization_id",
+      "table": "users",
+      "type": "uuid"
+    },
+    {
+      "column": "email",
+      "table": "users",
+      "type": "text"
+    },
+    {
+      "column": "full_name",
+      "table": "users",
+      "type": "text"
+    },
+    {
+      "column": "role",
+      "table": "users",
+      "type": "text"
+    },
+    {
+      "column": "created_at",
+      "table": "users",
+      "type": "timestamp with time zone"
+    }
+  ],
+  "functions": [
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.get_user_organization_id()\n RETURNS uuid\n LANGUAGE sql\n STABLE SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\r\n SELECT organization_id\r\n FROM public.users\r\n WHERE id = auth.uid()\r\n LIMIT 1;\r\n$function$\n",
+      "name": "get_user_organization_id"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.handle_new_user()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\r\ndeclare\r\n new_org_id uuid;\r\n company_name text;\r\n company_slug text;\r\nbegin\r\n company_name := coalesce(\r\n new.raw_user_meta_data->>'company_name',\r\n split_part(new.email, '@', 1) || '''s Organization'\r\n );\r\n\r\n company_slug := lower(\r\n regexp_replace(company_name, '[^a-zA-Z0-9]+', '-', 'g')\r\n );\r\n\r\n company_slug := trim(both '-' from company_slug);\r\n\r\n -- Make the slug unique\r\n company_slug := company_slug || '-' || substring(new.id::text from 1 for 8);\r\n\r\n -- Create organization\r\n insert into public.organizations (\r\n name,\r\n slug,\r\n plan\r\n )\r\n values (\r\n company_name,\r\n company_slug,\r\n 'starter'\r\n )\r\n returning id into new_org_id;\r\n\r\n -- Create Arbyter user\r\n insert into public.users (\r\n id,\r\n organization_id,\r\n email,\r\n full_name,\r\n role\r\n )\r\n values (\r\n new.id,\r\n new_org_id,\r\n new.email,\r\n coalesce(new.raw_user_meta_data->>'full_name', ''),\r\n 'owner'\r\n );\r\n\r\n return new;\r\nend;\r\n$function$\n",
+      "name": "handle_new_user"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.rls_auto_enable()\n RETURNS event_trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog'\nAS $function$\nDECLARE\n cmd record;\nBEGIN\n FOR cmd IN\n SELECT *\n FROM pg_event_trigger_ddl_commands()\n WHERE command_tag IN ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO')\n AND object_type IN ('table','partitioned table')\n LOOP\n IF cmd.schema_name IS NOT NULL AND cmd.schema_name IN ('public') AND cmd.schema_name NOT IN ('pg_catalog','information_schema') AND cmd.schema_name NOT LIKE 'pg_toast%' AND cmd.schema_name NOT LIKE 'pg_temp%' THEN\n BEGIN\n EXECUTE format('alter table if exists %s enable row level security', cmd.object_identity);\n RAISE LOG 'rls_auto_enable: enabled RLS on %', cmd.object_identity;\n EXCEPTION\n WHEN OTHERS THEN\n RAISE LOG 'rls_auto_enable: failed to enable RLS on %', cmd.object_identity;\n END;\n ELSE\n RAISE LOG 'rls_auto_enable: skip % (either system schema or not in enforced list: %.)', cmd.object_identity, cmd.schema_name;\n END IF;\n END LOOP;\nEND;\n$function$\n",
+      "name": "rls_auto_enable"
+    },
+    {
+      "definition": "CREATE OR REPLACE FUNCTION public.set_discovery_updated_at()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog', 'public'\nAS $function$\nbegin\n new.updated_at = now();\n return new;\nend;\n$function$\n",
+      "name": "set_discovery_updated_at"
+    }
+  ],
+  "grants": [
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_activity"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_activity"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_capabilities"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_capabilities"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_connection_events"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_connection_events"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_connections"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_connections"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_credentials"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_credentials"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_decisions"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_decisions"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_deployments"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_deployments"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_endpoints"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_endpoints"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_environments"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_environments"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_events"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_events"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_executions"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_executions"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_health_checks"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_health_checks"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_identities"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_identities"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_permissions"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_permissions"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_tools"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_tools"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_versions"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_versions"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_webhooks"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "agent_webhooks"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "ai_agents"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "ai_agents"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "connector_request_logs"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "connector_request_logs"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "conversations"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "conversations"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "discovery_findings"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "discovery_findings"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "discovery_scan_sources"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "discovery_scan_sources"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "discovery_scans"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "discovery_scans"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "discovery_sources"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "discovery_sources"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "execution_steps"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "execution_steps"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "messages"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "messages"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "organizations"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "organizations"
+    },
+    {
+      "grantee": "anon",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "users"
+    },
+    {
+      "grantee": "authenticated",
+      "privs": "DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE",
+      "table": "users"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent activity",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_activity",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view organization agent activity",
+      "roles": [
+        "public"
+      ],
+      "schema": "public",
+      "table": "agent_activity",
+      "using": "(organization_id IN ( SELECT users.organization_id\n FROM users\n WHERE (users.id = auth.uid())))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent capabilities",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_capabilities",
+      "using": null,
+      "with_check": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_capabilities.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent capabilities",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_capabilities",
+      "using": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_capabilities.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent capabilities",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_capabilities",
+      "using": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_capabilities.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))",
+      "with_check": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_capabilities.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent capabilities",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_capabilities",
+      "using": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_capabilities.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent connection events",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_connection_events",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent connection events",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_connection_events",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent connections",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_connections",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent connections",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_connections",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent connections",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_connections",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent connections",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_connections",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent credentials",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_credentials",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent credentials",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_credentials",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent credentials",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_credentials",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent credentials",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_credentials",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent decisions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_decisions",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent decisions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_decisions",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view organization agent decisions",
+      "roles": [
+        "public"
+      ],
+      "schema": "public",
+      "table": "agent_decisions",
+      "using": "(organization_id IN ( SELECT users.organization_id\n FROM users\n WHERE (users.id = auth.uid())))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent deployments",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_deployments",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent deployments",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_deployments",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent deployments",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_deployments",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent endpoints",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_endpoints",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent endpoints",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_endpoints",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent endpoints",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_endpoints",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent endpoints",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_endpoints",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent environments",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_environments",
+      "using": null,
+      "with_check": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_environments.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent environments",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_environments",
+      "using": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_environments.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent environments",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_environments",
+      "using": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_environments.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))",
+      "with_check": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_environments.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent environments",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_environments",
+      "using": "(EXISTS ( SELECT 1\n FROM (agent_connections ac\n JOIN users u ON ((u.organization_id = ac.organization_id)))\n WHERE ((ac.id = agent_environments.agent_connection_id) AND (u.id = ( SELECT auth.uid() AS uid)))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent events",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_events",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent events",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_events",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent executions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_executions",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent executions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_executions",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent executions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_executions",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent health checks",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_health_checks",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent health checks",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_health_checks",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent identities",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_identities",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent identities",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_identities",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent identities",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_identities",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent identities",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_identities",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent permissions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_permissions",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent permissions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_permissions",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent permissions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_permissions",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent permissions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_permissions",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent tools",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_tools",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent tools",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_tools",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent tools",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_tools",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent tools",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_tools",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent versions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_versions",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent versions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_versions",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent versions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_versions",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent versions",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_versions",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization agent webhooks",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_webhooks",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization agent webhooks",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_webhooks",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization agent webhooks",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_webhooks",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization agent webhooks",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "agent_webhooks",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create agents in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "ai_agents",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete agents in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "ai_agents",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view organization agents",
+      "roles": [
+        "public"
+      ],
+      "schema": "public",
+      "table": "ai_agents",
+      "using": "(organization_id IN ( SELECT users.organization_id\n FROM users\n WHERE (users.id = auth.uid())))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization connector request logs",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "connector_request_logs",
+      "using": null,
+      "with_check": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization connector request logs",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "connector_request_logs",
+      "using": "(organization_id = ( SELECT users.organization_id\n FROM users\n WHERE (users.id = ( SELECT auth.uid() AS uid))))",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization conversations",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "conversations",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization conversations",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "conversations",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization conversations",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "conversations",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view organization conversations",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "conversations",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create discovery findings in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_findings",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete discovery findings in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_findings",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update discovery findings in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_findings",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view discovery findings in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_findings",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create discovery scan sources in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_scan_sources",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete discovery scan sources in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_scan_sources",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update discovery scan sources in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_scan_sources",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view discovery scan sources in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_scan_sources",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create discovery scans in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_scans",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete discovery scans in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_scans",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update discovery scans in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_scans",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view discovery scans in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_scans",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create discovery sources in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_sources",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete discovery sources in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_sources",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update discovery sources in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_sources",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view discovery sources in their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "discovery_sources",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization execution steps",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "execution_steps",
+      "using": null,
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization execution steps",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "execution_steps",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": "(organization_id = get_user_organization_id())"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view organization execution steps",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "execution_steps",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    },
+    {
+      "cmd": "INSERT",
+      "policy": "Users can create organization messages",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "messages",
+      "using": null,
+      "with_check": "(EXISTS ( SELECT 1\n FROM conversations c\n WHERE ((c.id = messages.conversation_id) AND (c.organization_id = get_user_organization_id()))))"
+    },
+    {
+      "cmd": "DELETE",
+      "policy": "Users can delete organization messages",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "messages",
+      "using": "(EXISTS ( SELECT 1\n FROM conversations c\n WHERE ((c.id = messages.conversation_id) AND (c.organization_id = get_user_organization_id()))))",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "policy": "Users can update organization messages",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "messages",
+      "using": "(EXISTS ( SELECT 1\n FROM conversations c\n WHERE ((c.id = messages.conversation_id) AND (c.organization_id = get_user_organization_id()))))",
+      "with_check": "(EXISTS ( SELECT 1\n FROM conversations c\n WHERE ((c.id = messages.conversation_id) AND (c.organization_id = get_user_organization_id()))))"
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view organization messages",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "messages",
+      "using": "(EXISTS ( SELECT 1\n FROM conversations c\n WHERE ((c.id = messages.conversation_id) AND (c.organization_id = get_user_organization_id()))))",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view their organization",
+      "roles": [
+        "public"
+      ],
+      "schema": "public",
+      "table": "organizations",
+      "using": "(id IN ( SELECT users.organization_id\n FROM users\n WHERE (users.id = auth.uid())))",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "policy": "Users can view members of their organization",
+      "roles": [
+        "authenticated"
+      ],
+      "schema": "public",
+      "table": "users",
+      "using": "(organization_id = get_user_organization_id())",
+      "with_check": null
+    }
+  ],
+  "rls_status": [
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_activity"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_capabilities"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_connection_events"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_connections"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_credentials"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_decisions"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_deployments"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_endpoints"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_environments"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_events"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_executions"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_health_checks"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_identities"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_permissions"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_tools"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_versions"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "agent_webhooks"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "ai_agents"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "connector_request_logs"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "conversations"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "discovery_findings"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "discovery_scan_sources"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "discovery_scans"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "discovery_sources"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "execution_steps"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "messages"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "organizations"
+    },
+    {
+      "rls_forced": false,
+      "rls_on": true,
+      "table": "users"
+    }
+  ],
+  "triggers": [
+    {
+      "definition": "CREATE TRIGGER discovery_findings_updated_at BEFORE UPDATE ON public.discovery_findings FOR EACH ROW EXECUTE FUNCTION set_discovery_updated_at()",
+      "table": "discovery_findings",
+      "trigger": "discovery_findings_updated_at"
+    },
+    {
+      "definition": "CREATE TRIGGER discovery_scans_updated_at BEFORE UPDATE ON public.discovery_scans FOR EACH ROW EXECUTE FUNCTION set_discovery_updated_at()",
+      "table": "discovery_scans",
+      "trigger": "discovery_scans_updated_at"
+    },
+    {
+      "definition": "CREATE TRIGGER discovery_sources_updated_at BEFORE UPDATE ON public.discovery_sources FOR EACH ROW EXECUTE FUNCTION set_discovery_updated_at()",
+      "table": "discovery_sources",
+      "trigger": "discovery_sources_updated_at"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 type ProcessFindingInput = {
   organizationId: string;
@@ -65,7 +65,7 @@ function calculateClassification(input: ProcessFindingInput) {
 export async function processDiscoveryFinding(
   input: ProcessFindingInput
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const {
     classification,
