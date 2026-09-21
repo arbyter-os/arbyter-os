@@ -1,9 +1,23 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { validateExternalUrl } from "@/lib/security/validate-external-url";
+import {
+  fetchValidatedExternalUrl,
+  validateExternalUrl,
+} from "@/lib/security/validate-external-url";
 import { scanMCPServer } from "@/lib/discovery/scanners/mcp";
 
 const VERIFY_TIMEOUT_MS = 8000;
+
+// Internal (database) failures are logged in full server-side and reported to the
+// client with a fixed, generic sentence. Never interpolate error.message into a response.
+function failMessage(summary: string, cause: unknown): string {
+  console.error(`Agent verification: ${summary}:`, cause);
+  return `${summary}.`;
+}
 
 async function validateEndpoint(rawUrl: string) {
   return validateExternalUrl(rawUrl, {
@@ -34,7 +48,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
+    const body = await readJsonBody(request)
+    assertApiBody(body, "agents:verify");
 
     const agentId =
       typeof body?.agentId === "string"
@@ -56,7 +71,7 @@ export async function POST(request: Request) {
       error: userRecordError,
     } = await supabase
       .from("users")
-      .select("organization_id")
+      .select("organization_id, role")
       .eq("id", user.id)
       .single();
 
@@ -65,6 +80,21 @@ export async function POST(request: Request) {
         {
           success: false,
           message: "Could not resolve your organization.",
+        },
+        { status: 403 },
+      );
+    }
+
+    // Verification mutates agent_connections (status/health) and
+    // agent_identities (verified), both of which are owner/admin-only under
+    // the hardened RLS policies. Authorize here so a member gets an explicit
+    // 403 instead of a 500 from a zero-row update, and so no outbound probe is
+    // issued on behalf of a caller who could not persist the result anyway.
+    if (userRecord.role !== "owner" && userRecord.role !== "admin") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Only an owner or admin can verify agent connections.",
         },
         { status: 403 },
       );
@@ -126,7 +156,7 @@ export async function POST(request: Request) {
         {
           success: false,
           message:
-            `Could not load the agent connection: ${connectionError.message}`,
+            failMessage("Could not load the agent connection", connectionError),
         },
         { status: 500 },
       );
@@ -156,7 +186,7 @@ export async function POST(request: Request) {
       const message =
         "Webhook connections cannot be verified with an outbound GET request. Configure the webhook receiver and validate an incoming signed event instead.";
 
-      await supabase
+      await createAdminClient()
         .from("agent_connection_events")
         .insert({
           organization_id: organizationId,
@@ -193,7 +223,7 @@ export async function POST(request: Request) {
       const message =
         "SDK connections require an SDK/runtime handshake or telemetry signal. An HTTP endpoint probe is not a valid SDK verification method.";
 
-      await supabase
+      await createAdminClient()
         .from("agent_connection_events")
         .insert({
           organization_id: organizationId,
@@ -244,7 +274,7 @@ export async function POST(request: Request) {
         );
         const message = endpointValidation.error;
 
-        await supabase.from("agent_health_checks").insert({
+        await createAdminClient().from("agent_health_checks").insert({
           organization_id: organizationId,
           agent_id: agentId,
           agent_connection_id: connection.id,
@@ -283,7 +313,7 @@ export async function POST(request: Request) {
           .eq("agent_id", agentId)
           .eq("organization_id", organizationId);
 
-        await supabase.from("agent_connection_events").insert({
+        await createAdminClient().from("agent_connection_events").insert({
           organization_id: organizationId,
           agent_id: agentId,
           agent_connection_id: connection.id,
@@ -330,7 +360,7 @@ export async function POST(request: Request) {
       const {
         data: healthCheck,
         error: healthCheckError,
-      } = await supabase
+      } = await createAdminClient()
         .from("agent_health_checks")
         .insert({
           organization_id: organizationId,
@@ -364,7 +394,7 @@ export async function POST(request: Request) {
           {
             success: false,
             message:
-              `The MCP server was checked, but the health result could not be recorded: ${healthCheckError.message}`,
+              failMessage("The MCP server was checked, but the health result could not be recorded", healthCheckError),
           },
           { status: 500 },
         );
@@ -399,7 +429,7 @@ export async function POST(request: Request) {
           {
             success: false,
             message:
-              `MCP health check succeeded, but the connection state could not be updated: ${updateConnectionError.message}`,
+              failMessage("MCP health check succeeded, but the connection state could not be updated", updateConnectionError),
             healthCheck,
           },
           { status: 500 },
@@ -418,7 +448,7 @@ export async function POST(request: Request) {
           {
             success: false,
             message:
-              `MCP verification completed, but the agent identity could not be checked: ${identityLookupError.message}`,
+              failMessage("MCP verification completed, but the agent identity could not be checked", identityLookupError),
             healthCheck,
             connection: updatedConnection,
           },
@@ -454,7 +484,7 @@ export async function POST(request: Request) {
           {
             success: false,
             message:
-              `MCP verification completed, but agent verification could not be recorded: ${identityError.message}`,
+              failMessage("MCP verification completed, but agent verification could not be recorded", identityError),
             healthCheck,
             connection: updatedConnection,
           },
@@ -462,7 +492,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const { error: eventError } = await supabase
+      const { error: eventError } = await createAdminClient()
         .from("agent_connection_events")
         .insert({
           organization_id: organizationId,
@@ -491,7 +521,7 @@ export async function POST(request: Request) {
           {
             success: false,
             message:
-              `MCP verification completed, but the connection event could not be recorded: ${eventError.message}`,
+              failMessage("MCP verification completed, but the connection event could not be recorded", eventError),
             healthCheck,
             connection: updatedConnection,
             verified: isHealthy,
@@ -546,7 +576,7 @@ export async function POST(request: Request) {
         connection.consecutive_failures || 0,
       );
 
-      await supabase
+      await createAdminClient()
         .from("agent_health_checks")
         .insert({
           organization_id: organizationId,
@@ -587,7 +617,7 @@ export async function POST(request: Request) {
         .eq("agent_id", agentId)
         .eq("organization_id", organizationId);
 
-      await supabase
+      await createAdminClient()
         .from("agent_connection_events")
         .insert({
           organization_id: organizationId,
@@ -637,7 +667,7 @@ export async function POST(request: Request) {
       );
 
       try {
-        response = await fetch(targetUrl, {
+        response = await fetchValidatedExternalUrl(endpointValidation, {
           method: "GET",
           redirect: "manual",
           signal: controller.signal,
@@ -677,7 +707,7 @@ export async function POST(request: Request) {
           `Endpoint did not respond within ${VERIFY_TIMEOUT_MS}ms.`;
       } else if (error instanceof Error) {
         errorCode = "CONNECTION_FAILED";
-        errorMessage = error.message;
+        errorMessage = "The endpoint could not be reached.";
       } else {
         errorCode = "CONNECTION_FAILED";
         errorMessage =
@@ -704,7 +734,7 @@ export async function POST(request: Request) {
     const {
       data: healthCheck,
       error: healthCheckError,
-    } = await supabase
+    } = await createAdminClient()
       .from("agent_health_checks")
       .insert({
         organization_id: organizationId,
@@ -735,7 +765,7 @@ export async function POST(request: Request) {
         {
           success: false,
           message:
-            `The endpoint was checked, but the health result could not be recorded: ${healthCheckError.message}`,
+            failMessage("The endpoint was checked, but the health result could not be recorded", healthCheckError),
         },
         { status: 500 },
       );
@@ -770,7 +800,7 @@ export async function POST(request: Request) {
         {
           success: false,
           message:
-            `Health check succeeded, but the connection state could not be updated: ${updateConnectionError.message}`,
+            failMessage("Health check succeeded, but the connection state could not be updated", updateConnectionError),
           healthCheck,
         },
         { status: 500 },
@@ -792,7 +822,7 @@ export async function POST(request: Request) {
         {
           success: false,
           message:
-            `Connection verification completed, but the agent identity could not be checked: ${identityLookupError.message}`,
+            failMessage("Connection verification completed, but the agent identity could not be checked", identityLookupError),
           healthCheck,
           connection: updatedConnection,
         },
@@ -831,7 +861,7 @@ export async function POST(request: Request) {
         {
           success: false,
           message:
-            `Connection verification completed, but agent verification could not be recorded: ${identityError.message}`,
+            failMessage("Connection verification completed, but agent verification could not be recorded", identityError),
           healthCheck,
           connection: updatedConnection,
         },
@@ -839,7 +869,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { error: eventError } = await supabase
+    const { error: eventError } = await createAdminClient()
       .from("agent_connection_events")
       .insert({
         organization_id: organizationId,
@@ -869,7 +899,7 @@ export async function POST(request: Request) {
         {
           success: false,
           message:
-            `Verification completed, but the connection event could not be recorded: ${eventError.message}`,
+            failMessage("Verification completed, but the connection event could not be recorded", eventError),
           healthCheck,
           connection: updatedConnection,
           verified: isHealthy,
@@ -906,15 +936,14 @@ export async function POST(request: Request) {
           "Endpoint verification failed.",
     });
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("Agent verification error:", error);
 
     return NextResponse.json(
       {
         success: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "An unexpected verification error occurred.",
+        message: "An unexpected verification error occurred.",
       },
       { status: 500 },
     );

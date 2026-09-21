@@ -1,6 +1,10 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { evaluateGovernance } from "@/lib/governance"
+import { authorizeGovernanceResources } from "@/lib/governance/authorization"
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -22,7 +26,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = await request.json()
+    const body = await readJsonBody(request)
+    assertApiBody(body, "governance:evaluate")
 
     const {
       data: userRecord,
@@ -49,6 +54,38 @@ export async function POST(request: Request) {
 
     const organizationId =
       userRecord.organization_id
+
+    const requestedResourceIds = {
+      agentId:
+        typeof body?.agentId === "string"
+          ? body.agentId
+          : undefined,
+      taskId:
+        typeof body?.taskId === "string"
+          ? body.taskId
+          : undefined,
+      executionId:
+        typeof body?.executionId === "string"
+          ? body.executionId
+          : undefined,
+      agentConnectionId:
+        typeof body?.agentConnectionId === "string"
+          ? body.agentConnectionId
+          : undefined,
+    }
+
+    const resourcesAuthorized = await authorizeGovernanceResources(
+      supabase,
+      organizationId,
+      requestedResourceIds
+    )
+
+    if (!resourcesAuthorized) {
+      return NextResponse.json(
+        { error: "The requested governance resource is not authorized." },
+        { status: 403 }
+      )
+    }
 
     const context = {
       action:
@@ -150,6 +187,8 @@ export async function POST(request: Request) {
         result.audit,
     })
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error(
       "Governance evaluation failed:",
       error
@@ -157,10 +196,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Governance evaluation failed.",
+        error: "Governance evaluation failed.",
       },
       { status: 500 }
     )

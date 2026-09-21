@@ -1,3 +1,6 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -49,7 +52,9 @@ export async function POST(request: Request) {
     }
 
     const organizationId = profile.organization_id
-    const body = (await request.json()) as CredentialRequest
+    const rawBody = await readJsonBody(request)
+    assertApiBody(rawBody, "agents:credentials")
+    const body = rawBody as CredentialRequest
 
     const agentConnectionId = body.agentConnectionId?.trim()
     const name = body.name?.trim()
@@ -174,6 +179,8 @@ export async function POST(request: Request) {
       { status: 201 }
     )
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("Credential endpoint error:", error)
 
     return NextResponse.json(

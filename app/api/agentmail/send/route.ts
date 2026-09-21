@@ -1,7 +1,10 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { executeConnectorAction } from "@/lib/connectors/runtime";
-import { resolveConnectionCredential } from "@/lib/credentials/runtime";
+import { executeAgentTask } from "@/lib/execution/engine";
+import { checkRateLimitCost } from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,7 +49,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const body = await readJsonBody(request);
+    assertApiBody(body, "agentmail:send");
     const { to, subject, text } = body ?? {};
 
     if (!to || !subject || !text) {
@@ -87,6 +91,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Subject or message content is invalid or too large." },
         { status: 400 }
+      );
+    }
+
+    try {
+      const recipientLimit = await checkRateLimitCost(
+        `agentmail:recipients:${user.id}`,
+        recipients.length,
+        100,
+        60_000,
+      );
+      if (!recipientLimit.allowed) {
+        return NextResponse.json(
+          { error: "AgentMail recipient rate limit exceeded. Please try again later." },
+          {
+            status: 429,
+            headers: {
+              "Retry-After": String(recipientLimit.retryAfterSeconds),
+              "X-RateLimit-Limit": "100",
+              "X-RateLimit-Remaining": "0",
+            },
+          },
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { error: "Rate limiting is temporarily unavailable. Please try again later." },
+        { status: 503 },
       );
     }
 
@@ -135,48 +166,53 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const credential = await resolveConnectionCredential({
+    const result = await executeAgentTask({
       organizationId: userRecord.organization_id,
-      connectionId: connection.id,
-    });
-
-    if (!credential) {
-      return NextResponse.json(
-        { error: "No active AgentMail credential is configured." },
-        { status: 409 }
-      );
-    }
-
-    const result = await executeConnectorAction(
-      connection.provider,
-      {
-        action: "messages.send",
-        payload: {
-          to: recipients,
-          subject,
-          text,
-        },
+      agentId: connection.agent_id,
+      agentConnectionId: connection.id,
+      requestedCapability: "messages.send",
+      data: {
+        to: recipients,
+        subject,
+        text,
       },
-      {
-        connectionId: connection.id,
-        agentId: connection.agent_id,
-        organizationId: userRecord.organization_id,
-        credential,
-      }
-    );
+    })
 
     if (!result.success) {
+      const status = result.status === "awaiting_approval"
+        ? 202
+        : result.status === "blocked"
+          ? 403
+          : result.status === "flagged"
+            ? 202
+            : 502
       return NextResponse.json(
-        { error: result.error ?? "AgentMail execution failed." },
-        { status: 502 }
+        {
+          success: false,
+          executionId: result.executionId,
+          status: result.status,
+          governance: result.governance,
+          approval: "approval" in result ? result.approval : undefined,
+          error: result.status === "awaiting_approval"
+            ? "AgentMail send requires approval before it can execute."
+            : result.status === "blocked"
+              ? "AgentMail send was blocked by governance."
+              : "AgentMail execution failed.",
+        },
+        { status }
       );
     }
 
     return NextResponse.json({
       success: true,
-      data: result.data ?? null,
+      executionId: result.executionId,
+      status: result.status,
+      governance: result.governance,
+      result: result.result ?? null,
     });
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("AgentMail integration error:", error);
 
     return NextResponse.json(

@@ -1,309 +1,131 @@
 'use client'
 
-import { useState } from 'react'
+import * as React from 'react'
+import { Mic, MicOff, X } from 'lucide-react'
 import Image from 'next/image'
-import {
-  ArrowUp,
-  Mic,
-  MicOff,
-  Plus,
-  LayoutDashboard,
-  Search,
-  MessageSquare,
-  Settings,
-  Sparkles,
-  X,
-} from 'lucide-react'
 
 const BLUE = '#1300BA'
 
 export default function ChatPage() {
-  const [message, setMessage] = useState('')
-  const [listening, setListening] = useState(false)
-  const [voiceOpen, setVoiceOpen] = useState(false)
-
-  const sendMessage = () => {
-    if (!message.trim()) return
-    setMessage('')
-  }
+  const [voiceOpen, setVoiceOpen] = React.useState(false)
+  const [listening, setListening] = React.useState(false)
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f8f9fc] text-[#111]">
-      <style jsx global>{`
-        @keyframes voiceRing {
-          0% { transform: scale(.72); opacity: .62; }
-          70% { transform: scale(1.22); opacity: 0; }
-          100% { transform: scale(1.22); opacity: 0; }
-        }
-        @keyframes voiceCore {
-          0%, 100% { transform: scale(.96); }
-          50% { transform: scale(1.04); }
-        }
-        @keyframes voiceGlow {
-          0%, 100% { transform: scale(.82); opacity: .10; }
-          50% { transform: scale(1.15); opacity: .24; }
-        }
-      `}</style>
-
-      {/* Ambient background */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-[18%] h-[420px] w-[420px] -translate-x-1/2 rounded-full opacity-[0.055] blur-3xl"
-        style={{ background: BLUE }}
-      />
-
-      {/* Main chat area */}
-      <section className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-5 pb-40 pt-12 sm:px-8">
-
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-black/40">AI Workforce</p>
-            <h1 className="mt-1 text-xl font-semibold tracking-[-0.03em]">
-              Chat with Arbyter
-            </h1>
-          </div>
-
-          <div
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-black/[0.07] bg-white/75 shadow-[0_4px_20px_rgba(0,0,0,0.06)] backdrop-blur-xl"
-          >
-            <Sparkles size={16} style={{ color: BLUE }} />
-          </div>
-        </div>
-
-        {/* Empty state */}
-        <div className="flex flex-1 flex-col items-center justify-center pb-10">
-
-          <div
-            className="mb-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-white/80 shadow-[0_12px_45px_rgba(0,0,0,0.08)] backdrop-blur-xl"
-          >
-            <Image
-              src="/arbyter-logo.svg"
-              alt="Arbyter"
-              width={38}
-              height={38}
-              priority
-            />
-          </div>
-
-          <h2 className="text-center text-[clamp(30px,5vw,48px)] font-semibold tracking-[-0.055em]">
+    <main className="relative flex min-h-[calc(100vh-2rem)] flex-col overflow-hidden">
+      <div className="flex flex-1 items-center justify-center px-4 py-10 md:px-8">
+        <div className="w-full max-w-3xl text-center">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+            Arbyter
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
             What do you want Arbyter to do?
-          </h2>
-
-          <p className="mt-3 max-w-md text-center text-sm leading-6 text-black/45">
+          </h1>
+          <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground md:text-base">
             Talk to your AI workforce through one interface.
-            Ask Arbyter to find agents, perform actions, review risks,
-            or change how your workforce operates.
           </p>
 
-          {/* Suggested actions */}
-          <div className="mt-8 flex flex-wrap justify-center gap-2">
-            {[
-              'Find an agent',
-              'Review workforce',
-              'Check risks',
-            ].map((item) => (
-              <button
-                key={item}
-                onClick={() => setMessage(item)}
-                className="rounded-full border border-black/[0.07] bg-white/70 px-4 py-2 text-xs font-medium text-black/60 shadow-[0_4px_18px_rgba(0,0,0,0.04)] backdrop-blur-xl transition hover:bg-white"
-              >
-                {item}
-              </button>
-            ))}
+          <div className="mx-auto mt-10 flex max-w-2xl items-center gap-3 rounded-[1.5rem] border border-white/80 bg-white/72 p-2 shadow-[0_18px_55px_rgba(32,38,75,.10)] backdrop-blur-2xl">
+            <div className="flex h-12 flex-1 items-center px-4 text-left text-sm text-muted-foreground">
+              Ask Arbyter anything…
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setVoiceOpen(true)
+                setListening(true)
+              }}
+              aria-label="Speak to Arbyter"
+              className="liquid-glass-press flex size-12 shrink-0 items-center justify-center rounded-full border border-white/80 bg-white/75 text-foreground shadow-sm transition hover:text-primary"
+            >
+              <Mic className="size-5" />
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Composer */}
-        <div className="fixed bottom-[92px] left-1/2 z-30 w-[calc(100%-32px)] max-w-3xl -translate-x-1/2">
-          <div className="rounded-[25px] border border-white/80 bg-white/[0.78] p-2 shadow-[0_18px_60px_rgba(0,0,0,0.12)] backdrop-blur-2xl">
+      {voiceOpen ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/20 p-4 backdrop-blur-md">
+          <div className="absolute inset-0" onClick={() => setVoiceOpen(false)} aria-hidden="true" />
 
-            <div className="flex items-end gap-2">
+          <section className="relative flex min-h-[min(720px,88vh)] w-full max-w-3xl flex-col items-center justify-between overflow-hidden rounded-[2rem] border border-white/85 bg-white/[.78] p-6 shadow-[0_30px_100px_rgba(20,25,55,.22)] backdrop-blur-3xl md:p-10">
+            <div className="absolute inset-0 -z-0 bg-[radial-gradient(circle_at_50%_42%,rgba(19,0,186,.12),transparent_30%),radial-gradient(circle_at_15%_90%,rgba(90,150,255,.10),transparent_30%)]" />
+
+            <div className="relative z-10 flex w-full items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[.24em] text-primary">
+                  Arbyter
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Voice mode
+                </p>
+              </div>
               <button
-                className="mb-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[17px] text-black/45 transition hover:bg-black/[0.04] hover:text-black"
-                aria-label="Add"
+                type="button"
+                onClick={() => setVoiceOpen(false)}
+                aria-label="Close voice mode"
+                className="flex size-11 items-center justify-center rounded-full border border-white/80 bg-white/65 text-muted-foreground shadow-sm backdrop-blur-xl transition hover:text-foreground"
               >
-                <Plus size={20} />
-              </button>
-
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    sendMessage()
-                  }
-                }}
-                rows={1}
-                placeholder="Ask Arbyter anything..."
-                className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-1 py-3 text-[15px] outline-none placeholder:text-black/35"
-              />
-
-              <button
-                onClick={() => {
-                  setVoiceOpen(true)
-                  setListening(true)
-                }}
-                className="mb-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[17px] text-black/45 transition hover:bg-black/[0.04] hover:text-black"
-                aria-label="Voice"
-              >
-                <Mic size={19} />
-              </button>
-
-              <button
-                onClick={sendMessage}
-                disabled={!message.trim()}
-                className="mb-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[17px] transition disabled:opacity-25"
-                style={{
-                  background: message.trim() ? BLUE : 'rgba(0,0,0,0.06)',
-                  color: message.trim() ? 'white' : 'rgba(0,0,0,0.4)',
-                }}
-                aria-label="Send"
-              >
-                <ArrowUp size={19} strokeWidth={2.5} />
+                <X className="size-5" />
               </button>
             </div>
-          </div>
-        </div>
+            <div className="relative z-10 flex flex-1 items-center justify-center">
+              <div className={listening ? 'relative flex size-64 items-center justify-center md:size-80' : 'relative flex size-64 items-center justify-center md:size-80'}>
+                <span className={listening ? 'absolute size-64 animate-ping rounded-full border border-primary/20 md:size-80' : 'absolute size-64 rounded-full border border-primary/10 md:size-80'} />
+                <span className={listening ? 'absolute size-48 animate-[pulse_2s_ease-in-out_infinite] rounded-full bg-primary/[.06] blur-xl md:size-60' : 'absolute size-48 rounded-full bg-primary/[.04] blur-xl md:size-60'} />
+                <span className="absolute size-40 rounded-full border border-white/90 bg-white/[.62] shadow-[0_25px_70px_rgba(19,0,186,.12)] backdrop-blur-2xl md:size-52" />
 
-        {/* Floating navigation dock */}
-        <nav className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2">
-          <div className="flex items-center gap-1 rounded-[23px] border border-white/80 bg-white/[0.78] p-1.5 shadow-[0_14px_50px_rgba(0,0,0,0.14)] backdrop-blur-2xl">
-
-            <DockItem
-              icon={<LayoutDashboard size={18} />}
-              label="Overview"
-              href="/overview"
-            />
-
-            <DockItem
-              icon={<Search size={18} />}
-              label="Discovery"
-              href="/discovery"
-            />
-
-            <DockItem
-              icon={<MessageSquare size={18} />}
-              label="Chat"
-              href="/chat"
-              active
-            />
-
-            <DockItem
-              icon={<Settings size={18} />}
-              label="Settings"
-              href="/settings"
-            />
-
-          </div>
-        </nav>
-      </section>
-
-      {/* Voice overlay */}
-      {voiceOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 px-5 backdrop-blur-md">
-          <div className="relative w-full max-w-md rounded-[32px] border border-white/80 bg-white/[0.80] p-8 text-center shadow-[0_30px_100px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
-
-            <button
-              onClick={() => {
-                setVoiceOpen(false)
-                setListening(false)
-              }}
-              className="absolute right-5 top-5 flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.04] text-black/45 hover:bg-black/[0.07]"
-            >
-              <X size={17} />
-            </button>
-
-            <div className="mb-8 flex justify-center">
-              <div className="relative flex h-32 w-32 items-center justify-center">
-                {listening && (
-                  <>
-                    <div
-                      className="absolute h-28 w-28 rounded-full bg-[#1300BA] blur-xl animate-[voiceGlow_2.4s_ease-in-out_infinite]"
-                    />
-                    <div
-                      className="absolute h-28 w-28 rounded-full border border-[#1300BA]/20 bg-[#1300BA]/[0.025] shadow-[inset_0_0_20px_rgba(255,255,255,0.9),0_0_30px_rgba(19,0,186,0.08)] backdrop-blur-xl animate-[voiceRing_2.4s_ease-out_infinite]"
-                    />
-                    <div
-                      className="absolute h-24 w-24 rounded-full border border-[#1300BA]/25 bg-[#1300BA]/[0.04] shadow-[inset_0_0_16px_rgba(255,255,255,0.95),0_0_24px_rgba(19,0,186,0.1)] backdrop-blur-xl animate-[voiceRing_2.4s_ease-out_0.8s_infinite]"
-                    />
-                    <div
-                      className="absolute h-20 w-20 rounded-full border border-[#1300BA]/30 bg-white/25 shadow-[0_0_22px_rgba(19,0,186,0.12)] backdrop-blur-md animate-[voiceCore_1.8s_ease-in-out_infinite]"
-                    />
-                  </>
-                )}
-
-                <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-white/65 shadow-[0_8px_28px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl">
+                <div className={listening ? 'relative z-10 h-28 w-32 animate-[pulse_1.8s_ease-in-out_infinite] md:h-36 md:w-40' : 'relative z-10 h-28 w-32 md:h-36 md:w-40'}>
                   <Image
                     src="/arbyter-logo.svg"
                     alt="Arbyter"
-                    width={52}
-                    height={52}
+                    fill
+                    sizes="160px"
+                    className="object-contain drop-shadow-[0_14px_30px_rgba(19,0,186,.14)]"
                     priority
                   />
+                </div>
+
+                <div className="absolute bottom-7 z-20 flex items-end gap-1.5 md:bottom-9">
+                  {[18, 30, 44, 24, 38, 52, 26, 40, 20].map((height, index) => (
+                    <span
+                      key={index}
+                      className={listening ? 'w-1 rounded-full bg-primary/65 animate-[voicebar_900ms_ease-in-out_infinite]' : 'w-1 rounded-full bg-primary/30'}
+                      style={{ height, animationDelay: `${index * 80}ms` }}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
 
-            <h3 className="text-2xl font-semibold tracking-[-0.04em]">
-              {listening ? 'Listening...' : 'Ready'}
-            </h3>
+            <div className="relative z-10 flex flex-col items-center gap-5">
+              <div className="text-center">
+                <p className="text-lg font-medium tracking-tight text-foreground">
+                  {listening ? 'Listening…' : 'Ready'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Demo only · voice connection is not wired yet
+                </p>
+              </div>
 
-            <p className="mt-2 text-sm text-black/45">
-              Tell Arbyter what you want your AI workforce to do.
-            </p>
-
-            <div className="mt-8 flex items-center justify-center gap-3">
               <button
-                onClick={() => setListening(!listening)}
-                className="flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg"
-                style={{ background: BLUE }}
+                type="button"
+                onClick={() => setListening((value) => !value)}
+                className="liquid-glass-press flex size-16 items-center justify-center rounded-full border border-white/90 bg-white/[.82] text-foreground shadow-[0_18px_45px_rgba(32,38,75,.14)] backdrop-blur-2xl transition hover:text-primary"
+                aria-label={listening ? 'Stop listening' : 'Start listening'}
               >
-                {listening ? <MicOff size={21} /> : <Mic size={21} />}
+                {listening ? <MicOff className="size-6" /> : <Mic className="size-6" />}
               </button>
             </div>
-
-            <p className="mt-5 text-[11px] text-black/30">
-              Voice interaction
-            </p>
-          </div>
+          </section>
         </div>
-      )}
+      ) : null}
+
+      <style jsx global>{`
+        @keyframes voicebar {
+          0%, 100% { transform: scaleY(.45); opacity: .45; }
+          50% { transform: scaleY(1.25); opacity: 1; }
+        }
+      `}</style>
     </main>
-  )
-}
-
-function DockItem({
-  icon,
-  label,
-  href,
-  active = false,
-}: {
-  icon: React.ReactNode
-  label: string
-  href: string
-  active?: boolean
-}) {
-  return (
-    <a
-      href={href}
-      aria-label={label}
-      className={`group flex h-11 items-center gap-2 rounded-[17px] px-3 transition-all ${
-        active
-          ? 'text-white shadow-[0_5px_18px_rgba(19,0,186,0.22)]'
-          : 'text-black/45 hover:bg-black/[0.04] hover:text-black/75'
-      }`}
-      style={active ? { background: BLUE } : undefined}
-    >
-      {icon}
-
-      <span
-        className={`hidden text-xs font-medium sm:block ${
-          active ? 'text-white' : ''
-        }`}
-      >
-        {label}
-      </span>
-    </a>
   )
 }

@@ -1,3 +1,4 @@
+import { fetchValidatedExternalUrl, validateExternalUrl } from '../security/validate-external-url'
 import type { ProviderRoute } from './provider-router'
 import type {
   OrchestrationRequest,
@@ -48,7 +49,20 @@ async function executeApi(
     }
   }
 
-  const response = await fetch(route.endpointUrl, {
+  const endpointValidation = await validateExternalUrl(route.endpointUrl, {
+    protocols: ['https:'],
+  })
+
+  if (!endpointValidation.valid) {
+    return {
+      success: false,
+      status: 'failed',
+      provider: 'api',
+      error: endpointValidation.error,
+    }
+  }
+
+  const response = await fetchValidatedExternalUrl(endpointValidation, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -101,7 +115,20 @@ async function executeWebhook(
     }
   }
 
-  const response = await fetch(route.endpointUrl, {
+  const endpointValidation = await validateExternalUrl(route.endpointUrl, {
+    protocols: ['https:'],
+  })
+
+  if (!endpointValidation.valid) {
+    return {
+      success: false,
+      status: 'failed',
+      provider: 'webhook',
+      error: endpointValidation.error,
+    }
+  }
+
+  const response = await fetchValidatedExternalUrl(endpointValidation, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

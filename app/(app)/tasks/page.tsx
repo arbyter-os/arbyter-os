@@ -176,41 +176,18 @@ export default function TasksPage() {
 
       const organizationId = userRecord.organization_id
 
-      const { data: task, error: taskError } = await supabase
-        .from('tasks')
-        .insert({
-          organization_id: organizationId,
+      const response = await fetch('/api/tasks/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,
-          status: 'pending',
           priority,
-          created_by: user.id,
-        })
-        .select('id')
-        .single()
-
-      if (taskError) throw taskError
-
-      const { error: assignmentError } = await supabase
-        .from('agent_tasks')
-        .insert({
-          task_id: task.id,
-          agent_id: agentId,
-        })
-
-      if (assignmentError) {
-        const { error: cleanupError } = await supabase
-          .from('tasks')
-          .delete()
-          .eq('id', task.id)
-          .eq('organization_id', organizationId)
-
-        if (cleanupError) {
-          console.error('Failed to remove unassigned task:', cleanupError)
-        }
-
-        throw assignmentError
-      }
+          agentId,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to create task.')
 
       setTitle('')
       setDescription('')

@@ -3,6 +3,7 @@ import type {
   GovernanceContext,
   OrchestrationRequest,
 } from './types'
+import { authorizeAgentOrganization } from '@/lib/governance/authorization'
 
 export async function evaluateGovernance(
   request: OrchestrationRequest & {
@@ -10,6 +11,19 @@ export async function evaluateGovernance(
   }
 ): Promise<GovernanceContext> {
   const supabase = await createClient()
+
+  const agentAuthorized = await authorizeAgentOrganization(
+    supabase,
+    request.organizationId,
+    request.agentId
+  )
+
+  if (!agentAuthorized) {
+    return {
+      riskLevel: 'medium',
+      requiresApproval: true,
+    }
+  }
 
   const { data: assignments, error: assignmentError } =
     await supabase

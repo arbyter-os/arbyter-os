@@ -1,10 +1,29 @@
-import { NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { NextResponse } from "next/server"
+import { assertApiParam } from "@/lib/validation/api-schemas";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveConnectionCredential } from "@/lib/credentials/runtime";
 
 const MAX_BODY_BYTES = 256 * 1024;
 const MAX_TIMESTAMP_AGE_SECONDS = 5 * 60;
+const WEBHOOK_REPLAY_RETENTION_SECONDS = MAX_TIMESTAMP_AGE_SECONDS;
+
+function createReplayKey(connectionId: string, timestamp: string, body: Buffer) {
+  return createHash("sha256")
+    .update("arbyter-webhook-replay-v1\0", "utf8")
+    .update(connectionId, "utf8")
+    .update("\0", "utf8")
+    .update(timestamp, "utf8")
+    .update("\0", "utf8")
+    .update(body)
+    .digest("hex");
+}
+
+function isUniqueViolation(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = "code" in error ? error.code : null;
+  return code === "23505";
+}
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ success: false, message }, { status });
@@ -95,6 +114,12 @@ export async function POST(
 ) {
   const { connectionId } = await params;
 
+  try {
+    assertApiParam(connectionId, "uuid", "connectionId");
+  } catch {
+    return jsonError("Connection not found.", 404);
+  }
+
   if (!connectionId || connectionId.trim().length === 0) {
     return jsonError("Connection not found.", 404);
   }
@@ -175,6 +200,31 @@ export async function POST(
       JSON.parse(body.toString("utf8"));
     } catch {
       return jsonError("Request body must contain valid JSON.", 400);
+    }
+
+    const replayKey = createReplayKey(connection.id, timestampHeader, body);
+    const replayExpiresAt = new Date(
+      (timestamp + WEBHOOK_REPLAY_RETENTION_SECONDS) * 1000,
+    ).toISOString();
+
+    // The custom Arbyter webhook protocol does not define a provider event ID.
+    // Use a digest of the authenticated connection, timestamp, and exact body.
+    // The digest is stored instead of the body, signature, or webhook secret.
+    // The UNIQUE constraint makes the reservation race-safe across instances.
+    const { error: replayError } = await admin
+      .from("webhook_replay_events")
+      .insert({
+        organization_id: connection.organization_id,
+        agent_connection_id: connection.id,
+        replay_key: replayKey,
+        expires_at: replayExpiresAt,
+      });
+
+    if (replayError) {
+      if (isUniqueViolation(replayError)) {
+        return jsonError("Webhook replay detected.", 409);
+      }
+      return jsonError("Webhook verification is temporarily unavailable.", 503);
     }
 
     const checkedAt = new Date().toISOString();

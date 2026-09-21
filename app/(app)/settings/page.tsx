@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { createClient } from '@/lib/supabase/client'
 import {
   Bell,
   Building2,
@@ -17,6 +18,81 @@ export default function SettingsPage() {
   const [notifications, setNotifications] = React.useState(true)
   const [criticalAlerts, setCriticalAlerts] = React.useState(true)
   const [weeklyReports, setWeeklyReports] = React.useState(false)
+  const [mfaStatus, setMfaStatus] = React.useState<'loading' | 'not-enrolled' | 'enrolled' | 'enrolling' | 'verifying'>('loading')
+  const [mfaQrCode, setMfaQrCode] = React.useState<string | null>(null)
+  const [mfaSecret, setMfaSecret] = React.useState<string | null>(null)
+  const [mfaFactorId, setMfaFactorId] = React.useState<string | null>(null)
+  const [mfaCode, setMfaCode] = React.useState('')
+  const [mfaError, setMfaError] = React.useState<string | null>(null)
+  const [mfaBusy, setMfaBusy] = React.useState(false)
+
+  const supabase = React.useMemo(() => createClient(), [])
+
+  async function refreshMfaStatus() {
+    setMfaError(null)
+    const { data, error } = await supabase.auth.mfa.listFactors()
+    if (error) {
+      setMfaError('Unable to check two-factor authentication status.')
+      setMfaStatus('not-enrolled')
+      return
+    }
+    const verifiedTotp = data.totp?.find((factor) => factor.status === 'verified')
+    setMfaStatus(verifiedTotp ? 'enrolled' : 'not-enrolled')
+    if (verifiedTotp) {
+      setMfaFactorId(verifiedTotp.id)
+    }
+  }
+
+  React.useEffect(() => {
+    void refreshMfaStatus()
+  }, [])
+
+  async function beginMfaEnrollment() {
+    setMfaBusy(true)
+    setMfaError(null)
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'Arbyter Authenticator',
+      })
+      if (error || !data) throw error ?? new Error('Enrollment failed.')
+      setMfaFactorId(data.id)
+      setMfaQrCode(data.totp.qr_code)
+      setMfaSecret(data.totp.secret)
+      setMfaStatus('enrolling')
+    } catch {
+      setMfaError('Unable to start two-factor enrollment. Please try again.')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
+
+  async function verifyMfaEnrollment() {
+    if (!mfaFactorId || !/^\d{6}$/.test(mfaCode)) {
+      setMfaError('Enter the 6-digit code from your authenticator app.')
+      return
+    }
+    setMfaBusy(true)
+    setMfaError(null)
+    try {
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId })
+      if (challengeError || !challenge) throw challengeError ?? new Error('Challenge failed.')
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: mfaFactorId,
+        challengeId: challenge.id,
+        code: mfaCode,
+      })
+      if (verifyError) throw verifyError
+      setMfaQrCode(null)
+      setMfaSecret(null)
+      setMfaCode('')
+      setMfaStatus('enrolled')
+    } catch {
+      setMfaError('The verification code was invalid or the factor could not be verified.')
+    } finally {
+      setMfaBusy(false)
+    }
+  }
 
   function handleSave() {
     setSaved(true)
@@ -357,12 +433,45 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  className="h-9 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted"
-                >
-                  Configure
-                </button>
+                <div className="flex flex-col items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { void beginMfaEnrollment() }}
+                    disabled={mfaBusy || mfaStatus === 'enrolled'}
+                    className="h-9 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {mfaStatus === 'enrolled' ? 'Enabled' : 'Configure'}
+                  </button>
+                  {mfaStatus === 'enrolling' && (
+                    <div className="w-full max-w-sm rounded-lg border bg-background p-4 text-left sm:w-80">
+                      <p className="text-sm font-medium">Scan the QR code</p>
+                      {mfaQrCode && <img src={mfaQrCode} alt="Authenticator enrollment QR code" className="mx-auto my-3 h-48 w-48" />}
+                      {mfaSecret && (
+                        <p className="break-all text-xs text-muted-foreground">Manual key: {mfaSecret}</p>
+                      )}
+                      <div className="mt-3 flex gap-2">
+                        <input
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          maxLength={6}
+                          value={mfaCode}
+                          onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="6-digit code"
+                          className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { void verifyMfaEnrollment() }}
+                          disabled={mfaBusy || mfaCode.length !== 6}
+                          className="h-9 rounded-lg bg-foreground px-3 text-sm font-medium text-background disabled:opacity-50"
+                        >
+                          Verify
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {mfaError && <p className="max-w-sm text-xs text-destructive">{mfaError}</p>}
+                </div>
               </div>
 
               <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
