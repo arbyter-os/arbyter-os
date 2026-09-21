@@ -31,13 +31,17 @@ export default function ChatPage() {
     <main className="relative min-h-screen overflow-hidden bg-[#f8f9fc] text-[#111]">
       <style jsx global>{`
         @keyframes voiceRing {
-          0% { transform: scale(0.78); opacity: 0.55; }
-          55% { transform: scale(1); opacity: 0.28; }
-          100% { transform: scale(1.12); opacity: 0; }
+          0% { transform: scale(.72); opacity: .62; }
+          70% { transform: scale(1.22); opacity: 0; }
+          100% { transform: scale(1.22); opacity: 0; }
         }
         @keyframes voiceCore {
-          0%, 100% { transform: scale(0.94); opacity: 0.72; }
-          50% { transform: scale(1.04); opacity: 1; }
+          0%, 100% { transform: scale(.96); }
+          50% { transform: scale(1.04); }
+        }
+        @keyframes voiceGlow {
+          0%, 100% { transform: scale(.82); opacity: .10; }
+          50% { transform: scale(1.15); opacity: .24; }
         }
       `}</style>
 
@@ -211,28 +215,31 @@ export default function ChatPage() {
             </button>
 
             <div className="mb-8 flex justify-center">
-              <div className="relative flex h-28 w-28 items-center justify-center">
+              <div className="relative flex h-32 w-32 items-center justify-center">
                 {listening && (
                   <>
                     <div
-                      className="absolute h-[118px] w-[118px] animate-[voiceRing_2.4s_ease-out_infinite] rounded-full border border-[#1300BA]/15 bg-[#1300BA]/[0.025] shadow-[inset_0_0_20px_rgba(255,255,255,0.9),0_0_30px_rgba(19,0,186,0.08)] backdrop-blur-xl"
+                      className="absolute h-28 w-28 rounded-full bg-[#1300BA] blur-xl animate-[voiceGlow_2.4s_ease-in-out_infinite]"
                     />
                     <div
-                      className="absolute h-[94px] w-[94px] animate-[voiceRing_2.4s_ease-out_0.8s_infinite] rounded-full border border-[#1300BA]/20 bg-[#1300BA]/[0.045] shadow-[inset_0_0_16px_rgba(255,255,255,0.95),0_0_24px_rgba(19,0,186,0.1)] backdrop-blur-xl"
+                      className="absolute h-28 w-28 rounded-full border border-[#1300BA]/20 bg-[#1300BA]/[0.025] shadow-[inset_0_0_20px_rgba(255,255,255,0.9),0_0_30px_rgba(19,0,186,0.08)] backdrop-blur-xl animate-[voiceRing_2.4s_ease-out_infinite]"
                     />
                     <div
-                      className="absolute h-[74px] w-[74px] animate-[voiceCore_1.8s_ease-in-out_infinite] rounded-full border border-[#1300BA]/25 bg-white/30 shadow-[0_0_22px_rgba(19,0,186,0.12)] backdrop-blur-md"
+                      className="absolute h-24 w-24 rounded-full border border-[#1300BA]/25 bg-[#1300BA]/[0.04] shadow-[inset_0_0_16px_rgba(255,255,255,0.95),0_0_24px_rgba(19,0,186,0.1)] backdrop-blur-xl animate-[voiceRing_2.4s_ease-out_0.8s_infinite]"
+                    />
+                    <div
+                      className="absolute h-20 w-20 rounded-full border border-[#1300BA]/30 bg-white/25 shadow-[0_0_22px_rgba(19,0,186,0.12)] backdrop-blur-md animate-[voiceCore_1.8s_ease-in-out_infinite]"
                     />
                   </>
                 )}
 
-                <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-white/55 shadow-[0_8px_28px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl">
+                <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-white/65 shadow-[0_8px_28px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl">
                   <Image
                     src="/arbyter-logo.svg"
                     alt="Arbyter"
-                    width={58}
-                    height={58}
-                    className="drop-shadow-[0_8px_24px_rgba(19,0,186,0.18)]"
+                    width={52}
+                    height={52}
+                    priority
                   />
                 </div>
               </div>
