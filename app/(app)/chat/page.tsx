@@ -204,17 +204,18 @@ export default function ChatPage() {
                 {listening && (
                   <>
                     <div
-                      className="absolute h-24 w-24 animate-[pulse_1.8s_ease-out_infinite] rounded-full border border-[#1300BA]/20"
-                      style={{ background: BLUE }}
+                      className="absolute h-[118px] w-[118px] animate-[voiceRing_2.4s_ease-out_infinite] rounded-full border border-[#1300BA]/15 bg-[#1300BA]/[0.025] shadow-[inset_0_0_20px_rgba(255,255,255,0.9),0_0_30px_rgba(19,0,186,0.08)] backdrop-blur-xl"
                     />
                     <div
-                      className="absolute h-20 w-20 animate-[pulse_1.8s_ease-out_0.6s_infinite] rounded-full border border-[#1300BA]/25"
-                      style={{ background: BLUE }}
+                      className="absolute h-[94px] w-[94px] animate-[voiceRing_2.4s_ease-out_0.8s_infinite] rounded-full border border-[#1300BA]/20 bg-[#1300BA]/[0.045] shadow-[inset_0_0_16px_rgba(255,255,255,0.95),0_0_24px_rgba(19,0,186,0.1)] backdrop-blur-xl"
+                    />
+                    <div
+                      className="absolute h-[74px] w-[74px] animate-[voiceCore_1.8s_ease-in-out_infinite] rounded-full border border-[#1300BA]/25 bg-white/30 shadow-[0_0_22px_rgba(19,0,186,0.12)] backdrop-blur-md"
                     />
                   </>
                 )}
 
-                <div className="relative flex h-20 w-20 items-center justify-center">
+                <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-white/55 shadow-[0_8px_28px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl">
                   <Image
                     src="/arbyter-logo.svg"
                     alt="Arbyter"
