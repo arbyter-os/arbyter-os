@@ -11,17 +11,23 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # full history so the secret scan covers past commits
+
       - uses: pnpm/action-setup@v4
         with:
           version: 12.4.2
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm exec tsc --noEmit
@@ -31,14 +37,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
         with:
           version: 12.4.2
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+
       - run: pnpm install --frozen-lockfile
+
       # Fails on high/critical advisories in the full tree. Registry-backed audits can lag
       # behind vendor advisories (the August 2026 Next.js critical was absent from the GitHub
       # Advisory Database for over a week), so also watch the Next.js security release notes.
@@ -50,6 +60,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
