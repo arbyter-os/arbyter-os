@@ -284,25 +284,13 @@ export async function fetchValidatedExternalUrl(
           ? Buffer.from(init.body)
           : undefined;
 
-  type LookupOptions = {
-    family?: number;
-    all?: boolean;
-    hints?: number;
-    verbatim?: boolean;
-    order?: string;
-  };
+  type LookupFunction = NonNullable<http.RequestOptions["lookup"]>;
 
-  type LookupCallback = (
-    error: NodeJS.ErrnoException | null,
-    address: string | LookupAddress[],
-    family?: number,
-  ) => void;
-
-  const lookup = (
-    _hostname: string,
-    options: LookupOptions,
-    callback: LookupCallback,
-  ): void => {
+  const lookup: LookupFunction = (
+    _hostname,
+    options,
+    callback,
+  ) => {
     const address = addresses.find(
       (candidate) =>
         !options.family ||
