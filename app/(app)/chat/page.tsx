@@ -220,7 +220,7 @@ export default function ChatPage() {
                     alt="Arbyter"
                     width={58}
                     height={58}
-                    className="drop-shadow-[0_8px_24px_rgba(19,0,186,0.18)]
+                    className="drop-shadow-[0_8px_24px_rgba(19,0,186,0.18)]"
                   />
                 </div>
               </div>
