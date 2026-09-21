@@ -539,7 +539,7 @@ export async function POST(request: Request) {
     );
 
     if (!endpointValidation.valid) {
-      const validationError = validationError;
+      const validationError = endpointValidation.error;
       const checkedAt = new Date().toISOString();
 
       const currentFailures = Number(
