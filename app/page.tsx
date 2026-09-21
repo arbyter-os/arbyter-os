@@ -124,7 +124,6 @@ function World({
     let cachedBgGradient: CanvasGradient | null = null;
 
     const resize = () => {
-      // Cap DPR to 1.5 to eliminate mobile fill-rate bottlenecks
       const d = Math.min(window.devicePixelRatio || 1, 1.5);
       w = window.innerWidth;
       h = window.innerHeight;
@@ -133,7 +132,6 @@ function World({
       c.height = Math.floor(h * d);
       x.setTransform(d, 0, 0, d, 0, 0);
 
-      // Pre-compile background radial gradient on resize
       const g = x.createRadialGradient(
         w / 2,
         h / 2,
@@ -160,7 +158,12 @@ function World({
       };
     };
 
-    const line = (a: { x: number; y: number }, b: { x: number; y: number }, alpha: number, width = 1) => {
+    const line = (
+      a: { x: number; y: number },
+      b: { x: number; y: number },
+      alpha: number,
+      width = 1
+    ) => {
       x.strokeStyle = `rgba(76,66,190,${alpha})`;
       x.lineWidth = width;
       x.beginPath();
@@ -172,17 +175,14 @@ function World({
     const draw = () => {
       t += 0.012;
 
-      // Smooth LERP camera interpolation
       smoothedProgress += (progressRef.current - smoothedProgress) * 0.08;
       const cam = smoothedProgress * 3900 - 300;
 
-      // Background Fill using pre-cached gradient
       if (cachedBgGradient) {
         x.fillStyle = cachedBgGradient;
         x.fillRect(0, 0, w, h);
       }
 
-      // Render stars (fast rectangle fill instead of arc path rendering)
       for (let i = 0; i < STARS.length; i++) {
         const s = STARS[i];
         const q = project(s.x, s.y, s.z, cam);
@@ -195,7 +195,6 @@ function World({
         }
       }
 
-      // Perspective Grid Lines
       const zStart = Math.floor(cam / 180) * 180;
       for (let z = zStart; z < cam + 2500; z += 180) {
         line(project(-1300, 430, z, cam), project(1300, 430, z, cam), 0.045);
@@ -205,7 +204,6 @@ function World({
         line(project(a, -450, cam + 250, cam), project(a, 450, cam + 2000, cam), 0.022);
       }
 
-      // Central Hub Card
       const center = project(0, 0, 1080, cam);
       const cs = Math.min(2.3, Math.max(0.7, 820 / Math.max(180, 1080 - cam)));
       const cw = 175 * cs;
@@ -215,7 +213,6 @@ function World({
       x.translate(center.x, center.y);
       x.rotate(Math.sin(t * 0.4) * 0.07);
 
-      // Hardware-accelerated faux glow strokes replacing expensive shadowBlur
       x.strokeStyle = "rgba(19,0,186,.10)";
       x.lineWidth = 14;
       x.beginPath();
@@ -230,14 +227,12 @@ function World({
       x.fill();
       x.stroke();
 
-      // Inner Accent Rim
       x.strokeStyle = "rgba(19,0,186,.10)";
       x.beginPath();
       x.roundRect(-cw / 2 + 8, -ch / 2 + 8, cw - 16, ch - 16, 20);
       x.stroke();
       x.restore();
 
-      // Project and Depth-Sort Agent Cards
       const pts = AGENTS.map((a, i) => {
         const dx = Math.sin(t * a.speed + a.phase) * 75;
         const dy = Math.cos(t * a.speed * 0.8 + a.phase) * 45;
@@ -250,7 +245,6 @@ function World({
         .filter((a) => a.depth > 80 && a.depth < 3300)
         .sort((a, b) => b.depth - a.depth);
 
-      // Render Tether Filaments & Traveling Data Pulses
       for (let i = 0; i < pts.length; i++) {
         const a = pts[i];
         line(a, center, 0.09 + (Math.sin(t * 2 + i) + 1) * 0.025, Math.max(0.5, a.s));
@@ -265,7 +259,6 @@ function World({
         x.fill();
       }
 
-      // Targeting Intercept Radar HUD
       if (smoothedProgress > 0.43 && smoothedProgress < 0.84) {
         const e = project(0, -70, 2070, cam);
         const r = 115 * e.s + Math.sin(t * 3) * 4;
@@ -286,7 +279,6 @@ function World({
         x.fill();
       }
 
-      // Draw Individual Agent Badges
       x.textAlign = "center";
       x.textBaseline = "middle";
 
@@ -302,7 +294,6 @@ function World({
         x.globalAlpha = Math.min(1, 0.25 + a.s * 1.1);
 
         if (blocked) {
-          // Soft outer alert glow
           x.strokeStyle = "rgba(19,0,186,.25)";
           x.lineWidth = 6;
           x.beginPath();
@@ -467,6 +458,7 @@ function Intro({ onDone }: { onDone: () => void }) {
 
       x.clearRect(0, 0, w, h);
 
+      // Background
       const bg = x.createRadialGradient(
         w * 0.5,
         h * 0.48,
@@ -482,7 +474,7 @@ function Intro({ onDone }: { onDone: () => void }) {
       x.fillStyle = bg;
       x.fillRect(0, 0, w, h);
 
-      // Star dots
+      // Background Star Field
       for (let i = 0; i < 120; i++) {
         const sx = (i * 83) % w;
         const sy = (i * 137) % h;
@@ -496,19 +488,24 @@ function Intro({ onDone }: { onDone: () => void }) {
       const radius = Math.min(44, Math.max(30, w * 0.035));
       const cy = h * 0.5;
       const centerX = w * 0.5;
-      const pelletGap = Math.min(72, Math.max(48, w * 0.07));
 
-      const pellets = Array.from({ length: 5 }, (_, i) => ({
-        x: centerX + (i - 2) * pelletGap,
-        y: cy,
-      }));
+      // Responsive spacing: 1 dead-center, 2 on either side
+      const pelletGap = Math.min(96, Math.max(54, w * 0.085));
+
+      const pellets = [
+        { id: 0, x: centerX - 2 * pelletGap, y: cy, isCenter: false },
+        { id: 1, x: centerX - 1 * pelletGap, y: cy, isCenter: false },
+        { id: 2, x: centerX,                 y: cy, isCenter: true },
+        { id: 3, x: centerX + 1 * pelletGap, y: cy, isCenter: false },
+        { id: 4, x: centerX + 2 * pelletGap, y: cy, isCenter: false },
+      ];
 
       const move = Math.max(0, Math.min(1, (elapsed - 450) / 2100));
       const startX = pellets[0].x - radius * 2.2;
       const endX = pellets[4].x + radius * 0.72;
       const baseX = startX + (endX - startX) * move;
 
-      let targetIndex = pellets.findIndex((_, i) => !eaten.has(i));
+      let targetIndex = pellets.findIndex((q) => !eaten.has(q.id));
       if (targetIndex < 0) targetIndex = 4;
       const target = pellets[targetIndex];
 
@@ -516,21 +513,53 @@ function Intro({ onDone }: { onDone: () => void }) {
       const mouthPhase = Math.max(0, 1 - Math.min(1, distanceToTarget / 70));
       const mouth = mouthPhase > 0.02 ? Math.sin(mouthPhase * Math.PI) * 0.9 : 0;
 
-      pellets.forEach((q, i) => {
-        if (eaten.has(i)) return;
+      // Chomp Detection
+      pellets.forEach((q) => {
+        if (eaten.has(q.id)) return;
         const d = Math.hypot(baseX - q.x, cy - q.y);
-        if (d < radius * 0.92 && !eaten.has(i)) {
-          eaten.add(i);
+        if (d < radius * 0.92) {
+          eaten.add(q.id);
           eatSound();
         }
       });
 
-      pellets.forEach((q, i) => {
-        if (eaten.has(i)) return;
-        x.fillStyle = "rgba(19,0,186,.85)";
+      // Render Pellets with Frosted Shading & Center Halo
+      pellets.forEach((q) => {
+        if (eaten.has(q.id)) return;
+
+        const pr = q.isCenter ? 7.5 : 6;
+
+        // Subtle glowing halo for the center pellet
+        if (q.isCenter) {
+          const haloPulse = 1 + 0.18 * Math.sin(t * 3.5);
+          x.fillStyle = "rgba(19,0,186,.12)";
+          x.beginPath();
+          x.arc(q.x, q.y, pr * 2.2 * haloPulse, 0, Math.PI * 2);
+          x.fill();
+        }
+
+        const pg = x.createRadialGradient(
+          q.x - pr * 0.3,
+          q.y - pr * 0.35,
+          1,
+          q.x,
+          q.y,
+          pr * 1.15
+        );
+        pg.addColorStop(0, "rgba(255,255,255,.98)");
+        pg.addColorStop(0.35, "rgba(95,82,230,.92)");
+        pg.addColorStop(1, "rgba(19,0,186,.85)");
+
+        x.fillStyle = pg;
         x.beginPath();
-        x.arc(q.x, q.y, 6, 0, Math.PI * 2);
+        x.arc(q.x, q.y, pr, 0, Math.PI * 2);
         x.fill();
+
+        x.strokeStyle = "rgba(255,255,255,.85)";
+        x.lineWidth = 1;
+        x.beginPath();
+        x.arc(q.x, q.y, pr, 0, Math.PI * 2);
+        x.stroke();
       });
 
       drawGlassCircle(baseX, cy, radius, eaten.size === 5 ? 0 : mouth);
@@ -574,7 +603,6 @@ export default function Home() {
   const [stage, setStage] = useState(0);
   const [scrolled, setScrolled] = useState(false);
 
-  // Single mutable reference for high-frequency 120 FPS canvas animation
   const progressRef = useRef(0);
 
   useEffect(() => {
@@ -583,7 +611,6 @@ export default function Home() {
     let velocity = 0;
     let isTouching = false;
 
-    // Synchronizes progress calculation without triggering 120Hz React re-renders
     const updateProgress = () => {
       const maxScroll = Math.max(
         1,
@@ -592,7 +619,6 @@ export default function Home() {
       const p = Math.min(1, Math.max(0, window.scrollY / maxScroll));
       progressRef.current = p;
 
-      // Update React state strictly when crossing step thresholds
       const currentStage = Math.min(
         STAGES.length - 1,
         Math.floor(p * STAGES.length)
@@ -603,7 +629,6 @@ export default function Home() {
       setScrolled((prev) => (prev !== isPastHero ? isPastHero : prev));
     };
 
-    // Mobile touch drag acceleration with inertia
     const onTouchStart = (e: TouchEvent) => {
       cancelAnimationFrame(momentumRaf);
       isTouching = true;
@@ -617,14 +642,13 @@ export default function Home() {
       const deltaY = lastTouchY - currentY;
       lastTouchY = currentY;
 
-      // Accelerate swipe responsiveness over the 920vh height
       velocity = deltaY * 1.8;
       window.scrollBy(0, velocity);
     };
 
     const applyMomentum = () => {
       if (Math.abs(velocity) > 0.4) {
-        velocity *= 0.92; // Decay friction factor
+        velocity *= 0.92;
         window.scrollBy(0, velocity);
         momentumRaf = requestAnimationFrame(applyMomentum);
       }
@@ -673,12 +697,10 @@ export default function Home() {
           </Link>
         </header>
 
-        {/* 3D Background Engine */}
         <div className="fixed inset-0 z-0">
           <World progressRef={progressRef} />
         </div>
 
-        {/* Bottom Stage Progress Indicator */}
         <div className="pointer-events-none fixed bottom-7 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-full border border-[#1300BA]/10 bg-white/45 px-4 py-2 shadow-[0_10px_35px_rgba(19,0,186,.08)] backdrop-blur-xl">
           {STAGES.map((_, i) => (
             <span
@@ -691,7 +713,6 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Foreground Content Stage Cards */}
         <div className="pointer-events-none fixed inset-0 z-30">
           {STAGES.map((s, i) => (
             <div
@@ -729,14 +750,12 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Scroll Travel Spacer Track */}
         <div className="relative z-20 h-[920vh]">
           {STAGES.map((_, i) => (
             <section key={i} className="h-[102.2vh]" />
           ))}
         </div>
 
-        {/* Final Conversion Landing Section */}
         <section className="relative z-40 bg-white/80 px-6 py-32 text-[#111322] backdrop-blur-xl">
           <div className="mx-auto max-w-6xl text-center">
             <div className="mx-auto h-14 w-16">{LOGO}</div>
