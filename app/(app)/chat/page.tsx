@@ -204,22 +204,23 @@ export default function ChatPage() {
                 {listening && (
                   <>
                     <div
-                      className="absolute inset-0 animate-ping rounded-full opacity-10"
+                      className="absolute h-24 w-24 animate-[pulse_1.8s_ease-out_infinite] rounded-full border border-[#1300BA]/20"
                       style={{ background: BLUE }}
                     />
                     <div
-                      className="absolute inset-3 rounded-full opacity-10"
+                      className="absolute h-20 w-20 animate-[pulse_1.8s_ease-out_0.6s_infinite] rounded-full border border-[#1300BA]/25"
                       style={{ background: BLUE }}
                     />
                   </>
                 )}
 
-                <div className="relative flex h-20 w-20 items-center justify-center rounded-[27px] bg-white shadow-[0_10px_35px_rgba(0,0,0,0.1)]">
+                <div className="relative flex h-20 w-20 items-center justify-center">
                   <Image
                     src="/arbyter-logo.svg"
                     alt="Arbyter"
-                    width={42}
-                    height={42}
+                    width={58}
+                    height={58}
+                    className="drop-shadow-[0_8px_24px_rgba(19,0,186,0.18)]
                   />
                 </div>
               </div>
