@@ -13,49 +13,71 @@ security definer
 set search_path = ''
 as $$
 declare
-  now_at timestamptz := pg_catalog.clock_timestamp();
-  bucket_count integer;
-  bucket_reset_at timestamptz;
+  v_now timestamptz := pg_catalog.clock_timestamp();
+  v_reset_at timestamptz;
+  v_count integer;
 begin
-  if p_key is null or pg_catalog.length(p_key) = 0 or p_limit <= 0 or p_window_seconds <= 0 then
-    raise exception 'Invalid rate limit parameters';
+  if p_limit <= 0 or p_window_seconds <= 0 then
+    raise exception 'Invalid rate limit configuration';
   end if;
 
-  insert into public.rate_limit_buckets (key, count, reset_at)
-  values (p_key, 0, now_at)
-  on conflict (key) do nothing;
+  insert into public.rate_limit_buckets (
+    key,
+    count,
+    reset_at
+  )
+  values (
+    p_key,
+    1,
+    v_now + pg_catalog.make_interval(secs => p_window_seconds)
+  )
+  on conflict (key)
+  do update set
+    count = case
+      when public.rate_limit_buckets.reset_at <= v_now
+      then 1
+      else public.rate_limit_buckets.count + 1
+    end,
+    reset_at = case
+      when public.rate_limit_buckets.reset_at <= v_now
+      then v_now + pg_catalog.make_interval(secs => p_window_seconds)
+      else public.rate_limit_buckets.reset_at
+    end;
 
-  select b.count, b.reset_at
-    into bucket_count, bucket_reset_at
-    from public.rate_limit_buckets b
-   where b.key = p_key
-   for update;
+  select
+    b.reset_at,
+    b.count
+  into
+    v_reset_at,
+    v_count
+  from public.rate_limit_buckets b
+  where b.key = p_key;
 
-  if bucket_reset_at <= now_at then
-    update public.rate_limit_buckets
-       set count = 1,
-           reset_at = now_at + pg_catalog.make_interval(secs => p_window_seconds)
-     where key = p_key;
-
-    return query select true, pg_catalog.greatest(0, p_limit - 1), 0;
-    return;
+  if v_count <= p_limit then
+    return query
+    select
+      true,
+      case
+        when p_limit - v_count > 0 then p_limit - v_count
+        else 0
+      end,
+      0;
+  else
+    return query
+    select
+      false,
+      0,
+      case
+        when extract(epoch from (v_reset_at - v_now)) > 0
+        then extract(epoch from (v_reset_at - v_now))::integer
+        else 0
+      end;
   end if;
-
-  if bucket_count >= p_limit then
-    return query select false, 0,
-      pg_catalog.greatest(1, pg_catalog.ceil(pg_catalog.extract(epoch from (bucket_reset_at - now_at)))::integer);
-    return;
-  end if;
-
-  update public.rate_limit_buckets
-     set count = bucket_count + 1
-   where key = p_key;
-
-  return query select true, pg_catalog.greatest(0, p_limit - bucket_count - 1), 0;
 end;
 $$;
 
-revoke all on function public.check_rate_limit(text, integer, integer) from public;
-revoke all on function public.check_rate_limit(text, integer, integer) from anon;
-revoke all on function public.check_rate_limit(text, integer, integer) from authenticated;
-grant execute on function public.check_rate_limit(text, integer, integer) to service_role;
+revoke all on function public.check_rate_limit(text, integer, integer)
+from public, anon, authenticated;
+
+grant execute on function public.check_rate_limit(text, integer, integer)
+to service_role;
