@@ -62,7 +62,7 @@ export default function ChatPage() {
             className="mb-7 flex h-16 w-16 items-center justify-center rounded-[22px] bg-white/80 shadow-[0_12px_45px_rgba(0,0,0,0.08)] backdrop-blur-xl"
           >
             <Image
-              src="/logo.svg"
+              src="/arbyter-logo.svg"
               alt="Arbyter"
               width={38}
               height={38}
@@ -216,7 +216,7 @@ export default function ChatPage() {
 
                 <div className="relative flex h-20 w-20 items-center justify-center rounded-[27px] bg-white shadow-[0_10px_35px_rgba(0,0,0,0.1)]">
                   <Image
-                    src="/logo.svg"
+                    src="/arbyter-logo.svg"
                     alt="Arbyter"
                     width={42}
                     height={42}
