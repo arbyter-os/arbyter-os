@@ -29,6 +29,17 @@ export default function ChatPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#f8f9fc] text-[#111]">
+      <style jsx global>{`
+        @keyframes voiceRing {
+          0% { transform: scale(0.78); opacity: 0.55; }
+          55% { transform: scale(1); opacity: 0.28; }
+          100% { transform: scale(1.12); opacity: 0; }
+        }
+        @keyframes voiceCore {
+          0%, 100% { transform: scale(0.94); opacity: 0.72; }
+          50% { transform: scale(1.04); opacity: 1; }
+        }
+      `}</style>
 
       {/* Ambient background */}
       <div
