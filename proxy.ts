@@ -10,6 +10,7 @@ export async function updateSession(request: NextRequest) {
   const { nonce, policy } = createContentSecurityPolicy()
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set("x-nonce", nonce)
+  requestHeaders.set("Content-Security-Policy", policy)
 
   let response = NextResponse.next({ request: { headers: requestHeaders } })
 
