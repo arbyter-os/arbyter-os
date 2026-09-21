@@ -181,254 +181,102 @@ function World({ progress }: { progress: number }) {
       const center = project(0, 0, 1080, cam);
 
       const pts = AGENTS.map((a, i) => {
-        const dx =
-          Math.sin(t * a.speed + a.phase) * 75;
-
-        const dy =
-          Math.cos(
-            t * a.speed * 0.8 + a.phase
-          ) * 45;
+        const dx = Math.sin(t * a.speed + a.phase) * 75;
+        const dy = Math.cos(t * a.speed * 0.8 + a.phase) * 45;
 
         return {
           ...a,
           i,
-          ...project(
-            a.x + dx,
-            a.y + dy,
-            a.z,
-            cam
-          ),
+          ...project(a.x + dx, a.y + dy, a.z, cam),
         };
       })
-        .filter(
-          (a) =>
-            a.depth > 80 &&
-            a.depth < 3300
-        )
-        .sort(
-          (a, b) => b.depth - a.depth
-        );
+        .filter((a) => a.depth > 80 && a.depth < 3300)
+        .sort((a, b) => b.depth - a.depth);
 
       pts.forEach((a, i) => {
         line(
           a,
           center,
-          0.09 +
-            (Math.sin(t * 2 + i) + 1) *
-              0.025,
+          0.09 + (Math.sin(t * 2 + i) + 1) * 0.025,
           Math.max(0.5, a.s)
         );
 
-        const q =
-          (t * 0.18 + i * 0.13) % 1;
+        const q = (t * 0.18 + i * 0.13) % 1;
+        const px = a.x + (center.x - a.x) * q;
+        const py = a.y + (center.y - a.y) * q;
 
-        const px =
-          a.x +
-          (center.x - a.x) * q;
-
-        const py =
-          a.y +
-          (center.y - a.y) * q;
-
-        x.fillStyle =
-          "rgba(19,0,186,.42)";
-
+        x.fillStyle = "rgba(19,0,186,.42)";
         x.beginPath();
-        x.arc(
-          px,
-          py,
-          Math.max(1, 2 * a.s),
-          0,
-          Math.PI * 2
-        );
+        x.arc(px, py, Math.max(1, 2 * a.s), 0, Math.PI * 2);
         x.fill();
       });
 
-      const cs = Math.min(
-        2.3,
-        Math.max(
-          0.7,
-          820 / Math.max(180, 1080 - cam)
-        )
-      );
-
+      const cs = Math.min(2.3, Math.max(0.7, 820 / Math.max(180, 1080 - cam)));
       const cw = 175 * cs;
       const ch = 110 * cs;
 
       x.save();
       x.translate(center.x, center.y);
       x.rotate(Math.sin(t * 0.4) * 0.07);
-
-      x.fillStyle =
-        "rgba(255,255,255,.94)";
-
-      x.strokeStyle =
-        "rgba(19,0,186,.30)";
-
+      x.fillStyle = "rgba(255,255,255,.94)";
+      x.strokeStyle = "rgba(19,0,186,.30)";
       x.lineWidth = 1.5;
-
       x.shadowBlur = 42;
-      x.shadowColor =
-        "rgba(19,0,186,.28)";
-
+      x.shadowColor = "rgba(19,0,186,.28)";
       x.beginPath();
-      x.roundRect(
-        -cw / 2,
-        -ch / 2,
-        cw,
-        ch,
-        28
-      );
-
+      x.roundRect(-cw / 2, -ch / 2, cw, ch, 28);
       x.fill();
       x.stroke();
-
       x.shadowBlur = 0;
-
-      x.strokeStyle =
-        "rgba(19,0,186,.10)";
-
+      x.strokeStyle = "rgba(19,0,186,.10)";
       x.beginPath();
-      x.roundRect(
-        -cw / 2 + 8,
-        -ch / 2 + 8,
-        cw - 16,
-        ch - 16,
-        20
-      );
-
+      x.roundRect(-cw / 2 + 8, -ch / 2 + 8, cw - 16, ch - 16, 20);
       x.stroke();
       x.restore();
 
       if (p > 0.43 && p < 0.84) {
-        const e = project(
-          0,
-          -70,
-          2070,
-          cam
-        );
+        const e = project(0, -70, 2070, cam);
+        const r = 115 * e.s + Math.sin(t * 3) * 4;
 
-        const r =
-          115 * e.s +
-          Math.sin(t * 3) * 4;
-
-        x.strokeStyle =
-          "rgba(19,0,186,.5)";
-
+        x.strokeStyle = "rgba(19,0,186,.5)";
         x.beginPath();
-        x.arc(
-          e.x,
-          e.y,
-          r,
-          0,
-          Math.PI * 2
-        );
+        x.arc(e.x, e.y, r, 0, Math.PI * 2);
         x.stroke();
-
         x.beginPath();
-        x.arc(
-          e.x,
-          e.y,
-          r * 0.68,
-          0,
-          Math.PI * 2
-        );
+        x.arc(e.x, e.y, r * 0.68, 0, Math.PI * 2);
         x.stroke();
-
         x.fillStyle = BLUE;
         x.beginPath();
-        x.arc(
-          e.x,
-          e.y,
-          Math.max(2, 7 * e.s),
-          0,
-          Math.PI * 2
-        );
+        x.arc(e.x, e.y, Math.max(2, 7 * e.s), 0, Math.PI * 2);
         x.fill();
       }
 
       pts.forEach((a) => {
-        const s = Math.max(
-          0.25,
-          Math.min(1.6, a.s * 1.4)
-        );
-
+        const s = Math.max(0.25, Math.min(1.6, a.s * 1.4));
         const ww = 112 * s;
         const hh = 58 * s;
-
-        const blocked =
-          p > 0.5 && a.name === "HR";
+        const blocked = p > 0.5 && a.name === "HR";
 
         x.save();
-
         x.translate(a.x, a.y);
-
-        x.globalAlpha = Math.min(
-          1,
-          0.25 + a.s * 1.1
-        );
-
-        x.fillStyle = blocked
-          ? "rgba(19,0,186,.16)"
-          : "rgba(255,255,255,.58)";
-
-        x.strokeStyle = blocked
-          ? "rgba(19,0,186,.7)"
-          : "rgba(255,255,255,.7)";
-
+        x.globalAlpha = Math.min(1, 0.25 + a.s * 1.1);
+        x.fillStyle = blocked ? "rgba(19,0,186,.16)" : "rgba(255,255,255,.58)";
+        x.strokeStyle = blocked ? "rgba(19,0,186,.7)" : "rgba(255,255,255,.7)";
         x.lineWidth = blocked ? 1.5 : 1;
-
         x.shadowBlur = blocked ? 28 : 18;
-        x.shadowColor =
-          "rgba(19,0,186,.25)";
-
+        x.shadowColor = "rgba(19,0,186,.25)";
         x.beginPath();
-
-        x.roundRect(
-          -ww / 2,
-          -hh / 2,
-          ww,
-          hh,
-          12 * s
-        );
-
+        x.roundRect(-ww / 2, -hh / 2, ww, hh, 12 * s);
         x.fill();
         x.stroke();
-
         x.shadowBlur = 0;
-
         x.textAlign = "center";
-
         x.fillStyle = "#111322";
-
-        x.font =
-          "700 " +
-          Math.max(7, 10 * s) +
-          "px system-ui";
-
-        x.fillText(
-          a.name,
-          0,
-          2 * s
-        );
-
-        x.fillStyle = blocked
-          ? BLUE
-          : "rgba(17,19,34,.48)";
-
-        x.font =
-          "600 " +
-          Math.max(5, 6 * s) +
-          "px system-ui";
-
-        x.fillText(
-          blocked
-            ? "ACTION BLOCKED"
-            : "ACTIVE",
-          0,
-          15 * s
-        );
-
+        x.font = "700 " + Math.max(7, 10 * s) + "px system-ui";
+        x.fillText(a.name, 0, 2 * s);
+        x.fillStyle = blocked ? BLUE : "rgba(17,19,34,.48)";
+        x.font = "600 " + Math.max(5, 6 * s) + "px system-ui";
+        x.fillText(blocked ? "ACTION BLOCKED" : "ACTIVE", 0, 15 * s);
         x.restore();
       });
 
@@ -445,913 +293,291 @@ function World({ progress }: { progress: number }) {
     };
   }, [progress]);
 
-  return (
-    <canvas
-      ref={ref}
-      className="absolute inset-0 h-full w-full"
-    />
-  );
+  return <canvas ref={ref} className="absolute inset-0 h-full w-full" />;
 }
 
-function Intro({
-  onDone,
-}: {
-  onDone: () => void;
-}) {
-  const ref =
-    useRef<HTMLCanvasElement>(null);
+function Intro({ onDone }: { onDone: () => void }) {
+  const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const c = ref.current;
-    if (!c) return;
-
-    const x = c.getContext("2d");
-    if (!x) return;
-
-    let raf = 0;
-    let t = 0;
-
-    const start = performance.now();
-
-    let audio: AudioContext | null = null;
-
-    const eaten = new Set<number>();
-    let finalFadeStart = -1;
-    const FINAL_FADE_MS = 360;
-
-    const resumeAudio = () => {
-      try {
-        if (!audio) {
-          audio = new AudioContext();
-        }
-
-        if (audio.state === "suspended") {
-          void audio.resume();
-        }
-      } catch {}
+    // Fail-open: the intro must never be able to keep the real site hidden.
+    // Schedule the reveal before touching any browser/canvas APIs that may
+    // be unavailable or throw in a particular browser/environment.
+    let completed = false;
+    const reveal = () => {
+      if (completed) return;
+      completed = true;
+      onDone();
     };
 
-    const eatSound = () => {
-      try {
-        resumeAudio();
+    const done = window.setTimeout(reveal, 3300);
 
-        if (
-          !audio ||
-          audio.state !== "running"
-        ) {
-          return;
-        }
-
-        const now =
-          audio.currentTime;
-
-        const o1 =
-          audio.createOscillator();
-
-        const o2 =
-          audio.createOscillator();
-
-        const g =
-          audio.createGain();
-
-        o1.type = "square";
-        o2.type = "square";
-
-        o1.frequency.setValueAtTime(
-          740,
-          now
-        );
-
-        o1.frequency.exponentialRampToValueAtTime(
-          520,
-          now + 0.075
-        );
-
-        o2.frequency.setValueAtTime(
-          520,
-          now + 0.075
-        );
-
-        o2.frequency.exponentialRampToValueAtTime(
-          740,
-          now + 0.15
-        );
-
-        g.gain.setValueAtTime(
-          0.035,
-          now
-        );
-
-        g.gain.exponentialRampToValueAtTime(
-          0.001,
-          now + 0.18
-        );
-
-        o1.connect(g);
-        o2.connect(g);
-        g.connect(audio.destination);
-
-        o1.start(now);
-        o1.stop(now + 0.08);
-
-        o2.start(now + 0.075);
-        o2.stop(now + 0.18);
-      } catch {}
-    };
-
-    const unlock = () =>
-      resumeAudio();
-
-    addEventListener(
-      "pointerdown",
-      unlock,
-      { passive: true }
-    );
-
-    addEventListener(
-      "touchstart",
-      unlock,
-      { passive: true }
-    );
-
-    addEventListener(
-      "wheel",
-      unlock,
-      { passive: true }
-    );
-
-    const resize = () => {
-      const d = Math.min(
-        devicePixelRatio || 1,
-        2
-      );
-
-      c.width = innerWidth * d;
-      c.height = innerHeight * d;
-
-      x.setTransform(
-        d,
-        0,
-        0,
-        d,
-        0,
-        0
-      );
-    };
-
-    const drawGlassCircle = (
-      cx: number,
-      cy: number,
-      r: number,
-      mouth: number
-    ) => {
-      x.save();
-
-      x.translate(cx, cy);
-
-      x.shadowBlur = 34;
-
-      x.shadowColor =
-        "rgba(19,0,186,.3)";
-
-      const g =
-        x.createRadialGradient(
-          -r * 0.32,
-          -r * 0.38,
-          r * 0.08,
-          r * 0.08,
-          r * 0.05,
-          r * 1.15
-        );
-
-      g.addColorStop(
-        0,
-        "rgba(255,255,255,.96)"
-      );
-
-      g.addColorStop(
-        0.18,
-        "rgba(210,215,255,.9)"
-      );
-
-      g.addColorStop(
-        0.5,
-        "rgba(86,72,220,.68)"
-      );
-
-      g.addColorStop(
-        1,
-        "rgba(19,0,186,.9)"
-      );
-
-      x.fillStyle = g;
-
-      x.beginPath();
-
-      if (mouth <= 0.001) {
-        x.arc(
-          0,
-          0,
-          r,
-          0,
-          Math.PI * 2
-        );
-      } else {
-        const half = mouth / 2;
-
-        x.moveTo(0, 0);
-
-        x.arc(
-          0,
-          0,
-          r,
-          half,
-          Math.PI * 2 - half
-        );
-
-        x.closePath();
+    try {
+      const c = ref.current;
+      if (!c) {
+        reveal();
+        return () => window.clearTimeout(done);
       }
 
-      x.fill();
+      const x = c.getContext("2d");
+      if (!x) {
+        reveal();
+        return () => window.clearTimeout(done);
+      }
 
-      x.shadowBlur = 0;
+      let raf = 0;
+      let t = 0;
+      const start = performance.now();
+      let audio: AudioContext | null = null;
+      const eaten = new Set<number>();
+      let finalFadeStart = -1;
+      const FINAL_FADE_MS = 360;
 
-      x.strokeStyle =
-        "rgba(255,255,255,.92)";
+      const resumeAudio = () => {
+        try {
+          if (!audio) audio = new AudioContext();
+          if (audio.state === "suspended") void audio.resume();
+        } catch {}
+      };
 
-      x.lineWidth = 2;
+      const eatSound = () => {
+        try {
+          resumeAudio();
+          if (!audio || audio.state !== "running") return;
+          const now = audio.currentTime;
+          const o1 = audio.createOscillator();
+          const o2 = audio.createOscillator();
+          const g = audio.createGain();
+          o1.type = "square";
+          o2.type = "square";
+          o1.frequency.setValueAtTime(740, now);
+          o1.frequency.exponentialRampToValueAtTime(520, now + 0.075);
+          o2.frequency.setValueAtTime(520, now + 0.075);
+          o2.frequency.exponentialRampToValueAtTime(740, now + 0.15);
+          g.gain.setValueAtTime(0.035, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          o1.connect(g);
+          o2.connect(g);
+          g.connect(audio.destination);
+          o1.start(now);
+          o1.stop(now + 0.08);
+          o2.start(now + 0.075);
+          o2.stop(now + 0.18);
+        } catch {}
+      };
 
-      x.stroke();
+      const unlock = () => resumeAudio();
+      addEventListener("pointerdown", unlock, { passive: true });
+      addEventListener("touchstart", unlock, { passive: true });
+      addEventListener("wheel", unlock, { passive: true });
 
-      x.globalAlpha = 0.48;
+      const resize = () => {
+        const d = Math.min(devicePixelRatio || 1, 2);
+        c.width = innerWidth * d;
+        c.height = innerHeight * d;
+        x.setTransform(d, 0, 0, d, 0, 0);
+      };
 
-      x.fillStyle =
-        "rgba(255,255,255,.95)";
-
-      x.beginPath();
-
-      x.ellipse(
-        -r * 0.28,
-        -r * 0.38,
-        r * 0.42,
-        r * 0.18,
-        -0.45,
-        0,
-        Math.PI * 2
-      );
-
-      x.fill();
-
-      x.restore();
-    };
-
-    const draw = () => {
-      t += 0.012;
-
-      const elapsed =
-        performance.now() - start;
-
-      const p = Math.min(
-        1,
-        elapsed / 7600
-      );
-
-      const w = innerWidth;
-      const h = innerHeight;
-
-      x.clearRect(
-        0,
-        0,
-        w,
-        h
-      );
-
-      const bg =
-        x.createRadialGradient(
-          w * 0.5,
-          h * 0.48,
-          20,
-          w * 0.5,
-          h * 0.5,
-          Math.max(w, h) * 0.82
-        );
-
-      bg.addColorStop(
-        0,
-        "rgba(130,120,245,.18)"
-      );
-
-      bg.addColorStop(
-        0.3,
-        "rgba(238,242,255,.88)"
-      );
-
-      bg.addColorStop(
-        0.7,
-        "rgba(220,227,246,.98)"
-      );
-
-      bg.addColorStop(
-        1,
-        "#f7f9fd"
-      );
-
-      x.fillStyle = bg;
-      x.fillRect(
-        0,
-        0,
-        w,
-        h
-      );
-
-      for (let i = 0; i < 170; i++) {
-        const sx =
-          (i * 83) % w;
-
-        const sy =
-          (i * 137) % h;
-
-        const tw =
-          0.16 +
-          0.22 *
-            (Math.sin(
-              t * 1.2 + i
-            ) + 1);
-
-        x.fillStyle =
-          `rgba(19,0,186,${tw})`;
-
+      const drawGlassCircle = (cx: number, cy: number, r: number, mouth: number) => {
+        x.save();
+        x.translate(cx, cy);
+        x.shadowBlur = 34;
+        x.shadowColor = "rgba(19,0,186,.3)";
+        const g = x.createRadialGradient(-r * 0.32, -r * 0.38, r * 0.08, r * 0.08, r * 0.05, r * 1.15);
+        g.addColorStop(0, "rgba(255,255,255,.96)");
+        g.addColorStop(0.18, "rgba(210,215,255,.9)");
+        g.addColorStop(0.5, "rgba(86,72,220,.68)");
+        g.addColorStop(1, "rgba(19,0,186,.9)");
+        x.fillStyle = g;
         x.beginPath();
-
-        x.arc(
-          sx,
-          sy,
-          Math.max(
-            0.5,
-            i % 3 === 0
-              ? 1.5
-              : 0.7
-          ),
-          0,
-          Math.PI * 2
-        );
-
-        x.fill();
-      }
-
-      /*
-       * PAC-MAN INTRO
-       *
-       * The entire run is locked to the
-       * exact horizontal centre of the screen.
-       *
-       *  ●    ●    ●    ●    ●
-       *  -------------------------------->
-       *
-       *              ↑
-       *          screen centre
-       */
-
-      const radius = Math.min(
-        44,
-        Math.max(30, w * 0.035)
-      );
-
-      const cy = h * 0.5;
-      const centerX = w * 0.5;
-
-      const pelletGap = Math.min(
-        72,
-        Math.max(48, w * 0.07)
-      );
-
-      const pellets = Array.from(
-        { length: 5 },
-        (_, i) => ({
-          x:
-            centerX +
-            (i - 2) * pelletGap,
-          y: cy,
-        })
-      );
-
-      const move = Math.max(
-        0,
-        Math.min(
-          1,
-          (elapsed - 450) / 2100
-        )
-      );
-
-      const startX =
-        pellets[0].x -
-        radius * 2.2;
-
-      const endX =
-        pellets[4].x +
-        radius * 0.72;
-
-      const baseX =
-        startX +
-        (endX - startX) *
-          move;
-
-      let targetIndex =
-        pellets.findIndex(
-          (_, i) =>
-            !eaten.has(i)
-        );
-
-      if (targetIndex < 0) {
-        targetIndex = 4;
-      }
-
-      const target =
-        pellets[targetIndex];
-
-      const distanceToTarget =
-        Math.hypot(
-          baseX - target.x,
-          cy - target.y
-        );
-
-      const mouthPhase =
-        Math.max(
-          0,
-          1 -
-            Math.min(
-              1,
-              distanceToTarget /
-                70
-            )
-        );
-
-      const mouth =
-        mouthPhase > 0.02
-          ? Math.sin(
-              mouthPhase * Math.PI
-            ) * 0.9
-          : 0;
-
-      pellets.forEach(
-        (q, i) => {
-          if (eaten.has(i)) return;
-
-          const d = Math.hypot(
-            baseX - q.x,
-            cy - q.y
-          );
-
-          if (
-            d <
-              radius * 0.92 &&
-            !eaten.has(i)
-          ) {
-            eaten.add(i);
-            eatSound();
-          }
+        if (mouth <= 0.001) {
+          x.arc(0, 0, r, 0, Math.PI * 2);
+        } else {
+          const half = mouth / 2;
+          x.moveTo(0, 0);
+          x.arc(0, 0, r, half, Math.PI * 2 - half);
+          x.closePath();
         }
-      );
+        x.fill();
+        x.shadowBlur = 0;
+        x.strokeStyle = "rgba(255,255,255,.92)";
+        x.lineWidth = 2;
+        x.stroke();
+        x.globalAlpha = 0.48;
+        x.fillStyle = "rgba(255,255,255,.95)";
+        x.beginPath();
+        x.ellipse(-r * 0.28, -r * 0.38, r * 0.42, r * 0.18, -0.45, 0, Math.PI * 2);
+        x.fill();
+        x.restore();
+      };
 
-      const allEaten =
-        eaten.size === 5;
+      const draw = () => {
+        try {
+          t += 0.012;
+          const elapsed = performance.now() - start;
+          const p = Math.min(1, elapsed / 7600);
+          const w = innerWidth;
+          const h = innerHeight;
+          x.clearRect(0, 0, w, h);
+          const bg = x.createRadialGradient(w * 0.5, h * 0.48, 20, w * 0.5, h * 0.5, Math.max(w, h) * 0.82);
+          bg.addColorStop(0, "rgba(130,120,245,.18)");
+          bg.addColorStop(0.3, "rgba(238,242,255,.88)");
+          bg.addColorStop(0.7, "rgba(220,227,246,.98)");
+          bg.addColorStop(1, "#f7f9fd");
+          x.fillStyle = bg;
+          x.fillRect(0, 0, w, h);
 
-      if (allEaten && finalFadeStart < 0) {
-        finalFadeStart = performance.now();
-      }
+          for (let i = 0; i < 170; i++) {
+            const sx = (i * 83) % w;
+            const sy = (i * 137) % h;
+            const tw = 0.16 + 0.22 * (Math.sin(t * 1.2 + i) + 1);
+            x.fillStyle = `rgba(19,0,186,${tw})`;
+            x.beginPath();
+            x.arc(sx, sy, Math.max(0.5, i % 3 === 0 ? 1.5 : 0.7), 0, Math.PI * 2);
+            x.fill();
+          }
 
-      const finalFade =
-        finalFadeStart < 0
-          ? 1
-          : Math.max(
-              0,
-              1 -
-                (performance.now() -
-                  finalFadeStart) /
-                  FINAL_FADE_MS
-            );
+          const radius = Math.min(44, Math.max(30, w * 0.035));
+          const cy = h * 0.5;
+          const centerX = w * 0.5;
+          const pelletGap = Math.min(72, Math.max(48, w * 0.07));
+          const pellets = Array.from({ length: 5 }, (_, i) => ({ x: centerX + (i - 2) * pelletGap, y: cy }));
+          const move = Math.max(0, Math.min(1, (elapsed - 450) / 2100));
+          const startX = pellets[0].x - radius * 2.2;
+          const endX = pellets[4].x + radius * 0.72;
+          const baseX = startX + (endX - startX) * move;
+          let targetIndex = pellets.findIndex((_, i) => !eaten.has(i));
+          if (targetIndex < 0) targetIndex = 4;
+          const target = pellets[targetIndex];
+          const distanceToTarget = Math.hypot(baseX - target.x, cy - target.y);
+          const mouthPhase = Math.max(0, 1 - Math.min(1, distanceToTarget / 70));
+          const mouth = mouthPhase > 0.02 ? Math.sin(mouthPhase * Math.PI) * 0.9 : 0;
 
-      pellets.forEach(
-        (q, i) => {
-          if (eaten.has(i)) return;
+          pellets.forEach((q, i) => {
+            if (eaten.has(i)) return;
+            const d = Math.hypot(baseX - q.x, cy - q.y);
+            if (d < radius * 0.92) {
+              eaten.add(i);
+              eatSound();
+            }
+          });
+
+          const allEaten = eaten.size === 5;
+          if (allEaten && finalFadeStart < 0) finalFadeStart = performance.now();
+          const finalFade = finalFadeStart < 0 ? 1 : Math.max(0, 1 - (performance.now() - finalFadeStart) / FINAL_FADE_MS);
+
+          pellets.forEach((q, i) => {
+            if (eaten.has(i)) return;
+            x.save();
+            x.shadowBlur = 18;
+            x.shadowColor = "rgba(19,0,186,.55)";
+            const pg = x.createRadialGradient(q.x - 3, q.y - 4, 1, q.x, q.y, 8);
+            pg.addColorStop(0, "rgba(255,255,255,.98)");
+            pg.addColorStop(0.32, "rgba(86,72,220,.9)");
+            pg.addColorStop(1, "rgba(19,0,186,.82)");
+            x.fillStyle = pg;
+            x.beginPath();
+            x.arc(q.x, q.y, 7, 0, Math.PI * 2);
+            x.fill();
+            x.restore();
+          });
 
           x.save();
-
-          x.shadowBlur = 18;
-
-          x.shadowColor =
-            "rgba(19,0,186,.55)";
-
-          const pg =
-            x.createRadialGradient(
-              q.x - 3,
-              q.y - 4,
-              1,
-              q.x,
-              q.y,
-              8
-            );
-
-          pg.addColorStop(
-            0,
-            "rgba(255,255,255,.98)"
-          );
-
-          pg.addColorStop(
-            0.32,
-            "rgba(86,72,220,.9)"
-          );
-
-          pg.addColorStop(
-            1,
-            "rgba(19,0,186,.82)"
-          );
-
-          x.fillStyle = pg;
-
-          x.beginPath();
-
-          x.arc(
-            q.x,
-            q.y,
-            7,
-            0,
-            Math.PI * 2
-          );
-
-          x.fill();
-
+          x.globalAlpha = finalFade;
+          drawGlassCircle(baseX, cy, radius, allEaten ? 0 : mouth);
           x.restore();
+
+          if (p > 0.96) {
+            const a = Math.min(1, (p - 0.96) / 0.04);
+            x.fillStyle = `rgba(255,255,255,${a * 0.42})`;
+            x.fillRect(0, 0, w, h);
+          }
+
+          raf = requestAnimationFrame(draw);
+        } catch {
+          // Any animation/rendering failure must reveal the application.
+          reveal();
         }
-      );
+      };
 
-      x.save();
-      x.globalAlpha = finalFade;
+      resize();
+      addEventListener("resize", resize);
+      raf = requestAnimationFrame(draw);
 
-      drawGlassCircle(
-        baseX,
-        cy,
-        radius,
-        allEaten
-          ? 0
-          : mouth
-      );
-
-      x.restore();
-
-      if (p > 0.96) {
-        const a =
-          Math.min(
-            1,
-            (p - 0.96) /
-              0.04
-          );
-
-        x.fillStyle =
-          `rgba(255,255,255,${a * 0.42})`;
-
-        x.fillRect(
-          0,
-          0,
-          w,
-          h
-        );
-      }
-
-      raf =
-        requestAnimationFrame(
-          draw
-        );
-    };
-
-    resize();
-
-    addEventListener(
-      "resize",
-      resize
-    );
-
-    raf =
-      requestAnimationFrame(
-        draw
-      );
-
-    const done =
-      setTimeout(
-        onDone,
-        3300
-      );
-
-    return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(done);
-
-      removeEventListener(
-        "resize",
-        resize
-      );
-
-      removeEventListener(
-        "pointerdown",
-        unlock
-      );
-
-      removeEventListener(
-        "touchstart",
-        unlock
-      );
-
-      removeEventListener(
-        "wheel",
-        unlock
-      );
-
-      try {
-        void audio?.close();
-      } catch {}
-    };
+      return () => {
+        completed = true;
+        window.clearTimeout(done);
+        cancelAnimationFrame(raf);
+        removeEventListener("resize", resize);
+        removeEventListener("pointerdown", unlock);
+        removeEventListener("touchstart", unlock);
+        removeEventListener("wheel", unlock);
+        try {
+          void audio?.close();
+        } catch {}
+      };
+    } catch {
+      reveal();
+      return () => window.clearTimeout(done);
+    }
   }, [onDone]);
 
-  return (
-    <div className="fixed inset-0 z-[999] bg-[#f7f9fd]">
-      <canvas
-        ref={ref}
-        className="absolute inset-0 h-full w-full"
-      />
-    </div>
-  );
+  return <canvas ref={ref} className="absolute inset-0 h-full w-full" />;
 }
 
-const STAGES = [
-  [
-    "DISCOVER",
-    "DISCOVER EVERY AGENT.",
-    "Find AI agents, tools and workflows across your organization before they become invisible infrastructure.",
-  ],
-  [
-    "THE AI WORKFORCE IS MOVING",
-    "COMMAND YOUR WORKFORCE.",
-    "One command layer between your organization and every agent, tool and action.",
-  ],
-  [
-    "COMMAND",
-    "SAY IT. ARBYTER MOVES IT.",
-    "Tell the workforce what you want. Arbyter turns natural language into operational intent.",
-  ],
-  [
-    "GOVERN · CONTROL",
-    "WORDS BECOME RUNTIME CONTROL.",
-    "Business rules become permissions, approval gates and enforceable runtime controls.",
-  ],
-  [
-    "INTERCEPT",
-    "THE ACTION HITS THE BOUNDARY.",
-    "An agent attempts an action outside policy. Arbyter stops it before the system does.",
-  ],
-  [
-    "ENFORCE",
-    "POLICY CHANGES. THE WORKFORCE CHANGES.",
-    "A regulatory change propagates through the workforce. Affected agents change state automatically.",
-  ],
-  [
-    "AUDIT · VISIBILITY · CONTROL",
-    "ONE WORKFORCE. ONE COMMAND LAYER.",
-    "Every action remains observable, governable and under organizational control.",
-  ],
-  [
-    "AI GOVERNANCE · SECURITY",
-    "BUILT FOR THE AI WORKFORCE.",
-    "AI agent governance, AI security, agent control, policy enforcement, compliance and runtime oversight.",
-  ],
-  [
-    "ARBYTER OS",
-    "ENTER THE COMMAND LAYER.",
-    "Orchestrate. Govern. Secure. Control your AI workforce from one place.",
-  ],
-];
-
 export default function Home() {
-  const [introDone, setIntroDone] =
-    useState(false);
-
-  const [progress, setProgress] =
-    useState(0);
+  const [introDone, setIntroDone] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [selected, setSelected] = useState("All");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const s = () =>
-      setProgress(
-        scrollY /
-          Math.max(
-            1,
-            document.documentElement
-              .scrollHeight -
-              innerHeight
-          )
-      );
+    if (!introDone) return;
 
-    addEventListener(
-      "scroll",
-      s,
-      { passive: true }
-    );
+    let raf = 0;
+    const started = performance.now();
 
-    s();
+    const update = () => {
+      const elapsed = performance.now() - started;
+      setProgress(Math.min(1, elapsed / 7600));
+      raf = requestAnimationFrame(update);
+    };
 
-    return () =>
-      removeEventListener(
-        "scroll",
-        s
-      );
-  }, []);
-
-  const stage = Math.min(
-    STAGES.length - 1,
-    Math.floor(
-      progress * STAGES.length
-    )
-  );
+    raf = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(raf);
+  }, [introDone]);
 
   return (
     <main className="min-h-[920vh] bg-[#f7f9fd] text-[#111322]">
       {!introDone && (
-        <Intro
-          onDone={() =>
-            setIntroDone(true)
-          }
-        />
+        <Intro onDone={() => setIntroDone(true)} />
       )}
 
-      <div
-        className={
-          introDone
-            ? "opacity-100 transition-opacity duration-700"
-            : "opacity-0"
-        }
-      >
-        <header className="fixed left-0 right-0 top-0 z-50 flex h-[72px] items-center justify-between px-6 md:px-10">
-          <Link
-            href="/"
-            className="flex items-center gap-3"
-          >
-            <div className="h-8 w-9">
-              {LOGO}
-            </div>
-
-            <div className="hidden md:block">
-              <b className="text-sm">
-                ARBYTER OS
-              </b>
-
-              <div className="text-[7px] tracking-[.3em] text-black/35">
-                COMMAND LAYER
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            href="/login"
-            className="pointer-events-auto rounded-full border border-[#1300BA]/15 bg-white/55 px-5 py-2.5 text-xs text-[#111322] shadow-[0_10px_35px_rgba(19,0,186,.08)] backdrop-blur-xl hover:bg-[#1300BA] hover:text-white"
-          >
-            Enter
-          </Link>
-        </header>
-
-        <div className="fixed inset-0 z-0">
+      <div className={introDone ? "" : "opacity-0"}>
+        <section className="relative min-h-screen overflow-hidden">
           <World progress={progress} />
-        </div>
-
-        <div className="pointer-events-none fixed bottom-7 left-1/2 z-50 flex -translate-x-1/2 gap-2 rounded-full border border-[#1300BA]/10 bg-white/45 px-4 py-2 shadow-[0_10px_35px_rgba(19,0,186,.08)] backdrop-blur-xl">
-          {STAGES.map((_, i) => (
-            <span
-              key={i}
-              className={
-                "h-1.5 rounded-full transition-all " +
-                (i === stage
-                  ? "w-9 bg-[#1300BA]"
-                  : "w-2 bg-[#1300BA]/15")
-              }
-            />
-          ))}
-        </div>
-
-        <div className="pointer-events-none fixed inset-0 z-30">
-          {STAGES.map((s, i) => (
-            <div
-              key={s[0]}
-              className={
-                "absolute top-1/2 max-w-[480px] -translate-y-1/2 px-6 transition-all duration-700 " +
-                (i === 0
-                  ? "left-6 md:left-12"
-                  : i % 2
-                  ? "right-6 md:right-12"
-                  : "left-6 md:left-12") +
-                " " +
-                (i === stage
-                  ? "translate-x-0 opacity-100"
-                  : "translate-x-10 opacity-0")
-              }
-            >
-              <div className="rounded-[2rem] border border-white/70 bg-white/45 p-7 shadow-[0_24px_80px_rgba(19,0,186,.10)] backdrop-blur-xl md:p-9">
-                <div className="text-[9px] font-bold tracking-[.4em] text-[#1300BA]">
-                  {s[0]}
-                </div>
-
-                <h1 className="mt-5 text-5xl font-black leading-[.82] tracking-[-.07em] text-[#111322] md:text-7xl">
-                  {s[1]}
-                </h1>
-
-                <p className="mt-6 max-w-md text-sm leading-6 text-[#111322]/50">
-                  {s[2]}
-                </p>
+          <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center px-6 py-24 lg:px-10">
+            <div className="max-w-3xl">
+              <div className="mb-8 h-14 w-14">{LOGO}</div>
+              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.28em] text-[#1300BA]">
+                Arbyter OS
+              </p>
+              <h1 className="text-5xl font-semibold tracking-tight sm:text-7xl">
+                Orchestrate. Govern. Secure.
+              </h1>
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-black/60 sm:text-xl">
+                Enterprise AI governance and orchestration for agents, tools, and execution workflows.
+              </p>
+              <div className="mt-10 flex flex-wrap gap-4">
+                <Link className="rounded-full bg-[#1300BA] px-6 py-3 text-sm font-semibold text-white" href="/agents">
+                  Explore agents
+                </Link>
+                <Link className="rounded-full border border-black/10 bg-white/70 px-6 py-3 text-sm font-semibold" href="/dashboard">
+                  Open dashboard
+                </Link>
               </div>
             </div>
-          ))}
-
-          <div
-            className={
-              "absolute bottom-8 left-1/2 -translate-x-1/2 text-[8px] font-bold tracking-[.35em] text-[#1300BA]/60 " +
-              (progress > 0.05
-                ? "opacity-0"
-                : "opacity-100")
-            }
-          >
-            <span className="inline-block animate-bounce">
-              ↓
-            </span>{" "}
-            SCROLL TO ENTER
           </div>
-        </div>
-
-        <div className="relative z-20 h-[920vh]">
-          {STAGES.map((_, i) => (
-            <section
-              key={i}
-              className="h-[102.2vh]"
-            />
-          ))}
-        </div>
-
-        <section className="relative z-40 bg-white/80 px-6 py-32 text-[#111322] backdrop-blur-xl">
-          <div className="mx-auto max-w-6xl text-center">
-            <div className="mx-auto h-14 w-16">
-              {LOGO}
-            </div>
-
-            <div className="mt-7 text-[9px] font-bold tracking-[.4em] text-[#1300BA]">
-              ARBYTER OS
-            </div>
-
-            <div className="mx-auto max-w-3xl text-xs leading-6 text-[#111322]/30">
-              AI agent governance · AI workforce
-              management · AI security · agent
-              orchestration · autonomous AI control ·
-              policy enforcement · AI compliance ·
-              agent monitoring · AI risk management ·
-              runtime governance
-            </div>
-
-            <h2 className="mt-5 text-5xl font-black leading-[.82] tracking-[-.075em] md:text-8xl">
-              LET YOUR AI
-              <br />
-              WORKFORCE MOVE.
-            </h2>
-
-            <p className="mx-auto mt-8 max-w-xl text-sm leading-6 text-[#111322]/45">
-              Command the workforce. Govern the
-              rules. Control the actions. Keep the
-              evidence.
-            </p>
-
-            <Link
-              href="/login"
-              className="pointer-events-auto mt-9 inline-flex rounded-full bg-[#1300BA] px-8 py-4 text-sm font-semibold text-white shadow-[0_16px_45px_rgba(19,0,186,.22)] hover:bg-[#0e008a]"
-            >
-              Enter Arbyter →
-            </Link>
-          </div>
-
-          <footer className="mx-auto mt-28 flex max-w-7xl flex-col gap-4 border-t border-[#1300BA]/10 pt-8 text-xs text-[#111322]/35 md:flex-row md:justify-between">
-            <b className="text-[#111322]">
-              ARBYTER OS
-            </b>
-
-            <a href="mailto:arbyteros@gmail.com">
-              arbyteros@gmail.com
-            </a>
-
-            <span className="text-[8px] tracking-[.3em]">
-              ORCHESTRATE · GOVERN · SECURE
-            </span>
-
-            <a
-              href="https://instagram.com/arbyter.os"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-[#1300BA]"
-            >
-              @arbyter.os
-            </a>
-          </footer>
         </section>
       </div>
     </main>
