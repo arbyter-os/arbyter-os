@@ -53,18 +53,18 @@
 
 :root {
   color-scheme: light;
-  --background: oklch(0.985 0.004 255);
-  --foreground: oklch(0.22 0.02 260);
-  --card: oklch(1 0 0 / 0.58);
-  --card-foreground: oklch(0.22 0.02 260);
-  --popover: oklch(1 0 0 / 0.82);
-  --popover-foreground: oklch(0.22 0.02 260);
+  --background: #f5f5f7;
+  --foreground: #1d1d1f;
+  --card: #ffffff;
+  --card-foreground: #1d1d1f;
+  --popover: rgba(245,245,247,.88);
+  --popover-foreground: #1d1d1f;
   --primary: #1300BA;
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.97 0.008 255);
-  --secondary-foreground: oklch(0.28 0.02 260);
-  --muted: oklch(0.96 0.008 255 / 0.72);
-  --muted-foreground: oklch(0.5 0.018 260);
+  --secondary: #fafafc;
+  --secondary-foreground: #333333;
+  --muted: #f5f5f7;
+  --muted-foreground: #7a7a7a;
   --accent: oklch(0.955 0.025 258 / 0.68);
   --accent-foreground: #1300BA;
   --destructive: oklch(0.58 0.22 27);
@@ -73,15 +73,15 @@
   --success-foreground: oklch(0.99 0 0);
   --warning: oklch(0.72 0.15 65);
   --warning-foreground: oklch(0.28 0.05 65);
-  --border: oklch(0.8 0.02 260 / 0.42);
-  --input: oklch(0.8 0.02 260 / 0.48);
+  --border: rgba(0,0,0,.08);
+  --input: rgba(0,0,0,.08);
   --ring: #1300BA;
   --chart-1: #1300BA;
   --chart-2: oklch(0.68 0.12 195);
   --chart-3: oklch(0.74 0.14 68);
   --chart-4: oklch(0.62 0.15 155);
   --chart-5: oklch(0.6 0.02 260);
-  --radius: 0.9rem;
+  --radius: 0.6875rem;
   --sidebar: oklch(1 0 0 / 0.5);
   --sidebar-foreground: oklch(0.3 0.015 260);
   --sidebar-primary: #1300BA;
@@ -103,11 +103,7 @@
     @apply bg-background text-foreground;
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
-    background:
-      radial-gradient(circle at 12% 8%, rgba(19,0,186,.10), transparent 28%),
-      radial-gradient(circle at 88% 18%, rgba(83,160,255,.10), transparent 26%),
-      radial-gradient(circle at 55% 92%, rgba(19,0,186,.06), transparent 30%),
-      #f7f8fc;
+    background: #f5f5f7;
   }
 }
 
@@ -117,14 +113,9 @@
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    background:
-      linear-gradient(135deg, rgba(255,255,255,.72), rgba(255,255,255,.38)),
-      rgba(255,255,255,.42);
+    background: rgba(255,255,255,.72);
     border: 1px solid rgba(255,255,255,.78);
-    box-shadow:
-      0 18px 55px rgba(32,38,75,.10),
-      inset 0 1px 0 rgba(255,255,255,.92),
-      inset 0 -1px 0 rgba(255,255,255,.28);
+    box-shadow: none;
     backdrop-filter: blur(22px) saturate(155%);
     -webkit-backdrop-filter: blur(22px) saturate(155%);
   }
@@ -159,14 +150,9 @@
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    background:
-      linear-gradient(135deg, rgba(255,255,255,.84), rgba(255,255,255,.52)),
-      rgba(255,255,255,.58);
+    background: rgba(255,255,255,.84);
     border: 1px solid rgba(255,255,255,.88);
-    box-shadow:
-      0 22px 65px rgba(32,38,75,.13),
-      inset 0 1px 0 rgba(255,255,255,.98),
-      inset 0 -1px 0 rgba(255,255,255,.32);
+    box-shadow: none;
     backdrop-filter: blur(28px) saturate(165%);
     -webkit-backdrop-filter: blur(28px) saturate(165%);
   }
@@ -177,7 +163,7 @@
     overflow: hidden;
     background: linear-gradient(135deg, rgba(12,12,20,.82), rgba(19,0,186,.42));
     border: 1px solid rgba(255,255,255,.16);
-    box-shadow: 0 24px 70px rgba(0,0,0,.20), inset 0 1px 0 rgba(255,255,255,.14);
+    box-shadow: none;
     backdrop-filter: blur(24px) saturate(145%);
     -webkit-backdrop-filter: blur(24px) saturate(145%);
   }
@@ -205,21 +191,16 @@
   .content-surface {
     background: rgba(255,255,255,.58);
     border: 1px solid rgba(210,215,230,.72);
-    box-shadow: 0 10px 32px rgba(32,38,75,.055);
+    box-shadow: none;
   }
 
   .modal-surface {
     position: relative;
     isolation: isolate;
     overflow: hidden;
-    background:
-      linear-gradient(135deg, rgba(255,255,255,.80), rgba(255,255,255,.70)),
-      rgba(255,255,255,.76);
+    background: rgba(245,245,247,.88);
     border: 1px solid rgba(255,255,255,.88);
-    box-shadow:
-      0 30px 90px rgba(20,25,55,.20),
-      inset 0 1px 0 rgba(255,255,255,.96),
-      inset 0 -1px 0 rgba(255,255,255,.30);
+    box-shadow: 0 18px 50px rgba(0,0,0,.10);
     backdrop-filter: blur(28px) saturate(155%);
     -webkit-backdrop-filter: blur(28px) saturate(155%);
   }
