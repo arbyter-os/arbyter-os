@@ -916,6 +916,21 @@ function Intro({
       const allEaten =
         eaten.size === 5;
 
+      if (allEaten && finalFadeStart < 0) {
+        finalFadeStart = performance.now();
+      }
+
+      const finalFade =
+        finalFadeStart < 0
+          ? 1
+          : Math.max(
+              0,
+              1 -
+                (performance.now() -
+                  finalFadeStart) /
+                  FINAL_FADE_MS
+            );
+
       pellets.forEach(
         (q, i) => {
           if (eaten.has(i)) return;
@@ -970,6 +985,9 @@ function Intro({
         }
       );
 
+      x.save();
+      x.globalAlpha = finalFade;
+
       drawGlassCircle(
         baseX,
         cy,
@@ -978,6 +996,8 @@ function Intro({
           ? 0
           : mouth
       );
+
+      x.restore();
 
       if (p > 0.96) {
         const a =
