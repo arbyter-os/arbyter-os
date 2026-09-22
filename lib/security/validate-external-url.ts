@@ -143,14 +143,15 @@ export async function fetchValidatedExternalUrl(
 
   const lookup = (
     _hostname: string,
-    options: { family?: number; all?: boolean },
+    options: { family?: number | "IPv4" | "IPv6"; all?: boolean },
     callback: (
       error: NodeJS.ErrnoException | null,
       address: string | Array<{ address: string; family: number }>,
       family?: number,
     ) => void,
   ) => {
-    const address = addresses.find((candidate) => !options.family || net.isIP(candidate) === options.family);
+    const family = typeof options.family === "number" ? options.family : undefined;
+    const address = addresses.find((candidate) => !family || net.isIP(candidate) === family);
     if (!address) {
       callback(new Error("No validated address is available for this connection."), "");
       return;
