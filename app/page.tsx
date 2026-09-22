@@ -62,7 +62,7 @@ function Intro({ onDone }: { onDone: () => void }) {
   const enter = () => {
     if (!ready || clicked) return;
     setClicked(true);
-    window.setTimeout(onDone, 1200);
+    window.setTimeout(onDone, 1050);
   };
 
   return (
@@ -131,16 +131,32 @@ function Intro({ onDone }: { onDone: () => void }) {
         <button
           onClick={enter}
           disabled={!ready}
-          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full border border-black/20 bg-black/75 px-11 py-4 text-[10px] font-bold tracking-[.55em] text-white backdrop-blur-xl transition-all duration-1000 ${
-            ready
-              ? "scale-100 opacity-100"
-              : "pointer-events-none scale-75 opacity-0"
+          aria-label="Enter Arbyter"
+          className={`group absolute left-1/2 top-1/2 flex h-24 w-24 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full transition-all duration-1000 ${
+            ready ? "scale-100 opacity-100" : "pointer-events-none scale-50 opacity-0"
           }`}
         >
-          ENTER
+          <span className="absolute inset-0 rounded-full border border-white/80 shadow-[0_0_35px_rgba(255,255,255,.85),0_0_90px_rgba(150,210,255,.5)] transition-all duration-700 group-hover:scale-110 group-hover:border-white" />
+          <span className="absolute inset-[10px] rounded-full border border-white/35 animate-pulse" />
+          <span className="absolute inset-[22px] rounded-full bg-white/20 backdrop-blur-sm transition-all duration-500 group-hover:scale-125 group-hover:bg-white/35" />
+          <span className="relative text-[7px] font-semibold tracking-[.35em] text-black/70">CLICK</span>
         </button>
       </div>
 
+      <div
+        className={`pointer-events-none fixed inset-0 z-[10000] transition-opacity duration-300 ${
+          clicked ? "opacity-100" : "opacity-0"
+        }`}
+        aria-hidden="true"
+      >
+        <div
+          className={`absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white transition-transform duration-[900ms] ease-out ${
+            clicked ? "scale-[45]" : "scale-0"
+          }`}
+          style={{ boxShadow: "0 0 80px 30px #fff, 0 0 180px 70px rgba(180,220,255,.95), 0 0 320px 120px rgba(19,0,186,.7)" }}
+        />
+        <div className={`absolute inset-0 bg-white transition-opacity duration-200 ${clicked ? "opacity-100" : "opacity-0"}`} />
+      </div>
       <div className="absolute left-7 top-7 text-white">
         <div className="text-[18px] font-black tracking-[-.04em]">ARBYTER</div>
         <div className="mt-1 text-[8px] tracking-[.25em] text-white/45">
@@ -311,9 +327,12 @@ export default function Home() {
 
             <Link
               href="/login"
-              className="mt-10 inline-flex rounded-full bg-[#1300BA] px-8 py-4 text-xs font-semibold text-white transition hover:bg-blue-800"
+              className="group mt-10 inline-flex items-center gap-4 rounded-full border border-[#1300BA]/20 bg-white/70 px-5 py-3 text-[10px] font-semibold tracking-[.16em] text-[#1300BA] shadow-[0_12px_40px_rgba(19,0,186,.08)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[#1300BA]/40 hover:bg-white hover:shadow-[0_18px_50px_rgba(19,0,186,.16)]"
             >
-              Enter Arbyter →
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1300BA] text-white transition-transform duration-300 group-hover:translate-x-0.5">
+                →
+              </span>
+              ENTER ARBYTER
             </Link>
 
             <footer className="mt-40 border-t border-black/10 pt-8">
