@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import ArbyterWorld from "@/components/ArbyterWorld";
+
+const ArbyterWorld = dynamic(() => import("@/components/ArbyterWorld"), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 bg-[#aeb3bf]" />,
+});
 
 /* ------------------------------------------------ */
 /* COPY & DATA                                      */
