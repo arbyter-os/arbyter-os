@@ -1,5 +1,4 @@
 import dns from "node:dns/promises";
-import { lookup as dnsLookup } from "node:dns";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
@@ -142,10 +141,14 @@ export async function fetchValidatedExternalUrl(
         ? Buffer.from(init.body)
         : undefined;
 
-  const lookup: typeof dnsLookup = (
-    _hostname,
-    options,
-    callback,
+  const lookup = ((
+    _hostname: string,
+    options: { family?: number; all?: boolean },
+    callback: (
+      error: NodeJS.ErrnoException | null,
+      address: string | Array<{ address: string; family: number }>,
+      family?: number,
+    ) => void,
   ) => {
     const address = addresses.find((candidate) => !options.family || net.isIP(candidate) === options.family);
     if (!address) {
