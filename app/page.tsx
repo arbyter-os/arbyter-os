@@ -224,7 +224,7 @@ export default function Home() {
           introDone ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       >
-        <ArbyterWorld progress={progress} />
+        {introDone && <ArbyterWorld progress={progress} />}
 
         <header className="fixed left-0 right-0 top-0 z-50 flex items-start justify-between px-7 py-7 mix-blend-difference">
           <Link href="/" className="text-white">
