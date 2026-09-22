@@ -213,10 +213,7 @@ function Intro({ onDone }: { onDone: () => void }) {
       if (finished) return;
       finished = true;
       if (audioTimer) window.clearInterval(audioTimer);
-      if (audioContext) {
-        audioContext.close().catch(() => {});
-        audioContext = null;
-      }
+      if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
       onDone();
     };
 
@@ -229,196 +226,173 @@ function Intro({ onDone }: { onDone: () => void }) {
         audioContext = new AudioCtx();
         const ctx = audioContext;
         if (ctx.state === "suspended") void ctx.resume();
-
         const master = ctx.createGain();
         master.gain.setValueAtTime(0.0001, ctx.currentTime);
-        master.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 0.35);
+        master.gain.exponentialRampToValueAtTime(0.04, ctx.currentTime + 0.3);
         master.connect(ctx.destination);
-
         const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
         const noiseData = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random() * 2 - 1) * 0.2;
+        for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random() * 2 - 1) * 0.16;
         const noise = ctx.createBufferSource();
-        noise.buffer = noiseBuffer;
-        noise.loop = true;
+        noise.buffer = noiseBuffer; noise.loop = true;
         const filter = ctx.createBiquadFilter();
-        filter.type = "bandpass";
-        filter.frequency.value = 1450;
-        filter.Q.value = 0.6;
-        const noiseGain = ctx.createGain();
-        noiseGain.gain.value = 0.06;
-        noise.connect(filter).connect(noiseGain).connect(master);
-        noise.start();
-
+        filter.type = "bandpass"; filter.frequency.value = 1350; filter.Q.value = 0.55;
+        const ng = ctx.createGain(); ng.gain.value = 0.05;
+        noise.connect(filter).connect(ng).connect(master); noise.start();
         audioTimer = window.setInterval(() => {
           if (!audioContext || audioContext.state !== "running") return;
           const now = audioContext.currentTime;
           const osc = audioContext.createOscillator();
           const gain = audioContext.createGain();
           osc.type = "square";
-          osc.frequency.setValueAtTime(720 + Math.random() * 1100, now);
-          osc.frequency.exponentialRampToValueAtTime(260 + Math.random() * 260, now + 0.065);
+          osc.frequency.setValueAtTime(650 + Math.random() * 1250, now);
+          osc.frequency.exponentialRampToValueAtTime(250 + Math.random() * 300, now + 0.07);
           gain.gain.setValueAtTime(0.0001, now);
-          gain.gain.exponentialRampToValueAtTime(0.018 + Math.random() * 0.02, now + 0.006);
+          gain.gain.exponentialRampToValueAtTime(0.015 + Math.random() * 0.018, now + 0.006);
           gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
-          osc.connect(gain).connect(master);
-          osc.start(now);
-          osc.stop(now + 0.1);
-        }, 72);
-      } catch {
-        // Audio is optional.
-      }
+          osc.connect(gain).connect(master); osc.start(now); osc.stop(now + 0.1);
+        }, 78);
+      } catch {}
     };
 
-    const c = ref.current;
-    const ctx = c?.getContext("2d");
-    if (!c || !ctx) { finish(); return; }
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) { finish(); return; }
 
-    type Cell = {
-      x: number;
-      y: number;
-      baseX: number;
-      speed: number;
-      char: string;
-      targetX: number;
-      targetY: number;
-      hasTarget: boolean;
-    };
-
-    const CELL_W = 16;
-    const CELL_H = 18;
+    type Cell = { x: number; y: number; baseX: number; row: number; speed: number; char: string; target?: string; settled: boolean };
+    const CELL_W = 25;
+    const CELL_H = 26;
     const cells: Cell[] = [];
-    let targetMask = new Set<string>();
+    let targets = new Map<string, string>();
 
-    const makeTargetMask = (w: number, h: number) => {
+    const buildLetterMap = (w: number, h: number) => {
       const off = document.createElement("canvas");
-      off.width = Math.max(1, Math.floor(w));
-      off.height = Math.max(1, Math.floor(h));
+      off.width = Math.floor(w); off.height = Math.floor(h);
       const ox = off.getContext("2d");
-      if (!ox) return new Set<string>();
-      const fontSize = Math.min(128, Math.max(58, w * 0.105));
-      ox.font = "900 " + fontSize + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ox.textAlign = "center";
-      ox.textBaseline = "middle";
-      ox.fillStyle = "#fff";
-      ox.fillText("ARBYTER", w / 2, h / 2);
-      const image = ox.getImageData(0, 0, off.width, off.height);
-      const result = new Set<string>();
+      const map = new Map<string, string>();
+      if (!ox) return map;
 
-      // Quantize the actual ARBYTER letter mask onto the same binary rain grid.
+      const word = "ARBYTER";
+      const fontSize = Math.min(132, Math.max(78, w * 0.115));
+      ox.font = "900 " + fontSize + "px Arial Black, Arial, sans-serif";
+      ox.textAlign = "center"; ox.textBaseline = "middle"; ox.fillStyle = "#fff";
+      ox.fillText(word, w / 2, h / 2);
+      const data = ox.getImageData(0, 0, off.width, off.height).data;
+
+      // Every target pixel is mapped back to an EXISTING rain column/grid cell.
+      // Nothing travels sideways and no separate text is drawn.
       for (let y = 0; y < h; y += CELL_H) {
         for (let x = 0; x < w; x += CELL_W) {
           let hit = false;
           for (let sy = y; sy < Math.min(y + CELL_H, h) && !hit; sy += 3) {
             for (let sx = x; sx < Math.min(x + CELL_W, w); sx += 3) {
-              if (image.data[(sy * off.width + sx) * 4 + 3] > 100) { hit = true; break; }
+              if (data[(sy * off.width + sx) * 4 + 3] > 100) { hit = true; break; }
             }
           }
-          if (hit) result.add(x + "," + y);
+          if (!hit) continue;
+
+          // Find which of the seven letters owns this x-position.
+          const left = w / 2 - Math.min(w * 0.44, 620);
+          const relative = Math.max(0, Math.min(0.999, (x - left) / Math.min(w * 0.88, 1240)));
+          const letterIndex = Math.min(6, Math.floor(relative * 7));
+          map.set(x + "," + y, word[letterIndex]);
         }
       }
-      return result;
+      return map;
     };
 
     const resize = () => {
       const d = Math.min(window.devicePixelRatio || 1, 2);
-      c.width = window.innerWidth * d;
-      c.height = window.innerHeight * d;
+      canvas.width = window.innerWidth * d;
+      canvas.height = window.innerHeight * d;
       ctx.setTransform(d, 0, 0, d, 0, 0);
       const w = window.innerWidth;
       const h = window.innerHeight;
-      targetMask = makeTargetMask(w, h);
+      targets = buildLetterMap(w, h);
       cells.length = 0;
 
-      for (let x = 0; x < w + CELL_W; x += CELL_W) {
-        const head = -Math.random() * h;
-        for (let y = head; y < h + h * 0.9; y += CELL_H) {
-          cells.push({ x, y, baseX: x, speed: 2.5 + Math.random() * 5.5, char: Math.random() > 0.5 ? "0" : "1", targetX: x, targetY: y, hasTarget: false });
+      // BIGGER, fewer columns. The rain is still continuous and each column keeps moving.
+      for (let x = 0; x <= w + CELL_W; x += CELL_W) {
+        const offset = -Math.random() * h;
+        let row = 0;
+        for (let y = offset; y < h + h; y += CELL_H) {
+          cells.push({
+            x, y, baseX: x, row: row++, speed: 2.8 + Math.random() * 3.8,
+            char: Math.random() > 0.5 ? "0" : "1", settled: false
+          });
         }
       }
-
-      // Only binary rain cells become the letters; there is no text overlay.
-      targetMask.forEach((key) => {
-        const parts = key.split(",").map(Number);
-        const tx = parts[0];
-        const ty = parts[1];
-        const candidates = cells.filter((cell) => Math.abs(cell.baseX - tx) < CELL_W * 0.55 && cell.y < -CELL_H);
-        const cell = candidates[Math.floor(Math.random() * candidates.length)] ?? cells.find((item) => Math.abs(item.baseX - tx) < CELL_W * 0.55);
-        if (cell) {
-          cell.targetX = tx + CELL_W / 2;
-          cell.targetY = ty + CELL_H / 2;
-          cell.hasTarget = true;
-        }
-      });
     };
 
-    const start = performance.now();
-    const DURATION = 6100;
+    const startTime = performance.now();
+    const DURATION = 6500;
 
     const draw = () => {
       const now = performance.now();
-      const p = Math.min(1, (now - start) / DURATION);
+      const p = Math.min(1, (now - startTime) / DURATION);
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const settle = Math.max(0, Math.min(1, (p - 0.56) / 0.28));
-      const easedSettle = settle * settle * (3 - 2 * settle);
+      // Rain continues moving. Only the central target cells briefly settle.
+      const settle = Math.max(0, Math.min(1, (p - 0.57) / 0.12));
+      const morph = Math.max(0, Math.min(1, (p - 0.69) / 0.12));
+      const eased = settle * settle * (3 - 2 * settle);
+      const morphed = morph * morph * (3 - 2 * morph);
 
-      ctx.fillStyle = "rgba(0,0,0,0.42)";
+      ctx.fillStyle = "rgba(0,0,0,0.46)";
       ctx.fillRect(0, 0, w, h);
-
       const glow = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, Math.max(w, h) * 0.62);
-      glow.addColorStop(0, "rgba(19,0,186,0.12)");
-      glow.addColorStop(0.35, "rgba(19,0,186,0.035)");
+      glow.addColorStop(0, "rgba(19,0,186,0.11)");
+      glow.addColorStop(0.4, "rgba(19,0,186,0.025)");
       glow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
 
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
       cells.forEach((cell, index) => {
-        if (cell.hasTarget && easedSettle > 0) {
-          cell.x = cell.baseX + (cell.targetX - cell.baseX) * easedSettle;
-          cell.y += cell.speed * (1 - easedSettle * 0.94);
-          cell.y = cell.y + (cell.targetY - cell.y) * easedSettle * 0.13;
-          if (easedSettle > 0.72) {
-            cell.x += Math.sin(now * 0.004 + index) * (1 - easedSettle) * 2;
-            cell.y = cell.targetY + Math.sin(now * 0.006 + index) * (1 - easedSettle) * 2;
-          }
+        const key = Math.round(cell.baseX) + "," + Math.round(Math.floor((cell.y + CELL_H / 2) / CELL_H) * CELL_H);
+        const targetKey = targets.has(key) ? key : Math.round(cell.baseX) + "," + Math.round(Math.floor(cell.y / CELL_H) * CELL_H);
+        const target = targets.get(targetKey);
+
+        // Keep the physical column fixed. Never move a target cell sideways.
+        const isCenterTarget = !!target && cell.baseX > w * 0.16 && cell.baseX < w * 0.84 && cell.y > h * 0.30 && cell.y < h * 0.70;
+        if (isCenterTarget && eased > 0.05) {
+          // Freeze at the existing grid position, while every other stream keeps falling.
+          cell.settled = true;
+          const gridY = Math.round(cell.y / CELL_H) * CELL_H;
+          cell.y += cell.speed * (1 - eased);
+          cell.y += (gridY - cell.y) * eased;
         } else {
-          cell.y += cell.speed * (1 - easedSettle * 0.42);
+          cell.settled = false;
+          cell.y += cell.speed;
         }
 
-        if (!cell.hasTarget && cell.y > h + 60) {
-          cell.y = -CELL_H * (1 + Math.random() * 12);
-          cell.x = cell.baseX;
+        if (cell.y > h + CELL_H * 2) {
+          cell.y = -CELL_H * (1 + Math.random() * 8);
           cell.char = Math.random() > 0.5 ? "0" : "1";
         }
 
-        if (cell.hasTarget && easedSettle > 0.72) cell.char = index % 2 === 0 ? "1" : "0";
-        else if (Math.random() < 0.035) cell.char = cell.char === "0" ? "1" : "0";
+        if (isCenterTarget && morphed > 0) cell.char = target as string;
+        else if (!isCenterTarget && Math.random() < 0.025) cell.char = cell.char === "0" ? "1" : "0";
 
-        const inWord = cell.hasTarget && easedSettle > 0.48;
-        const alpha = inWord ? 0.58 + easedSettle * 0.42 : 0.12 + 0.33 * (1 - Math.min(1, Math.abs(cell.y - h * 0.5) / h));
-        ctx.font = (inWord ? "800 " : "500 ") + (inWord ? 15 : 13) + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-        ctx.fillStyle = inWord ? "rgba(230,228,255," + alpha + ")" : "rgba(96,82,255," + alpha + ")";
-        ctx.shadowBlur = inWord ? 8 : 0;
-        ctx.shadowColor = "rgba(19,0,186,.9)";
-        ctx.fillText(cell.char, cell.x, cell.y);
+        const formed = isCenterTarget && morphed > 0.35;
+        const alpha = formed ? 0.92 : (0.14 + 0.34 * (1 - Math.min(1, Math.abs(cell.y - h / 2) / h)));
+        ctx.font = (formed ? "900 " : "600 ") + (formed ? Math.max(19, CELL_W - 2) : Math.max(16, CELL_W - 5)) + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+        ctx.fillStyle = formed ? "rgba(235,233,255," + alpha + ")" : "rgba(82,72,240," + alpha + ")";
+        ctx.shadowBlur = formed ? 9 : 2;
+        ctx.shadowColor = "rgba(19,0,186,.85)";
+        ctx.fillText(cell.char, cell.baseX + CELL_W / 2, cell.y);
         ctx.shadowBlur = 0;
       });
 
-      if (easedSettle > 0.72) {
-        const a = (easedSettle - 0.72) / 0.28;
-        const bloom = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, Math.min(w, h) * 0.34);
-        bloom.addColorStop(0, "rgba(19,0,186," + (0.10 * a) + ")");
+      if (morphed > 0.2) {
+        const a = Math.min(1, (morphed - 0.2) / 0.8);
+        const bloom = ctx.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, Math.min(w, h) * 0.35);
+        bloom.addColorStop(0, "rgba(19,0,186," + (0.08 * a) + ")");
         bloom.addColorStop(1, "rgba(19,0,186,0)");
-        ctx.fillStyle = bloom;
-        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = bloom; ctx.fillRect(0, 0, w, h);
       }
 
-      if (p > 0.88) {
-        const fade = Math.min(1, (p - 0.88) / 0.12);
+      if (p > 0.91) {
+        const fade = Math.min(1, (p - 0.91) / 0.09);
         ctx.fillStyle = "rgba(0,0,0," + (fade * 0.88) + ")";
         ctx.fillRect(0, 0, w, h);
       }
@@ -448,11 +422,7 @@ function Intro({ onDone }: { onDone: () => void }) {
     };
   }, [onDone]);
 
-  return (
-    <div className="fixed inset-0 z-[999] bg-black" aria-hidden="true">
-      <canvas ref={ref} className="absolute inset-0 h-full w-full" />
-    </div>
-  );
+  return <div className="fixed inset-0 z-[999] bg-black" aria-hidden="true"><canvas ref={ref} className="absolute inset-0 h-full w-full" /></div>;
 }
 const STAGES = [
   ["DISCOVER", "DISCOVER EVERY AGENT.", "Find AI agents, tools and workflows across your organization before they become invisible infrastructure."],
