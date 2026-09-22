@@ -172,7 +172,7 @@ export default function Home() {
               className="mt-7 text-sm uppercase tracking-[0.35em]"
               style={{ color: BLUE }}
             >
-              Orchestrate. Govern. Secure.
+              Intelligence Meets Governance.
             </p>
 
             <p className="mx-auto mt-8 max-w-xl text-base leading-7 text-black/55">
@@ -280,7 +280,7 @@ export default function Home() {
                   className="mt-2 text-[9px] font-bold tracking-[0.35em]"
                   style={{ color: BLUE }}
                 >
-                  ORCHESTRATE · GOVERN · SECURE
+                  INTELLIGENCE · GOVERNANCE
                 </div>
 
                 <p className="mt-5 text-xs leading-5 text-black/45">
@@ -893,7 +893,7 @@ export default function Home() {
             <div className="mt-14 flex flex-col gap-4 border-t border-black/10 pt-7 text-[10px] text-black/30 md:flex-row md:items-center md:justify-between">
               <span>© {new Date().getFullYear()} Arbyter OS</span>
 
-              <span>ORCHESTRATE · GOVERN · SECURE</span>
+              <span>INTELLIGENCE · GOVERNANCE</span>
             </div>
           </div>
         </footer>
