@@ -163,8 +163,8 @@ export default function MonolithWorld({ progress }) {
       smoothProgress += (progressRef.current - smoothProgress) * 0.055;
       const p = smoothProgress;
 
-      let camZ: number;
-      let camY: number;
+      let camZ;
+      let camY;
 
       if (p <= 0.48) {
         const t = THREE.MathUtils.smoothstep(p, 0.0, 0.48);
