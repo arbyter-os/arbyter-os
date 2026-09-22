@@ -62,8 +62,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [activeIndex])
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f]">
-      <main className="min-h-screen px-5 pb-28 pt-6 sm:px-8 sm:pt-8">
+    <div className="relative min-h-screen overflow-hidden bg-[#f5f5f7] text-[#1d1d1f]">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(19,0,186,.07),transparent_28%),radial-gradient(circle_at_88%_100%,rgba(19,0,186,.045),transparent_30%)]" />
+        <div className="absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(19,0,186,.055)_1px,transparent_1px),linear-gradient(90deg,rgba(19,0,186,.055)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:linear-gradient(to_bottom,black,transparent_72%)]" />
+      </div>
+
+      <main className="relative z-10 min-h-screen px-5 pb-28 pt-6 sm:px-8 sm:pt-8">
         <div className="mx-auto w-full max-w-[1400px]">{children}</div>
       </main>
 
