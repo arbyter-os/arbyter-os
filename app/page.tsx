@@ -306,54 +306,66 @@ export default function Home() {
         </div>
 
         {/* Closing CTA */}
-        <section className="relative z-40 min-h-screen bg-[#f4f5f7] px-7 py-32 text-black">
-          <div className="mx-auto max-w-6xl">
-            <div className="text-[8px] font-bold tracking-[.4em] text-black/35">
-              ARBYTER OS
+        <section className="relative z-40 min-h-screen overflow-hidden bg-[#f4f5f7] px-7 py-24 text-black md:py-32">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute left-1/2 top-1/2 h-[70vw] w-[70vw] max-h-[900px] max-w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 blur-3xl" />
+            <div className="absolute inset-0 opacity-[0.035]" style={{
+              backgroundImage: "linear-gradient(90deg,#000 1px,transparent 1px),linear-gradient(#000 1px,transparent 1px)",
+              backgroundSize: "80px 80px"
+            }} />
+          </div>
+
+          <div className="relative mx-auto flex min-h-[calc(100vh-12rem)] max-w-7xl flex-col justify-between">
+            <div className="flex items-start justify-between">
+              <div className="text-[9px] font-semibold tracking-[.35em] text-black/40">
+                ARBYTER OS
+              </div>
+              <div className="rounded-full border border-black/10 bg-white/55 px-4 py-2 text-[8px] tracking-[.28em] text-black/45 backdrop-blur-xl">
+                ORCHESTRATE · GOVERN · SECURE
+              </div>
             </div>
 
-            <h2 className="mt-8 max-w-5xl text-7xl font-black leading-[.8] tracking-[-.08em] md:text-[10rem]">
-              COMMAND
-              <br />
-              THE
-              <br />
-              WORKFORCE.
-            </h2>
+            <div className="py-20 md:py-24">
+              <div className="max-w-5xl">
+                <div className="text-[9px] font-medium tracking-[.35em] text-black/35">
+                  THE COMMAND LAYER
+                </div>
+                <h2 className="mt-7 text-[clamp(4.5rem,11vw,10rem)] font-black leading-[.78] tracking-[-.085em]">
+                  ENTER
+                  <br />
+                  ARBYTER.
+                </h2>
+                <p className="mt-10 max-w-sm text-[11px] leading-6 text-black/45">
+                  One layer between your organization and the AI workforce.
+                  Direct every agent. Enforce every policy. See every action.
+                </p>
 
-            <p className="mt-12 max-w-md text-sm leading-6 text-black/45">
-              One command layer between your organization and every AI agent,
-              action and policy.
-            </p>
-
-            <Link
-              href="/login"
-              className="mt-10 inline-flex rounded-full bg-[#1300BA] px-8 py-4 text-xs font-semibold text-white transition hover:bg-blue-800"
-            >
-              Enter Arbyter →
-            </Link>
-
-            <footer className="mt-40 border-t border-black/10 pt-8">
-              <div className="flex flex-col gap-5 text-[9px] tracking-[.2em] text-black/40 md:flex-row md:justify-between">
-                <span>ARBYTER OS</span>
-                <span>ORCHESTRATE · GOVERN · SECURE</span>
-                <a
-                  href="mailto:arbyteros@gmail.com"
-                  className="hover:text-black"
+                <Link
+                  href="/login"
+                  className="mt-10 inline-flex items-center gap-5 rounded-full border border-black/10 bg-white/65 px-4 py-3 pr-6 text-[9px] font-semibold tracking-[.22em] text-black backdrop-blur-2xl transition-all duration-300 hover:-translate-y-1 hover:bg-white"
                 >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black text-white text-base">
+                    →
+                  </span>
+                  ENTER THE WORKFORCE
+                </Link>
+              </div>
+            </div>
+
+            <footer className="border-t border-black/10 pt-6">
+              <div className="flex flex-col gap-4 text-[8px] tracking-[.2em] text-black/35 md:flex-row md:items-center md:justify-between">
+                <span>© ARBYTER OS</span>
+                <span>AI COMMAND LAYER</span>
+                <a href="mailto:arbyteros@gmail.com" className="hover:text-black">
                   ARBYTEROS@GMAIL.COM
                 </a>
-                <a
-                  href="https://instagram.com/arbyter.os"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-black"
-                >
+                <a href="https://instagram.com/arbyter.os" target="_blank" rel="noreferrer" className="hover:text-black">
                   @ARBYTER.OS
                 </a>
               </div>
             </footer>
           </div>
-        </section>
+        </section>section>
       </div>
     </main>
   );
