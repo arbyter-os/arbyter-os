@@ -1,33 +1,63 @@
 "use client";
 
-interface LogoProps {
+interface LogoMonolithProps {
   className?: string;
   glow?: boolean;
 }
 
-export function LogoMonolith({ className = "h-12", glow = true }: LogoProps) {
+export default function LogoMonolith({
+  className = "h-20 w-20",
+  glow = true,
+}: LogoMonolithProps) {
   return (
-    <div className={`relative inline-flex items-center justify-center ${className}`}>
-      {glow && (
-        <div
-          className="pointer-events-none absolute inset-0 scale-150 rounded-full bg-white/20 blur-xl"
-          aria-hidden="true"
-        />
-      )}
+    <div className={`relative flex items-center justify-center ${className}`}>
       <svg
-        viewBox="0 0 500 600"
-        fill="none"
+        viewBox="0 0 1000 1000"
+        className="h-full w-full overflow-visible"
         xmlns="http://www.w3.org/2000/svg"
-        className="relative z-10 h-full w-auto"
-        style={{
-          filter:
-            "drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 8px rgba(255,255,255,0.95)) drop-shadow(0 0 22px rgba(255,255,255,0.6)) drop-shadow(0 0 45px rgba(255,255,255,0.3))",
-        }}
       >
-        <path
-          d="M 185 170 Q 250 178 315 170 C 310 230 306 280 320 330 C 330 370 348 400 365 430 Q 335 428 305 430 C 292 350 274 212 250 212 C 226 212 208 350 195 430 Q 165 428 135 430 C 152 400 170 370 180 330 C 194 280 190 230 185 170 Z"
-          fill="#ffffff"
-        />
+        <defs>
+          {glow && (
+            <filter id="monolithGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur2" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur3" />
+              <feGaussianBlur in="SourceGraphic" stdDeviation="45" result="blur4" />
+              <feMerge>
+                <feMergeNode in="blur4" />
+                <feMergeNode in="blur3" />
+                <feMergeNode in="blur2" />
+                <feMergeNode in="blur1" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          )}
+        </defs>
+        <g transform="translate(500, 500) scale(1.3) translate(-500, -489)">
+          <path
+            filter={glow ? "url(#monolithGlow)" : undefined}
+            fill="#FFFFFF"
+            fillRule="evenodd"
+            d="
+              M 430,348
+              C 465,355 535,355 570,348
+              C 564,385 556,425 554,465
+              C 552,515 570,580 604,630
+              Q 552,624 500,630
+              Q 448,624 396,630
+              C 430,580 448,515 446,465
+              C 444,425 436,385 430,348
+              Z
+              M 500,630
+              C 490,575 478,520 473,465
+              C 468,420 464,398 466,388
+              C 468,381 474,380 479,384
+              C 487,390 510,420 523,460
+              C 531,485 522,555 500,630
+              Z
+            "
+          />
+        </g>
       </svg>
     </div>
   );
