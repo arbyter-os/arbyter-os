@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import  from "@/components/LogoMonolith";
+import LogoMonolith from "@/components/LogoMonolith";
 
 const ArbyterWorld = dynamic(() => import("@/components/ArbyterWorld"), {
   ssr: false,
@@ -81,20 +81,10 @@ function Intro({ onDone }: { onDone: () => void }) {
 
       <div className="absolute inset-0 flex items-center justify-center">
         <div
-          className={`relative transition-all duration-[4000ms] ease-out ${ready ? "scale-[1.45]" : "scale-[0.38]"}`}
+          className={`relative transition-all duration-[4000ms] ease-out ${ready ? "scale-[1.45] opacity-100" : "scale-[0.38] opacity-0"}`}
         >
-          <div className="absolute -inset-20 rounded-full bg-[#dce9ff]/10 blur-3xl" />
-          <div className="absolute -inset-10 rounded-full border border-white/10 bg-white/[0.025] blur-md" />
-          <div className="relative h-36 w-36 rounded-full border border-white/80 bg-white shadow-[0_0_25px_rgba(255,255,255,.9),0_0_90px_rgba(130,170,255,.65),0_0_180px_rgba(19,0,186,.45)]">
-            <div className="absolute inset-3 rounded-full border border-blue-100/60" />
-            <div className="absolute inset-6 rounded-full bg-white blur-[1px]" />
-          </div>
-        </div>
-
-        <div
-          className={`absolute transition-all duration-700 ${ready ? "translate-y-28 opacity-100" : "translate-y-20 opacity-0"}`}
-        >
-          <LogoMonolith className="h-20 w-20" glow={true} />
+          <div className="absolute -inset-24 rounded-full bg-white/[0.06] blur-3xl" />
+          <LogoMonolith className="h-48 w-48 md:h-64 md:w-64" glow={true} />
         </div>
       </div>
 
