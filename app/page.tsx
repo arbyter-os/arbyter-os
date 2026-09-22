@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import * as THREE from "three";
 
-const BLUE = "#1300BA";
+const WHITE = "#FFFFFF";
 
 /* ------------------------------------------------ */
 /* 3D WORLD COMPONENT                               */
