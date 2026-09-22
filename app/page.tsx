@@ -135,7 +135,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#f7f8fc] text-black">
+    <main className="min-h-screen overflow-x-hidden bg-[#07080C] text-black">
       {!introDone && <Intro phase={phase} />}
 
       <div
