@@ -204,12 +204,12 @@ function Intro({ onDone }: { onDone: () => void }) {
   const audioStarted = useRef(false);
 
   useEffect(() => {
-    let finished = false;
     let raf = 0;
+    let finished = false;
     let audioContext: AudioContext | null = null;
     let audioTimer: number | null = null;
 
-    const reveal = () => {
+    const finish = () => {
       if (finished) return;
       finished = true;
       if (audioTimer) window.clearInterval(audioTimer);
@@ -232,24 +232,21 @@ function Intro({ onDone }: { onDone: () => void }) {
 
         const master = ctx.createGain();
         master.gain.setValueAtTime(0.0001, ctx.currentTime);
-        master.gain.exponentialRampToValueAtTime(0.055, ctx.currentTime + 0.45);
+        master.gain.exponentialRampToValueAtTime(0.045, ctx.currentTime + 0.35);
         master.connect(ctx.destination);
 
-        const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.28;
-
+        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const noiseData = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random() * 2 - 1) * 0.2;
         const noise = ctx.createBufferSource();
-        noise.buffer = buffer;
+        noise.buffer = noiseBuffer;
         noise.loop = true;
-
         const filter = ctx.createBiquadFilter();
         filter.type = "bandpass";
-        filter.frequency.value = 1800;
-        filter.Q.value = 0.55;
-
+        filter.frequency.value = 1450;
+        filter.Q.value = 0.6;
         const noiseGain = ctx.createGain();
-        noiseGain.gain.value = 0.11;
+        noiseGain.gain.value = 0.06;
         noise.connect(filter).connect(noiseGain).connect(master);
         noise.start();
 
@@ -258,192 +255,195 @@ function Intro({ onDone }: { onDone: () => void }) {
           const now = audioContext.currentTime;
           const osc = audioContext.createOscillator();
           const gain = audioContext.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(980 + Math.random() * 1200, now);
-          osc.frequency.exponentialRampToValueAtTime(320 + Math.random() * 260, now + 0.08);
+          osc.type = "square";
+          osc.frequency.setValueAtTime(720 + Math.random() * 1100, now);
+          osc.frequency.exponentialRampToValueAtTime(260 + Math.random() * 260, now + 0.065);
           gain.gain.setValueAtTime(0.0001, now);
-          gain.gain.exponentialRampToValueAtTime(0.035 + Math.random() * 0.035, now + 0.008);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+          gain.gain.exponentialRampToValueAtTime(0.018 + Math.random() * 0.02, now + 0.006);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
           osc.connect(gain).connect(master);
           osc.start(now);
-          osc.stop(now + 0.12);
-        }, 85);
+          osc.stop(now + 0.1);
+        }, 72);
       } catch {
-        // Audio is optional; visual intro must continue.
+        // Audio is optional.
       }
     };
 
-    const fallback = window.setTimeout(reveal, 5600);
-    const beginAudio = () => startMatrixSound();
-    window.addEventListener("pointerdown", beginAudio, { once: true, passive: true });
-    window.addEventListener("touchstart", beginAudio, { once: true, passive: true });
-    window.addEventListener("keydown", beginAudio, { once: true });
-
     const c = ref.current;
-    const x = c?.getContext("2d");
-    if (!c || !x) {
-      reveal();
-      return () => window.clearTimeout(fallback);
-    }
+    const ctx = c?.getContext("2d");
+    if (!c || !ctx) { finish(); return; }
 
-    type RainColumn = {
+    type Cell = {
       x: number;
       y: number;
+      baseX: number;
       speed: number;
-      length: number;
-      size: number;
-      phase: number;
-      chars: string[];
+      char: string;
+      targetX: number;
+      targetY: number;
+      hasTarget: boolean;
     };
 
-    const chars = "01";
-    let columns: RainColumn[] = [];
+    const CELL_W = 16;
+    const CELL_H = 18;
+    const cells: Cell[] = [];
+    let targetMask = new Set<string>();
+
+    const makeTargetMask = (w: number, h: number) => {
+      const off = document.createElement("canvas");
+      off.width = Math.max(1, Math.floor(w));
+      off.height = Math.max(1, Math.floor(h));
+      const ox = off.getContext("2d");
+      if (!ox) return new Set<string>();
+      const fontSize = Math.min(128, Math.max(58, w * 0.105));
+      ox.font = "900 " + fontSize + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ox.textAlign = "center";
+      ox.textBaseline = "middle";
+      ox.fillStyle = "#fff";
+      ox.fillText("ARBYTER", w / 2, h / 2);
+      const image = ox.getImageData(0, 0, off.width, off.height);
+      const result = new Set<string>();
+
+      // Quantize the actual ARBYTER letter mask onto the same binary rain grid.
+      for (let y = 0; y < h; y += CELL_H) {
+        for (let x = 0; x < w; x += CELL_W) {
+          let hit = false;
+          for (let sy = y; sy < Math.min(y + CELL_H, h) && !hit; sy += 3) {
+            for (let sx = x; sx < Math.min(x + CELL_W, w); sx += 3) {
+              if (image.data[(sy * off.width + sx) * 4 + 3] > 100) { hit = true; break; }
+            }
+          }
+          if (hit) result.add(x + "," + y);
+        }
+      }
+      return result;
+    };
 
     const resize = () => {
       const d = Math.min(window.devicePixelRatio || 1, 2);
       c.width = window.innerWidth * d;
       c.height = window.innerHeight * d;
-      x.setTransform(d, 0, 0, d, 0, 0);
-
-      const count = Math.ceil(window.innerWidth / 15);
-      columns = Array.from({ length: count }, (_, i) => ({
-        x: i * 15 + Math.random() * 7,
-        y: Math.random() * window.innerHeight,
-        speed: 2.2 + Math.random() * 5.5,
-        length: 9 + Math.floor(Math.random() * 22),
-        size: 11 + Math.random() * 5,
-        phase: Math.random() * Math.PI * 2,
-        chars: Array.from({ length: 34 }, () => chars[Math.floor(Math.random() * chars.length)]),
-      }));
-    };
-
-    const startTime = performance.now();
-
-    const draw = () => {
-      const elapsed = performance.now();
-      const revealP = Math.min(1, Math.max(0, (elapsed - startTime) / 5200));
+      ctx.setTransform(d, 0, 0, d, 0, 0);
       const w = window.innerWidth;
       const h = window.innerHeight;
+      targetMask = makeTargetMask(w, h);
+      cells.length = 0;
 
-      x.fillStyle = "rgba(0,0,0,0.30)";
-      x.fillRect(0, 0, w, h);
-
-      const glow = x.createRadialGradient(w * 0.5, h * 0.5, 20, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
-      glow.addColorStop(0, "rgba(19,0,186,0.14)");
-      glow.addColorStop(0.38, "rgba(19,0,186,0.035)");
-      glow.addColorStop(1, "rgba(0,0,0,0)");
-      x.fillStyle = glow;
-      x.fillRect(0, 0, w, h);
-
-      x.textAlign = "center";
-      x.textBaseline = "middle";
-
-      columns.forEach((col) => {
-        col.y += col.speed;
-        if (col.y - col.length * col.size > h + 80) {
-          col.y = -Math.random() * h * 0.8;
-          col.speed = 2.2 + Math.random() * 5.5;
+      for (let x = 0; x < w + CELL_W; x += CELL_W) {
+        const head = -Math.random() * h;
+        for (let y = head; y < h + h * 0.9; y += CELL_H) {
+          cells.push({ x, y, baseX: x, speed: 2.5 + Math.random() * 5.5, char: Math.random() > 0.5 ? "0" : "1", targetX: x, targetY: y, hasTarget: false });
         }
+      }
 
-        for (let j = 0; j < col.length; j++) {
-          const yy = col.y - j * col.size;
-          if (yy < -30 || yy > h + 30) continue;
-          const fade = 1 - j / col.length;
-          const flicker = 0.72 + 0.28 * Math.sin(elapsed * 0.006 + col.phase + j);
-          const head = j === 0;
-          x.font = (head ? "600 " : "400 ") + col.size + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-          x.fillStyle = head
-            ? "rgba(255,255,255," + (0.92 * flicker) + ")"
-            : "rgba(96,82,255," + Math.max(0.035, fade * 0.38 * flicker) + ")";
-          x.fillText(col.chars[j % col.chars.length], col.x, yy);
+      // Only binary rain cells become the letters; there is no text overlay.
+      targetMask.forEach((key) => {
+        const parts = key.split(",").map(Number);
+        const tx = parts[0];
+        const ty = parts[1];
+        const candidates = cells.filter((cell) => Math.abs(cell.baseX - tx) < CELL_W * 0.55 && cell.y < -CELL_H);
+        const cell = candidates[Math.floor(Math.random() * candidates.length)] ?? cells.find((item) => Math.abs(item.baseX - tx) < CELL_W * 0.55);
+        if (cell) {
+          cell.targetX = tx + CELL_W / 2;
+          cell.targetY = ty + CELL_H / 2;
+          cell.hasTarget = true;
         }
       });
+    };
 
-      const word = "ARBYTER";
-      const fontSize = Math.min(92, Math.max(44, w * 0.095));
-      const letterGap = fontSize * 0.82;
-      const total = (word.length - 1) * letterGap;
-      const sx = w / 2 - total / 2;
-      const cy = h / 2;
+    const start = performance.now();
+    const DURATION = 6100;
 
-      x.save();
-      x.font = "800 " + fontSize + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-      x.textAlign = "center";
-      x.textBaseline = "middle";
+    const draw = () => {
+      const now = performance.now();
+      const p = Math.min(1, (now - start) / DURATION);
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const settle = Math.max(0, Math.min(1, (p - 0.56) / 0.28));
+      const easedSettle = settle * settle * (3 - 2 * settle);
 
-      const off = document.createElement("canvas");
-      off.width = Math.ceil(w);
-      off.height = Math.ceil(h);
-      const ox = off.getContext("2d");
-      if (ox) {
-        ox.font = "800 " + fontSize + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-        ox.textAlign = "center";
-        ox.textBaseline = "middle";
-        ox.fillStyle = "#fff";
-        ox.fillText(word, w / 2, cy);
+      ctx.fillStyle = "rgba(0,0,0,0.42)";
+      ctx.fillRect(0, 0, w, h);
 
-        const image = ox.getImageData(
-          Math.max(0, Math.floor(w / 2 - total / 2 - fontSize)),
-          Math.max(0, Math.floor(cy - fontSize)),
-          Math.min(w, Math.ceil(total + fontSize * 2)),
-          Math.min(h, Math.ceil(fontSize * 2.2))
-        );
-        const particles = Math.min(700, Math.floor(image.data.length / 16));
-        for (let i = 0; i < particles; i++) {
-          const idx = Math.floor(Math.random() * (image.data.length / 4)) * 4;
-          if (image.data[idx + 3] < 180) continue;
-          const local = idx / 4;
-          const iw = image.width;
-          const px = (local % iw) + Math.max(0, Math.floor(w / 2 - total / 2 - fontSize));
-          const py = Math.floor(local / iw) + Math.max(0, Math.floor(cy - fontSize));
-          const settle = Math.min(1, Math.max(0, (revealP - 0.30) / 0.52));
-          const sourceY = py - (1 - settle) * (80 + Math.random() * 260);
-          x.fillStyle = "rgba(255,255,255," + (0.18 + settle * 0.62) + ")";
-          x.fillText(Math.random() > 0.5 ? "0" : "1", px, sourceY);
+      const glow = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, Math.max(w, h) * 0.62);
+      glow.addColorStop(0, "rgba(19,0,186,0.12)");
+      glow.addColorStop(0.35, "rgba(19,0,186,0.035)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      cells.forEach((cell, index) => {
+        if (cell.hasTarget && easedSettle > 0) {
+          cell.x = cell.baseX + (cell.targetX - cell.baseX) * easedSettle;
+          cell.y += cell.speed * (1 - easedSettle * 0.94);
+          cell.y = cell.y + (cell.targetY - cell.y) * easedSettle * 0.13;
+          if (easedSettle > 0.72) {
+            cell.x += Math.sin(now * 0.004 + index) * (1 - easedSettle) * 2;
+            cell.y = cell.targetY + Math.sin(now * 0.006 + index) * (1 - easedSettle) * 2;
+          }
+        } else {
+          cell.y += cell.speed * (1 - easedSettle * 0.42);
         }
-      }
-      x.restore();
 
-      const wordOpacity = Math.max(0, Math.min(1, (revealP - 0.62) / 0.30));
-      if (wordOpacity > 0) {
-        x.save();
-        x.globalAlpha = wordOpacity * 0.92;
-        x.font = "800 " + fontSize + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-        x.textAlign = "center";
-        x.textBaseline = "middle";
-        x.shadowBlur = 34;
-        x.shadowColor = "rgba(19,0,186,.75)";
-        const gradient = x.createLinearGradient(sx, cy, sx + total, cy);
-        gradient.addColorStop(0, "#ffffff");
-        gradient.addColorStop(0.5, "#dcd8ff");
-        gradient.addColorStop(1, "#7b6cff");
-        x.fillStyle = gradient;
-        x.fillText(word, w / 2, cy);
-        x.restore();
+        if (!cell.hasTarget && cell.y > h + 60) {
+          cell.y = -CELL_H * (1 + Math.random() * 12);
+          cell.x = cell.baseX;
+          cell.char = Math.random() > 0.5 ? "0" : "1";
+        }
+
+        if (cell.hasTarget && easedSettle > 0.72) cell.char = index % 2 === 0 ? "1" : "0";
+        else if (Math.random() < 0.035) cell.char = cell.char === "0" ? "1" : "0";
+
+        const inWord = cell.hasTarget && easedSettle > 0.48;
+        const alpha = inWord ? 0.58 + easedSettle * 0.42 : 0.12 + 0.33 * (1 - Math.min(1, Math.abs(cell.y - h * 0.5) / h));
+        ctx.font = (inWord ? "800 " : "500 ") + (inWord ? 15 : 13) + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+        ctx.fillStyle = inWord ? "rgba(230,228,255," + alpha + ")" : "rgba(96,82,255," + alpha + ")";
+        ctx.shadowBlur = inWord ? 8 : 0;
+        ctx.shadowColor = "rgba(19,0,186,.9)";
+        ctx.fillText(cell.char, cell.x, cell.y);
+        ctx.shadowBlur = 0;
+      });
+
+      if (easedSettle > 0.72) {
+        const a = (easedSettle - 0.72) / 0.28;
+        const bloom = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, Math.min(w, h) * 0.34);
+        bloom.addColorStop(0, "rgba(19,0,186," + (0.10 * a) + ")");
+        bloom.addColorStop(1, "rgba(19,0,186,0)");
+        ctx.fillStyle = bloom;
+        ctx.fillRect(0, 0, w, h);
       }
 
-      if (revealP > 0.86) {
-        const fade = (revealP - 0.86) / 0.14;
-        x.fillStyle = "rgba(0,0,0," + (fade * 0.9) + ")";
-        x.fillRect(0, 0, w, h);
+      if (p > 0.88) {
+        const fade = Math.min(1, (p - 0.88) / 0.12);
+        ctx.fillStyle = "rgba(0,0,0," + (fade * 0.88) + ")";
+        ctx.fillRect(0, 0, w, h);
       }
 
-      if (revealP >= 1) reveal();
-      else raf = requestAnimationFrame(draw);
+      if (p >= 1) { finish(); return; }
+      raf = requestAnimationFrame(draw);
     };
 
     resize();
+    const beginAudio = () => startMatrixSound();
+    window.addEventListener("pointerdown", beginAudio, { once: true, passive: true });
+    window.addEventListener("touchstart", beginAudio, { once: true, passive: true });
+    window.addEventListener("keydown", beginAudio, { once: true });
     window.addEventListener("resize", resize);
     raf = requestAnimationFrame(draw);
+    const fallback = window.setTimeout(finish, DURATION + 700);
 
     return () => {
-      window.clearTimeout(fallback);
-      if (audioTimer) window.clearInterval(audioTimer);
       cancelAnimationFrame(raf);
+      window.clearTimeout(fallback);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointerdown", beginAudio);
       window.removeEventListener("touchstart", beginAudio);
       window.removeEventListener("keydown", beginAudio);
+      if (audioTimer) window.clearInterval(audioTimer);
       if (audioContext) audioContext.close().catch(() => {});
     };
   }, [onDone]);
@@ -454,7 +454,6 @@ function Intro({ onDone }: { onDone: () => void }) {
     </div>
   );
 }
-
 const STAGES = [
   ["DISCOVER", "DISCOVER EVERY AGENT.", "Find AI agents, tools and workflows across your organization before they become invisible infrastructure."],
   ["THE AI WORKFORCE IS MOVING", "COMMAND YOUR WORKFORCE.", "One command layer between your organization and every agent, tool and action."],
