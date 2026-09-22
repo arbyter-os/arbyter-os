@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+// @ts-expect-error Three.js is loaded as a runtime dependency.
 import * as THREE from "three";
 
 const BLUE = "#1300BA";
