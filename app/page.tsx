@@ -327,12 +327,9 @@ export default function Home() {
 
             <Link
               href="/login"
-              className="group mt-10 inline-flex items-center gap-4 rounded-full border border-[#1300BA]/20 bg-white/70 px-5 py-3 text-[10px] font-semibold tracking-[.16em] text-[#1300BA] shadow-[0_12px_40px_rgba(19,0,186,.08)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-[#1300BA]/40 hover:bg-white hover:shadow-[0_18px_50px_rgba(19,0,186,.16)]"
+              className="mt-10 inline-flex rounded-full bg-[#1300BA] px-8 py-4 text-xs font-semibold text-white transition hover:bg-blue-800"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1300BA] text-white transition-transform duration-300 group-hover:translate-x-0.5">
-                →
-              </span>
-              ENTER ARBYTER
+              Enter Arbyter →
             </Link>
 
             <footer className="mt-40 border-t border-black/10 pt-8">
