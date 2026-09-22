@@ -141,7 +141,7 @@ export async function fetchValidatedExternalUrl(
         ? Buffer.from(init.body)
         : undefined;
 
-  const lookup = ((
+  const lookup = (
     _hostname: string,
     options: { family?: number; all?: boolean },
     callback: (
