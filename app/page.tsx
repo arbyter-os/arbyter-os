@@ -207,24 +207,22 @@ function Intro({ onDone }: { onDone: () => void }) {
   const started = useRef(false);
 
   useEffect(() => {
-    const start = performance.now();
+    const startTime = performance.now();
     const duration = 3000;
 
     const animate = (now: number) => {
-      const p = Math.min(1, (now - start) / duration);
+      const p = Math.min(1, (now - startTime) / duration);
       const eased = 1 - Math.pow(1 - p, 3);
       setRotation(eased * 920);
 
-      if (p < 1) {
-        raf.current = requestAnimationFrame(animate);
-      } else {
+      if (p < 1) raf.current = requestAnimationFrame(animate);
+      else {
         setRotation(920);
         setPhase("ready");
       }
     };
 
     raf.current = requestAnimationFrame(animate);
-
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current);
     };
@@ -234,65 +232,56 @@ function Intro({ onDone }: { onDone: () => void }) {
     if (phase !== "ready" || started.current) return;
     started.current = true;
     setPhase("portal");
-    window.setTimeout(onDone, 1250);
+    window.setTimeout(onDone, 1500);
   };
 
   return (
     <div
-      className="fixed inset-0 z-[9999] overflow-hidden bg-[#02020a]"
+      className="fixed inset-0 z-[9999] overflow-hidden bg-black"
       onClick={phase === "ready" ? enter : undefined}
     >
+      {/* Everything is locked to one exact viewport center. */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at 50% 50%, rgba(19,0,186,.48) 0%, rgba(19,0,186,.20) 23%, rgba(7,5,35,.78) 55%, #02020a 100%)",
+            "radial-gradient(circle at 50% 50%, rgba(19,0,186,.50) 0%, rgba(19,0,186,.18) 25%, rgba(5,4,28,.82) 58%, #000 100%)",
         }}
       />
 
       <div
-        className="absolute inset-0 opacity-40"
+        className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 42%, rgba(95,85,255,.22), transparent 58%)",
-        }}
-      />
-
-      <div
-        className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
+            "radial-gradient(circle, rgba(19,0,186,.42), rgba(19,0,186,.10) 40%, transparent 72%)",
+          filter: "blur(22px)",
           transform:
-            "translate(-50%, -50%) scale(" +
-            (phase === "portal" ? 7 : 1) +
-            ")",
-          opacity: phase === "portal" ? 0 : 0.7,
-          background:
-            "radial-gradient(circle, rgba(19,0,186,.42), rgba(19,0,186,.10) 35%, transparent 70%)",
-          filter: "blur(18px)",
+            "translate(-50%, -50%) scale(" + (phase === "portal" ? 8 : 1) + ")",
+          opacity: phase === "portal" ? 0 : 0.8,
           transition:
-            "transform 1.05s cubic-bezier(.12,.8,.15,1), opacity .8s",
+            "transform 1.05s cubic-bezier(.08,.82,.12,1), opacity .75s ease",
         }}
       />
 
+      {/* Fixed concentric portal geometry. */}
       <div
-        className="absolute left-1/2 top-1/2 h-[440px] w-[440px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        className="absolute left-1/2 top-1/2 h-[460px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
           transform:
-            "translate(-50%, -50%) scale(" +
-            (phase === "portal" ? 8 : 1) +
-            ")",
+            "translate(-50%, -50%) scale(" + (phase === "portal" ? 7 : 1) + ")",
           opacity: phase === "portal" ? 0 : 1,
           transition:
-            "transform 1.1s cubic-bezier(.12,.8,.15,1), opacity .9s",
-          border: "1px solid rgba(150,140,255,.20)",
+            "transform 1.05s cubic-bezier(.08,.82,.12,1), opacity .8s ease",
+          border: "1px solid rgba(190,195,255,.28)",
           boxShadow:
-            "0 0 80px rgba(19,0,186,.20), inset 0 0 70px rgba(19,0,186,.10)",
+            "0 0 90px rgba(19,0,186,.24), inset 0 0 70px rgba(19,0,186,.12)",
         }}
       >
-        <div className="absolute inset-7 rounded-full border border-white/10" />
+        <div className="absolute inset-8 rounded-full border border-white/10" />
         <div className="absolute inset-16 rounded-full border border-[#7065ff]/20" />
       </div>
 
+      {/* Rotating JARVIS-style gear. */}
       <div
         className="absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2"
         style={{
@@ -305,37 +294,36 @@ function Intro({ onDone }: { onDone: () => void }) {
           opacity: phase === "portal" ? 0 : 1,
           transition:
             phase === "portal"
-              ? "transform 1.05s cubic-bezier(.08,.82,.16,1), opacity .75s"
+              ? "transform 1.05s cubic-bezier(.08,.82,.12,1), opacity .7s ease"
               : "none",
         }}
       >
         <svg
           viewBox="0 0 400 400"
           className="h-full w-full"
+          preserveAspectRatio="xMidYMid meet"
           style={{
             filter:
-              "drop-shadow(0 0 22px rgba(19,0,186,.38)) drop-shadow(0 18px 45px rgba(0,0,0,.55))",
+              "drop-shadow(0 0 22px rgba(19,0,186,.42)) drop-shadow(0 18px 45px rgba(0,0,0,.55))",
           }}
         >
           <defs>
             <linearGradient id="jarvisMetal" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#ffffff" stopOpacity=".42" />
-              <stop offset=".22" stopColor="#aeb5c8" stopOpacity=".16" />
-              <stop offset=".45" stopColor="#ffffff" stopOpacity=".32" />
-              <stop offset=".68" stopColor="#667084" stopOpacity=".12" />
-              <stop offset="1" stopColor="#ffffff" stopOpacity=".30" />
+              <stop offset="0" stopColor="#fff" stopOpacity=".46" />
+              <stop offset=".24" stopColor="#aeb5c8" stopOpacity=".16" />
+              <stop offset=".48" stopColor="#fff" stopOpacity=".34" />
+              <stop offset=".72" stopColor="#667084" stopOpacity=".12" />
+              <stop offset="1" stopColor="#fff" stopOpacity=".30" />
             </linearGradient>
-
             <linearGradient id="jarvisEdge" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#ffffff" stopOpacity=".72" />
+              <stop offset="0" stopColor="#fff" stopOpacity=".78" />
               <stop offset=".5" stopColor="#8790a7" stopOpacity=".22" />
-              <stop offset="1" stopColor="#ffffff" stopOpacity=".58" />
+              <stop offset="1" stopColor="#fff" stopOpacity=".58" />
             </linearGradient>
-
             <radialGradient id="jarvisCore">
-              <stop offset="0" stopColor="#1300BA" stopOpacity=".34" />
-              <stop offset=".45" stopColor="#1300BA" stopOpacity=".10" />
-              <stop offset="1" stopColor="#000000" stopOpacity=".02" />
+              <stop offset="0" stopColor="#1300BA" stopOpacity=".36" />
+              <stop offset=".5" stopColor="#1300BA" stopOpacity=".10" />
+              <stop offset="1" stopColor="#000" stopOpacity=".02" />
             </radialGradient>
           </defs>
 
@@ -354,30 +342,10 @@ function Intro({ onDone }: { onDone: () => void }) {
                 strokeWidth="2"
               />
             ))}
-
-            <circle
-              r="155"
-              fill="url(#jarvisMetal)"
-              stroke="url(#jarvisEdge)"
-              strokeWidth="3"
-            />
-            <circle
-              r="123"
-              fill="rgba(2,2,10,.34)"
-              stroke="rgba(255,255,255,.22)"
-              strokeWidth="2"
-            />
-            <circle
-              r="105"
-              fill="url(#jarvisCore)"
-              stroke="rgba(255,255,255,.13)"
-            />
-            <circle
-              r="84"
-              fill="none"
-              stroke="rgba(255,255,255,.24)"
-              strokeWidth="2"
-            />
+            <circle r="155" fill="url(#jarvisMetal)" stroke="url(#jarvisEdge)" strokeWidth="3" />
+            <circle r="123" fill="rgba(2,2,10,.34)" stroke="rgba(255,255,255,.22)" strokeWidth="2" />
+            <circle r="105" fill="url(#jarvisCore)" stroke="rgba(255,255,255,.13)" />
+            <circle r="84" fill="none" stroke="rgba(255,255,255,.24)" strokeWidth="2" />
             <circle r="66" fill="none" stroke="rgba(19,0,186,.48)" />
             <circle r="11" fill="#1300BA" opacity=".85" />
             <circle r="5" fill="#fff" opacity=".9" />
@@ -385,6 +353,7 @@ function Intro({ onDone }: { onDone: () => void }) {
         </svg>
       </div>
 
+      {/* ENTER is exactly centered over the gear core. */}
       <button
         aria-label="Enter Arbyter"
         onClick={(e) => {
@@ -395,51 +364,67 @@ function Intro({ onDone }: { onDone: () => void }) {
         style={{
           opacity: phase === "ready" ? 1 : 0,
           transform:
-            "translate(-50%, -50%) scale(" +
-            (phase === "ready" ? 1 : 0.7) +
-            ")",
+            "translate(-50%, -50%) scale(" + (phase === "ready" ? 1 : .7) + ")",
           pointerEvents: phase === "ready" ? "auto" : "none",
           transition:
             "opacity .55s ease, transform .65s cubic-bezier(.2,.8,.2,1)",
           boxShadow:
-            "0 0 35px rgba(19,0,186,.28), inset 0 0 22px rgba(255,255,255,.05)",
+            "0 0 35px rgba(19,0,186,.30), inset 0 0 22px rgba(255,255,255,.05)",
         }}
       >
         ENTER
       </button>
 
-      {Array.from({ length: 30 }).map((_, i) => (
-        <span
-          key={i}
-          className="pointer-events-none absolute left-1/2 top-1/2 h-px origin-left bg-white/70"
-          style={{
-            width: 180 + (i % 6) * 70,
-            transform:
-              "rotate(" +
-              i * 12 +
-              "deg) scaleX(" +
-              (phase === "portal" ? 5 : 0.01) +
-              ")",
-            opacity: phase === "portal" ? 0.8 : 0,
-            transition:
-              "transform .85s cubic-bezier(.1,.8,.1,1) " +
-              i * 8 +
-              "ms, opacity .25s",
-          }}
-        />
-      ))}
+      {/* Portal-vortex streaks: every ray starts at the exact center. */}
+      <div className="pointer-events-none absolute inset-0">
+        {Array.from({ length: 56 }).map((_, i) => {
+          const angle = (360 / 56) * i;
+          const length = 18 + (i % 7) * 9;
+          return (
+            <span
+              key={i}
+              className="absolute left-1/2 top-1/2 h-[2px] origin-left rounded-full"
+              style={{
+                width: length + "vw",
+                background:
+                  "linear-gradient(90deg, rgba(255,255,255,.95), rgba(115,140,255,.72), transparent)",
+                filter: "blur(1.5px)",
+                transform:
+                  "rotate(" +
+                  angle +
+                  "deg) translateX(0) scaleX(" +
+                  (phase === "portal" ? 4.8 : .01) +
+                  ")",
+                opacity: phase === "portal" ? .82 : 0,
+                transition:
+                  "transform .82s cubic-bezier(.06,.82,.12,1) " +
+                  i * 7 +
+                  "ms, opacity .22s ease",
+              }}
+            />
+          );
+        })}
+      </div>
 
+      {/* Final aligned white core / flash. */}
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
         style={{
           transform:
-            "translate(-50%, -50%) scale(" +
-            (phase === "portal" ? 90 : 0) +
-            ")",
-          opacity: phase === "portal" ? 0.95 : 0,
+            "translate(-50%, -50%) scale(" + (phase === "portal" ? 95 : 0) + ")",
+          opacity: phase === "portal" ? .98 : 0,
           transition:
-            "transform 1s cubic-bezier(.05,.75,.1,1), opacity .65s",
-          boxShadow: "0 0 110px 45px rgba(105,95,255,.8)",
+            "transform 1.05s cubic-bezier(.04,.76,.08,1), opacity .72s ease",
+          boxShadow:
+            "0 0 120px 55px rgba(108,98,255,.82), 0 0 260px 90px rgba(255,255,255,.45)",
+        }}
+      />
+
+      <div
+        className="pointer-events-none absolute inset-0 bg-white"
+        style={{
+          opacity: phase === "portal" ? 1 : 0,
+          transition: "opacity .18s ease 1.12s",
         }}
       />
 
@@ -447,12 +432,13 @@ function Intro({ onDone }: { onDone: () => void }) {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(circle at center, transparent 18%, rgba(0,0,0,.28) 58%, rgba(0,0,0,.88) 100%)",
+            "radial-gradient(circle at center, transparent 16%, rgba(0,0,0,.22) 55%, rgba(0,0,0,.92) 100%)",
         }}
       />
     </div>
   );
 }
+
 const STAGES = [
   ["DISCOVER", "DISCOVER EVERY AGENT.", "Find AI agents, tools and workflows across your organization before they become invisible infrastructure."],
   ["THE AI WORKFORCE IS MOVING", "COMMAND YOUR WORKFORCE.", "One command layer between your organization and every agent, tool and action."],
