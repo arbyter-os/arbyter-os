@@ -14,9 +14,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Arbyter OS — Orchestrate. Govern. Secure.',
+  title: 'Arbyter OS — Intelligence Meets Governance.',
   description:
-    'Enterprise AI governance and orchestration platform. Orchestrate AI agents, govern their behavior, monitor risk, and maintain compliance.',
+    'Enterprise AI governance and orchestration platform. Intelligence Meets Governance for AI agents and autonomous systems.',
   generator: 'v0.app',
 }
 
