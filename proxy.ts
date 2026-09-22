@@ -2,8 +2,28 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { checkRateLimit } from "@/lib/security/rate-limit"
 
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"])
+
+function applySecurityHeaders(response: NextResponse) {
+  response.headers.set("X-Content-Type-Options", "nosniff")
+  response.headers.set("X-Frame-Options", "DENY")
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+  response.headers.set("X-DNS-Prefetch-Control", "off")
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+  }
+}
+
+function isAllowedOrigin(request: NextRequest) {
+  const origin = request.headers.get("origin")
+  if (!origin) return true
+  return origin === request.nextUrl.origin
+}
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request })
+  const pathname = request.nextUrl.pathname
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,9 +41,16 @@ export async function updateSession(request: NextRequest) {
   )
 
   const { data: { user } } = await supabase.auth.getUser()
-  const pathname = request.nextUrl.pathname
 
-  if (user && request.method === "POST") {
+  // Cookie-authenticated state-changing requests must come from Arbyter itself.
+  // This blocks cross-site form/fetch CSRF while keeping normal same-origin API calls working.
+  if (MUTATING_METHODS.has(request.method) && pathname.startsWith("/api/") && !isAllowedOrigin(request)) {
+    const blocked = NextResponse.json({ error: "Cross-site request blocked." }, { status: 403 })
+    applySecurityHeaders(blocked)
+    return blocked
+  }
+
+  if (user && MUTATING_METHODS.has(request.method)) {
     let rateLimitKey: string | null = null
     if (pathname.startsWith("/api/discovery/mcp")) rateLimitKey = `discovery:mcp:${user.id}`
     else if (pathname.startsWith("/api/discovery/run")) rateLimitKey = `discovery:run:${user.id}`
@@ -34,10 +61,12 @@ export async function updateSession(request: NextRequest) {
       const limitValue = pathname === "/api/execute" ? 30 : 10
       const limit = checkRateLimit(rateLimitKey, limitValue, 60_000)
       if (!limit.allowed) {
-        return NextResponse.json(
+        const limited = NextResponse.json(
           { error: "Rate limit exceeded. Please try again later." },
           { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds), "X-RateLimit-Limit": String(limitValue), "X-RateLimit-Remaining": "0" } }
         )
+        applySecurityHeaders(limited)
+        return limited
       }
       response.headers.set("X-RateLimit-Limit", String(limitValue))
       response.headers.set("X-RateLimit-Remaining", String(limit.remaining))
@@ -50,15 +79,20 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtectedPage) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
-    return NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(url)
+    applySecurityHeaders(redirect)
+    return redirect
   }
 
   if (user && isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = "/overview"
-    return NextResponse.redirect(url)
+    const redirect = NextResponse.redirect(url)
+    applySecurityHeaders(redirect)
+    return redirect
   }
 
+  applySecurityHeaders(response)
   return response
 }
 
