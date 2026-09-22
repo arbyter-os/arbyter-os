@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { LogoMonolith } from "@/components/LogoMonolith";
 
-const MonolithWorld = dynamic(() => import("@/components/MonolithWorld"), {
+
+const ArbyterWorld = dynamic(() => import("@/components/ArbyterWorld"), {
   ssr: false,
   loading: () => <div className="fixed inset-0 bg-black" />,
 });
@@ -120,11 +120,10 @@ export default function Home() {
       {!introDone && <Intro onDone={() => setIntroDone(true)} />}
 
       <div className={`transition-opacity duration-1000 ${introDone ? "opacity-100" : "pointer-events-none opacity-0"}`}>
-        <MonolithWorld progress={progress} />
+        <ArbyterWorld progress={progress} />
 
         <header className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between px-8 py-7 backdrop-blur-sm">
           <Link href="/" className="flex items-center gap-3">
-            <LogoMonolith className="h-6 w-6" glow={false} />
             <span className="text-[15px] font-black tracking-[-0.04em]">ARBYTER</span>
           </Link>
 
@@ -153,7 +152,6 @@ export default function Home() {
 
         <section className="relative z-40 min-h-screen border-t border-white/10 bg-black px-8 py-32">
           <div className="mx-auto max-w-5xl">
-            <LogoMonolith className="h-16 w-16" glow={true} />
             <h2 className="mt-12 text-6xl font-black leading-[0.85] tracking-[-0.06em] md:text-9xl">
               COMMAND
               <br />
