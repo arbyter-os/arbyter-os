@@ -139,8 +139,7 @@ function Intro({ onDone }: { onDone: () => void }) {
           <span className="absolute inset-0 rounded-full border border-white/80 shadow-[0_0_35px_rgba(255,255,255,.85),0_0_90px_rgba(150,210,255,.5)] transition-all duration-700 group-hover:scale-110 group-hover:border-white" />
           <span className="absolute inset-[10px] rounded-full border border-white/35 animate-pulse" />
           <span className="absolute inset-[22px] rounded-full bg-white/20 backdrop-blur-sm transition-all duration-500 group-hover:scale-125 group-hover:bg-white/35" />
-          <span className="relative text-[7px] font-semibold tracking-[.35em] text-black/70">CLICK</span>
-        </button>
+                  </button>
       </div>
 
       <div
@@ -365,7 +364,7 @@ export default function Home() {
               </div>
             </footer>
           </div>
-        </section>section>
+        </section>
       </div>
     </main>
   );
