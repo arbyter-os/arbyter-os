@@ -6,10 +6,9 @@ import Link from "next/link";
 const BLUE = "#1300BA";
 
 const LOGO = (
-  <svg viewBox="0 0 456 406" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path fillRule="evenodd" clipRule="evenodd" d="M166.5 46A51 51 0 0 1 254.8 46L421.2 334.3A49 49 0 0 1 336.3 383.3L327.9 368.8A24 24 0 0 0 307.1 357L74.8 357A51 51 0 0 1 30.6 280.5L166.5 46ZM210.7 174.1L259.7 259L161.7 259Z" fill="#000" />
-    <circle cx="356" cy="49" r="49" fill={BLUE} />
-  </svg>
+  <div className="h-full w-full overflow-hidden rounded-[6px] bg-black">
+    <img src="/arbyter-logo.svg" alt="Arbyter" className="h-full w-full object-contain" />
+  </div>
 );
 
 type Agent = { name: string; x: number; y: number; z: number; speed: number; phase: number };
@@ -202,146 +201,255 @@ function World({ progress }: { progress: number }) {
 
 function Intro({ onDone }: { onDone: () => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const audioStarted = useRef(false);
 
   useEffect(() => {
     let finished = false;
+    let raf = 0;
+    let audioContext: AudioContext | null = null;
+    let audioTimer: number | null = null;
+
     const reveal = () => {
       if (finished) return;
       finished = true;
+      if (audioTimer) window.clearInterval(audioTimer);
+      if (audioContext) {
+        audioContext.close().catch(() => {});
+        audioContext = null;
+      }
       onDone();
     };
 
-    // The animation is decorative. It must never prevent the application from loading.
-    const fallback = window.setTimeout(reveal, 3300);
+    const startMatrixSound = () => {
+      if (audioStarted.current || finished) return;
+      audioStarted.current = true;
+      try {
+        const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AudioCtx) return;
+        audioContext = new AudioCtx();
+        const ctx = audioContext;
+        if (ctx.state === "suspended") void ctx.resume();
 
-    try {
-      const c = ref.current;
-      const x = c?.getContext("2d");
-      if (!c || !x) {
-        reveal();
-        return () => window.clearTimeout(fallback);
+        const master = ctx.createGain();
+        master.gain.setValueAtTime(0.0001, ctx.currentTime);
+        master.gain.exponentialRampToValueAtTime(0.055, ctx.currentTime + 0.45);
+        master.connect(ctx.destination);
+
+        const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.28;
+
+        const noise = ctx.createBufferSource();
+        noise.buffer = buffer;
+        noise.loop = true;
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 1800;
+        filter.Q.value = 0.55;
+
+        const noiseGain = ctx.createGain();
+        noiseGain.gain.value = 0.11;
+        noise.connect(filter).connect(noiseGain).connect(master);
+        noise.start();
+
+        audioTimer = window.setInterval(() => {
+          if (!audioContext || audioContext.state !== "running") return;
+          const now = audioContext.currentTime;
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(980 + Math.random() * 1200, now);
+          osc.frequency.exponentialRampToValueAtTime(320 + Math.random() * 260, now + 0.08);
+          gain.gain.setValueAtTime(0.0001, now);
+          gain.gain.exponentialRampToValueAtTime(0.035 + Math.random() * 0.035, now + 0.008);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.11);
+          osc.connect(gain).connect(master);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        }, 85);
+      } catch {
+        // Audio is optional; visual intro must continue.
       }
+    };
 
-      let raf = 0;
-      let t = 0;
-      const start = performance.now();
-      const pellets = [0, 1, 2, 3, 4];
-      const eaten = new Set<number>();
+    const fallback = window.setTimeout(reveal, 5600);
+    const beginAudio = () => startMatrixSound();
+    window.addEventListener("pointerdown", beginAudio, { once: true, passive: true });
+    window.addEventListener("touchstart", beginAudio, { once: true, passive: true });
+    window.addEventListener("keydown", beginAudio, { once: true });
 
-      const resize = () => {
-        const d = Math.min(window.devicePixelRatio || 1, 2);
-        c.width = window.innerWidth * d;
-        c.height = window.innerHeight * d;
-        x.setTransform(d, 0, 0, d, 0, 0);
-      };
-
-      const draw = () => {
-        t += 0.012;
-        const elapsed = performance.now() - start;
-        const p = Math.min(1, elapsed / 7600);
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        x.clearRect(0, 0, w, h);
-
-        const bg = x.createRadialGradient(w * 0.5, h * 0.48, 20, w * 0.5, h * 0.5, Math.max(w, h) * 0.82);
-        bg.addColorStop(0, "rgba(130,120,245,.18)");
-        bg.addColorStop(0.3, "rgba(238,242,255,.88)");
-        bg.addColorStop(0.7, "rgba(220,227,246,.98)");
-        bg.addColorStop(1, "#f7f9fd");
-        x.fillStyle = bg;
-        x.fillRect(0, 0, w, h);
-
-        for (let i = 0; i < 170; i++) {
-          const sx = (i * 83) % w;
-          const sy = (i * 137) % h;
-          x.fillStyle = `rgba(19,0,186,${0.16 + 0.22 * (Math.sin(t * 1.2 + i) + 1)})`;
-          x.beginPath();
-          x.arc(sx, sy, i % 3 === 0 ? 1.5 : 0.7, 0, Math.PI * 2);
-          x.fill();
-        }
-
-        const radius = Math.min(44, Math.max(30, w * 0.035));
-        const cy = h * 0.5;
-        const centerX = w * 0.5;
-        const pelletGap = Math.min(72, Math.max(48, w * 0.07));
-        const points = pellets.map((i) => ({ x: centerX + (i - 2) * pelletGap, y: cy }));
-        const move = Math.max(0, Math.min(1, (elapsed - 450) / 2100));
-        const baseX = points[0].x - radius * 2.2 + (points[4].x + radius * 0.72 - (points[0].x - radius * 2.2)) * move;
-
-        points.forEach((q, i) => {
-          if (eaten.has(i)) return;
-          if (Math.hypot(baseX - q.x, cy - q.y) < radius * 0.92) eaten.add(i);
-          x.fillStyle = "rgba(19,0,186,.85)";
-          x.shadowBlur = 16;
-          x.shadowColor = "rgba(19,0,186,.35)";
-          x.beginPath();
-          x.arc(q.x, q.y, 7, 0, Math.PI * 2);
-          x.fill();
-          x.shadowBlur = 0;
-        });
-
-        const target = points[Math.min(eaten.size, 4)];
-        const distance = target ? Math.hypot(baseX - target.x, cy - target.y) : 999;
-        const mouth = Math.max(0, Math.sin(Math.max(0, 1 - Math.min(1, distance / 70)) * Math.PI)) * 0.9;
-        const fade = eaten.size === 5 ? 0 : 1;
-
-        x.save();
-        x.globalAlpha = fade;
-        x.translate(baseX, cy);
-        const r = radius;
-        const half = mouth / 2;
-        const g = x.createRadialGradient(-r * 0.32, -r * 0.38, r * 0.08, r * 0.08, r * 0.05, r * 1.15);
-        g.addColorStop(0, "rgba(255,255,255,.96)");
-        g.addColorStop(0.18, "rgba(210,215,255,.9)");
-        g.addColorStop(0.5, "rgba(86,72,220,.68)");
-        g.addColorStop(1, "rgba(19,0,186,.9)");
-        x.fillStyle = g;
-        x.shadowBlur = 34;
-        x.shadowColor = "rgba(19,0,186,.3)";
-        x.beginPath();
-        if (mouth <= 0.001) x.arc(0, 0, r, 0, Math.PI * 2);
-        else {
-          x.moveTo(0, 0);
-          x.arc(0, 0, r, half, Math.PI * 2 - half);
-          x.closePath();
-        }
-        x.fill();
-        x.shadowBlur = 0;
-        x.strokeStyle = "rgba(255,255,255,.92)";
-        x.lineWidth = 2;
-        x.stroke();
-        x.globalAlpha = 0.48;
-        x.fillStyle = "rgba(255,255,255,.95)";
-        x.beginPath();
-        x.ellipse(-r * 0.28, -r * 0.38, r * 0.42, r * 0.18, -0.45, 0, Math.PI * 2);
-        x.fill();
-        x.restore();
-
-        if (p > 0.96) {
-          x.fillStyle = `rgba(255,255,255,${Math.min(1, (p - 0.96) / 0.04) * 0.42})`;
-          x.fillRect(0, 0, w, h);
-        }
-
-        raf = requestAnimationFrame(draw);
-      };
-
-      resize();
-      window.addEventListener("resize", resize);
-      raf = requestAnimationFrame(draw);
-
-      return () => {
-        window.clearTimeout(fallback);
-        cancelAnimationFrame(raf);
-        window.removeEventListener("resize", resize);
-      };
-    } catch {
+    const c = ref.current;
+    const x = c?.getContext("2d");
+    if (!c || !x) {
       reveal();
       return () => window.clearTimeout(fallback);
     }
+
+    type RainColumn = {
+      x: number;
+      y: number;
+      speed: number;
+      length: number;
+      size: number;
+      phase: number;
+      chars: string[];
+    };
+
+    const chars = "01";
+    let columns: RainColumn[] = [];
+
+    const resize = () => {
+      const d = Math.min(window.devicePixelRatio || 1, 2);
+      c.width = window.innerWidth * d;
+      c.height = window.innerHeight * d;
+      x.setTransform(d, 0, 0, d, 0, 0);
+
+      const count = Math.ceil(window.innerWidth / 15);
+      columns = Array.from({ length: count }, (_, i) => ({
+        x: i * 15 + Math.random() * 7,
+        y: Math.random() * window.innerHeight,
+        speed: 2.2 + Math.random() * 5.5,
+        length: 9 + Math.floor(Math.random() * 22),
+        size: 11 + Math.random() * 5,
+        phase: Math.random() * Math.PI * 2,
+        chars: Array.from({ length: 34 }, () => chars[Math.floor(Math.random() * chars.length)]),
+      }));
+    };
+
+    const startTime = performance.now();
+
+    const draw = () => {
+      const elapsed = performance.now();
+      const revealP = Math.min(1, Math.max(0, (elapsed - startTime) / 5200));
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      x.fillStyle = "rgba(0,0,0,0.30)";
+      x.fillRect(0, 0, w, h);
+
+      const glow = x.createRadialGradient(w * 0.5, h * 0.5, 20, w * 0.5, h * 0.5, Math.max(w, h) * 0.72);
+      glow.addColorStop(0, "rgba(19,0,186,0.14)");
+      glow.addColorStop(0.38, "rgba(19,0,186,0.035)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      x.fillStyle = glow;
+      x.fillRect(0, 0, w, h);
+
+      x.textAlign = "center";
+      x.textBaseline = "middle";
+
+      columns.forEach((col) => {
+        col.y += col.speed;
+        if (col.y - col.length * col.size > h + 80) {
+          col.y = -Math.random() * h * 0.8;
+          col.speed = 2.2 + Math.random() * 5.5;
+        }
+
+        for (let j = 0; j < col.length; j++) {
+          const yy = col.y - j * col.size;
+          if (yy < -30 || yy > h + 30) continue;
+          const fade = 1 - j / col.length;
+          const flicker = 0.72 + 0.28 * Math.sin(elapsed * 0.006 + col.phase + j);
+          const head = j === 0;
+          x.font = (head ? "600 " : "400 ") + col.size + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+          x.fillStyle = head
+            ? "rgba(255,255,255," + (0.92 * flicker) + ")"
+            : "rgba(96,82,255," + Math.max(0.035, fade * 0.38 * flicker) + ")";
+          x.fillText(col.chars[j % col.chars.length], col.x, yy);
+        }
+      });
+
+      const word = "ARBYTER";
+      const fontSize = Math.min(92, Math.max(44, w * 0.095));
+      const letterGap = fontSize * 0.82;
+      const total = (word.length - 1) * letterGap;
+      const sx = w / 2 - total / 2;
+      const cy = h / 2;
+
+      x.save();
+      x.font = "800 " + fontSize + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+      x.textAlign = "center";
+      x.textBaseline = "middle";
+
+      const off = document.createElement("canvas");
+      off.width = Math.ceil(w);
+      off.height = Math.ceil(h);
+      const ox = off.getContext("2d");
+      if (ox) {
+        ox.font = "800 " + fontSize + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+        ox.textAlign = "center";
+        ox.textBaseline = "middle";
+        ox.fillStyle = "#fff";
+        ox.fillText(word, w / 2, cy);
+
+        const image = ox.getImageData(
+          Math.max(0, Math.floor(w / 2 - total / 2 - fontSize)),
+          Math.max(0, Math.floor(cy - fontSize)),
+          Math.min(w, Math.ceil(total + fontSize * 2)),
+          Math.min(h, Math.ceil(fontSize * 2.2))
+        );
+        const particles = Math.min(700, Math.floor(image.data.length / 16));
+        for (let i = 0; i < particles; i++) {
+          const idx = Math.floor(Math.random() * (image.data.length / 4)) * 4;
+          if (image.data[idx + 3] < 180) continue;
+          const local = idx / 4;
+          const iw = image.width;
+          const px = (local % iw) + Math.max(0, Math.floor(w / 2 - total / 2 - fontSize));
+          const py = Math.floor(local / iw) + Math.max(0, Math.floor(cy - fontSize));
+          const settle = Math.min(1, Math.max(0, (revealP - 0.30) / 0.52));
+          const sourceY = py - (1 - settle) * (80 + Math.random() * 260);
+          x.fillStyle = "rgba(255,255,255," + (0.18 + settle * 0.62) + ")";
+          x.fillText(Math.random() > 0.5 ? "0" : "1", px, sourceY);
+        }
+      }
+      x.restore();
+
+      const wordOpacity = Math.max(0, Math.min(1, (revealP - 0.62) / 0.30));
+      if (wordOpacity > 0) {
+        x.save();
+        x.globalAlpha = wordOpacity * 0.92;
+        x.font = "800 " + fontSize + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+        x.textAlign = "center";
+        x.textBaseline = "middle";
+        x.shadowBlur = 34;
+        x.shadowColor = "rgba(19,0,186,.75)";
+        const gradient = x.createLinearGradient(sx, cy, sx + total, cy);
+        gradient.addColorStop(0, "#ffffff");
+        gradient.addColorStop(0.5, "#dcd8ff");
+        gradient.addColorStop(1, "#7b6cff");
+        x.fillStyle = gradient;
+        x.fillText(word, w / 2, cy);
+        x.restore();
+      }
+
+      if (revealP > 0.86) {
+        const fade = (revealP - 0.86) / 0.14;
+        x.fillStyle = "rgba(0,0,0," + (fade * 0.9) + ")";
+        x.fillRect(0, 0, w, h);
+      }
+
+      if (revealP >= 1) reveal();
+      else raf = requestAnimationFrame(draw);
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+    raf = requestAnimationFrame(draw);
+
+    return () => {
+      window.clearTimeout(fallback);
+      if (audioTimer) window.clearInterval(audioTimer);
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+      window.removeEventListener("pointerdown", beginAudio);
+      window.removeEventListener("touchstart", beginAudio);
+      window.removeEventListener("keydown", beginAudio);
+      if (audioContext) audioContext.close().catch(() => {});
+    };
   }, [onDone]);
 
   return (
-    <div className="fixed inset-0 z-[999] bg-[#f7f9fd]" aria-hidden="true">
+    <div className="fixed inset-0 z-[999] bg-black" aria-hidden="true">
       <canvas ref={ref} className="absolute inset-0 h-full w-full" />
     </div>
   );
