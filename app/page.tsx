@@ -199,230 +199,259 @@ function World({ progress }: { progress: number }) {
   return <canvas ref={ref} className="absolute inset-0 h-full w-full" />;
 }
 
+
 function Intro({ onDone }: { onDone: () => void }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  const audioStarted = useRef(false);
+  const [phase, setPhase] = useState<"spin" | "ready" | "portal">("spin");
+  const [rotation, setRotation] = useState(0);
+  const raf = useRef<number | null>(null);
+  const started = useRef(false);
 
   useEffect(() => {
-    let raf = 0;
-    let finished = false;
-    let audioContext: AudioContext | null = null;
-    let audioTimer: number | null = null;
+    const start = performance.now();
+    const duration = 3000;
 
-    const finish = () => {
-      if (finished) return;
-      finished = true;
-      if (audioTimer) window.clearInterval(audioTimer);
-      if (audioContext) { audioContext.close().catch(() => {}); audioContext = null; }
-      onDone();
-    };
+    const animate = (now: number) => {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setRotation(eased * 920);
 
-    const startMatrixSound = () => {
-      if (audioStarted.current || finished) return;
-      audioStarted.current = true;
-      try {
-        const AudioCtx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-        if (!AudioCtx) return;
-        audioContext = new AudioCtx();
-        const ctx = audioContext;
-        if (ctx.state === "suspended") void ctx.resume();
-        const master = ctx.createGain();
-        master.gain.setValueAtTime(0.0001, ctx.currentTime);
-        master.gain.exponentialRampToValueAtTime(0.04, ctx.currentTime + 0.3);
-        master.connect(ctx.destination);
-        const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
-        const noiseData = noiseBuffer.getChannelData(0);
-        for (let i = 0; i < noiseData.length; i++) noiseData[i] = (Math.random() * 2 - 1) * 0.16;
-        const noise = ctx.createBufferSource();
-        noise.buffer = noiseBuffer; noise.loop = true;
-        const filter = ctx.createBiquadFilter();
-        filter.type = "bandpass"; filter.frequency.value = 1350; filter.Q.value = 0.55;
-        const ng = ctx.createGain(); ng.gain.value = 0.05;
-        noise.connect(filter).connect(ng).connect(master); noise.start();
-        audioTimer = window.setInterval(() => {
-          if (!audioContext || audioContext.state !== "running") return;
-          const now = audioContext.currentTime;
-          const osc = audioContext.createOscillator();
-          const gain = audioContext.createGain();
-          osc.type = "square";
-          osc.frequency.setValueAtTime(650 + Math.random() * 1250, now);
-          osc.frequency.exponentialRampToValueAtTime(250 + Math.random() * 300, now + 0.07);
-          gain.gain.setValueAtTime(0.0001, now);
-          gain.gain.exponentialRampToValueAtTime(0.015 + Math.random() * 0.018, now + 0.006);
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
-          osc.connect(gain).connect(master); osc.start(now); osc.stop(now + 0.1);
-        }, 78);
-      } catch {}
-    };
-
-    const canvas = ref.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) { finish(); return; }
-
-    type Cell = { x: number; y: number; baseX: number; row: number; speed: number; char: string; target?: string; settled: boolean };
-    const CELL_W = 25;
-    const CELL_H = 26;
-    const cells: Cell[] = [];
-    let targets = new Map<string, string>();
-
-    const buildLetterMap = (w: number, h: number) => {
-      const off = document.createElement("canvas");
-      off.width = Math.floor(w); off.height = Math.floor(h);
-      const ox = off.getContext("2d");
-      const map = new Map<string, string>();
-      if (!ox) return map;
-
-      const word = "ARBYTER";
-      const fontSize = Math.min(132, Math.max(78, w * 0.115));
-      ox.font = "900 " + fontSize + "px Arial Black, Arial, sans-serif";
-      ox.textAlign = "center"; ox.textBaseline = "middle"; ox.fillStyle = "#fff";
-      ox.fillText(word, w / 2, h / 2);
-      const data = ox.getImageData(0, 0, off.width, off.height).data;
-
-      // Every target pixel is mapped back to an EXISTING rain column/grid cell.
-      // Nothing travels sideways and no separate text is drawn.
-      for (let y = 0; y < h; y += CELL_H) {
-        for (let x = 0; x < w; x += CELL_W) {
-          let hit = false;
-          for (let sy = y; sy < Math.min(y + CELL_H, h) && !hit; sy += 3) {
-            for (let sx = x; sx < Math.min(x + CELL_W, w); sx += 3) {
-              if (data[(sy * off.width + sx) * 4 + 3] > 100) { hit = true; break; }
-            }
-          }
-          if (!hit) continue;
-
-          // Find which of the seven letters owns this x-position.
-          const left = w / 2 - Math.min(w * 0.44, 620);
-          const relative = Math.max(0, Math.min(0.999, (x - left) / Math.min(w * 0.88, 1240)));
-          const letterIndex = Math.min(6, Math.floor(relative * 7));
-          map.set(x + "," + y, word[letterIndex]);
-        }
-      }
-      return map;
-    };
-
-    const resize = () => {
-      const d = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = window.innerWidth * d;
-      canvas.height = window.innerHeight * d;
-      ctx.setTransform(d, 0, 0, d, 0, 0);
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      targets = buildLetterMap(w, h);
-      cells.length = 0;
-
-      // BIGGER, fewer columns. The rain is still continuous and each column keeps moving.
-      for (let x = 0; x <= w + CELL_W; x += CELL_W) {
-        const offset = -Math.random() * h;
-        let row = 0;
-        for (let y = offset; y < h + h; y += CELL_H) {
-          cells.push({
-            x, y, baseX: x, row: row++, speed: 2.8 + Math.random() * 3.8,
-            char: Math.random() > 0.5 ? "0" : "1", settled: false
-          });
-        }
+      if (p < 1) {
+        raf.current = requestAnimationFrame(animate);
+      } else {
+        setRotation(920);
+        setPhase("ready");
       }
     };
 
-    const startTime = performance.now();
-    const DURATION = 6500;
-
-    const draw = () => {
-      const now = performance.now();
-      const p = Math.min(1, (now - startTime) / DURATION);
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      // Rain continues moving. Only the central target cells briefly settle.
-      const settle = Math.max(0, Math.min(1, (p - 0.57) / 0.12));
-      const morph = Math.max(0, Math.min(1, (p - 0.69) / 0.12));
-      const eased = settle * settle * (3 - 2 * settle);
-      const morphed = morph * morph * (3 - 2 * morph);
-
-      ctx.fillStyle = "rgba(0,0,0,0.46)";
-      ctx.fillRect(0, 0, w, h);
-      const glow = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, Math.max(w, h) * 0.62);
-      glow.addColorStop(0, "rgba(19,0,186,0.11)");
-      glow.addColorStop(0.4, "rgba(19,0,186,0.025)");
-      glow.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = glow; ctx.fillRect(0, 0, w, h);
-
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      cells.forEach((cell, index) => {
-        const key = Math.round(cell.baseX) + "," + Math.round(Math.floor((cell.y + CELL_H / 2) / CELL_H) * CELL_H);
-        const targetKey = targets.has(key) ? key : Math.round(cell.baseX) + "," + Math.round(Math.floor(cell.y / CELL_H) * CELL_H);
-        const target = targets.get(targetKey);
-
-        // Keep the physical column fixed. Never move a target cell sideways.
-        const isCenterTarget = !!target && cell.baseX > w * 0.16 && cell.baseX < w * 0.84 && cell.y > h * 0.30 && cell.y < h * 0.70;
-        if (isCenterTarget && eased > 0.05) {
-          // Freeze at the existing grid position, while every other stream keeps falling.
-          cell.settled = true;
-          const gridY = Math.round(cell.y / CELL_H) * CELL_H;
-          cell.y += cell.speed * (1 - eased);
-          cell.y += (gridY - cell.y) * eased;
-        } else {
-          cell.settled = false;
-          cell.y += cell.speed;
-        }
-
-        if (cell.y > h + CELL_H * 2) {
-          cell.y = -CELL_H * (1 + Math.random() * 8);
-          cell.char = Math.random() > 0.5 ? "0" : "1";
-        }
-
-        if (isCenterTarget && morphed > 0) cell.char = target as string;
-        else if (!isCenterTarget && Math.random() < 0.025) cell.char = cell.char === "0" ? "1" : "0";
-
-        const formed = isCenterTarget && morphed > 0.35;
-        const alpha = formed ? 0.92 : (0.14 + 0.34 * (1 - Math.min(1, Math.abs(cell.y - h / 2) / h)));
-        ctx.font = (formed ? "900 " : "600 ") + (formed ? Math.max(19, CELL_W - 2) : Math.max(16, CELL_W - 5)) + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-        ctx.fillStyle = formed ? "rgba(235,233,255," + alpha + ")" : "rgba(82,72,240," + alpha + ")";
-        ctx.shadowBlur = formed ? 9 : 2;
-        ctx.shadowColor = "rgba(19,0,186,.85)";
-        ctx.fillText(cell.char, cell.baseX + CELL_W / 2, cell.y);
-        ctx.shadowBlur = 0;
-      });
-
-      if (morphed > 0.2) {
-        const a = Math.min(1, (morphed - 0.2) / 0.8);
-        const bloom = ctx.createRadialGradient(w / 2, h / 2, 20, w / 2, h / 2, Math.min(w, h) * 0.35);
-        bloom.addColorStop(0, "rgba(19,0,186," + (0.08 * a) + ")");
-        bloom.addColorStop(1, "rgba(19,0,186,0)");
-        ctx.fillStyle = bloom; ctx.fillRect(0, 0, w, h);
-      }
-
-      if (p > 0.91) {
-        const fade = Math.min(1, (p - 0.91) / 0.09);
-        ctx.fillStyle = "rgba(0,0,0," + (fade * 0.88) + ")";
-        ctx.fillRect(0, 0, w, h);
-      }
-
-      if (p >= 1) { finish(); return; }
-      raf = requestAnimationFrame(draw);
-    };
-
-    resize();
-    const beginAudio = () => startMatrixSound();
-    window.addEventListener("pointerdown", beginAudio, { once: true, passive: true });
-    window.addEventListener("touchstart", beginAudio, { once: true, passive: true });
-    window.addEventListener("keydown", beginAudio, { once: true });
-    window.addEventListener("resize", resize);
-    raf = requestAnimationFrame(draw);
-    const fallback = window.setTimeout(finish, DURATION + 700);
+    raf.current = requestAnimationFrame(animate);
 
     return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(fallback);
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("pointerdown", beginAudio);
-      window.removeEventListener("touchstart", beginAudio);
-      window.removeEventListener("keydown", beginAudio);
-      if (audioTimer) window.clearInterval(audioTimer);
-      if (audioContext) audioContext.close().catch(() => {});
+      if (raf.current) cancelAnimationFrame(raf.current);
     };
-  }, [onDone]);
+  }, []);
 
-  return <div className="fixed inset-0 z-[999] bg-black" aria-hidden="true"><canvas ref={ref} className="absolute inset-0 h-full w-full" /></div>;
+  const enter = () => {
+    if (phase !== "ready" || started.current) return;
+    started.current = true;
+    setPhase("portal");
+    window.setTimeout(onDone, 1250);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] overflow-hidden bg-[#02020a]"
+      onClick={phase === "ready" ? enter : undefined}
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 50% 50%, rgba(19,0,186,.48) 0%, rgba(19,0,186,.20) 23%, rgba(7,5,35,.78) 55%, #02020a 100%)",
+        }}
+      />
+
+      <div
+        className="absolute inset-0 opacity-40"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 42%, rgba(95,85,255,.22), transparent 58%)",
+        }}
+      />
+
+      <div
+        className="absolute left-1/2 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          transform:
+            "translate(-50%, -50%) scale(" +
+            (phase === "portal" ? 7 : 1) +
+            ")",
+          opacity: phase === "portal" ? 0 : 0.7,
+          background:
+            "radial-gradient(circle, rgba(19,0,186,.42), rgba(19,0,186,.10) 35%, transparent 70%)",
+          filter: "blur(18px)",
+          transition:
+            "transform 1.05s cubic-bezier(.12,.8,.15,1), opacity .8s",
+        }}
+      />
+
+      <div
+        className="absolute left-1/2 top-1/2 h-[440px] w-[440px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          transform:
+            "translate(-50%, -50%) scale(" +
+            (phase === "portal" ? 8 : 1) +
+            ")",
+          opacity: phase === "portal" ? 0 : 1,
+          transition:
+            "transform 1.1s cubic-bezier(.12,.8,.15,1), opacity .9s",
+          border: "1px solid rgba(150,140,255,.20)",
+          boxShadow:
+            "0 0 80px rgba(19,0,186,.20), inset 0 0 70px rgba(19,0,186,.10)",
+        }}
+      >
+        <div className="absolute inset-7 rounded-full border border-white/10" />
+        <div className="absolute inset-16 rounded-full border border-[#7065ff]/20" />
+      </div>
+
+      <div
+        className="absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2"
+        style={{
+          transform:
+            "translate(-50%, -50%) rotate(" +
+            rotation +
+            "deg) scale(" +
+            (phase === "portal" ? 7 : 1) +
+            ")",
+          opacity: phase === "portal" ? 0 : 1,
+          transition:
+            phase === "portal"
+              ? "transform 1.05s cubic-bezier(.08,.82,.16,1), opacity .75s"
+              : "none",
+        }}
+      >
+        <svg
+          viewBox="0 0 400 400"
+          className="h-full w-full"
+          style={{
+            filter:
+              "drop-shadow(0 0 22px rgba(19,0,186,.38)) drop-shadow(0 18px 45px rgba(0,0,0,.55))",
+          }}
+        >
+          <defs>
+            <linearGradient id="jarvisMetal" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#ffffff" stopOpacity=".42" />
+              <stop offset=".22" stopColor="#aeb5c8" stopOpacity=".16" />
+              <stop offset=".45" stopColor="#ffffff" stopOpacity=".32" />
+              <stop offset=".68" stopColor="#667084" stopOpacity=".12" />
+              <stop offset="1" stopColor="#ffffff" stopOpacity=".30" />
+            </linearGradient>
+
+            <linearGradient id="jarvisEdge" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="#ffffff" stopOpacity=".72" />
+              <stop offset=".5" stopColor="#8790a7" stopOpacity=".22" />
+              <stop offset="1" stopColor="#ffffff" stopOpacity=".58" />
+            </linearGradient>
+
+            <radialGradient id="jarvisCore">
+              <stop offset="0" stopColor="#1300BA" stopOpacity=".34" />
+              <stop offset=".45" stopColor="#1300BA" stopOpacity=".10" />
+              <stop offset="1" stopColor="#000000" stopOpacity=".02" />
+            </radialGradient>
+          </defs>
+
+          <g transform="translate(200 200)">
+            {Array.from({ length: 16 }).map((_, i) => (
+              <rect
+                key={i}
+                x="-17"
+                y="-191"
+                width="34"
+                height="48"
+                rx="7"
+                transform={"rotate(" + i * 22.5 + ")"}
+                fill="url(#jarvisMetal)"
+                stroke="url(#jarvisEdge)"
+                strokeWidth="2"
+              />
+            ))}
+
+            <circle
+              r="155"
+              fill="url(#jarvisMetal)"
+              stroke="url(#jarvisEdge)"
+              strokeWidth="3"
+            />
+            <circle
+              r="123"
+              fill="rgba(2,2,10,.34)"
+              stroke="rgba(255,255,255,.22)"
+              strokeWidth="2"
+            />
+            <circle
+              r="105"
+              fill="url(#jarvisCore)"
+              stroke="rgba(255,255,255,.13)"
+            />
+            <circle
+              r="84"
+              fill="none"
+              stroke="rgba(255,255,255,.24)"
+              strokeWidth="2"
+            />
+            <circle r="66" fill="none" stroke="rgba(19,0,186,.48)" />
+            <circle r="11" fill="#1300BA" opacity=".85" />
+            <circle r="5" fill="#fff" opacity=".9" />
+          </g>
+        </svg>
+      </div>
+
+      <button
+        aria-label="Enter Arbyter"
+        onClick={(e) => {
+          e.stopPropagation();
+          enter();
+        }}
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-white/[.035] px-9 py-4 text-[11px] font-semibold tracking-[.42em] text-white backdrop-blur-xl"
+        style={{
+          opacity: phase === "ready" ? 1 : 0,
+          transform:
+            "translate(-50%, -50%) scale(" +
+            (phase === "ready" ? 1 : 0.7) +
+            ")",
+          pointerEvents: phase === "ready" ? "auto" : "none",
+          transition:
+            "opacity .55s ease, transform .65s cubic-bezier(.2,.8,.2,1)",
+          boxShadow:
+            "0 0 35px rgba(19,0,186,.28), inset 0 0 22px rgba(255,255,255,.05)",
+        }}
+      >
+        ENTER
+      </button>
+
+      {Array.from({ length: 30 }).map((_, i) => (
+        <span
+          key={i}
+          className="pointer-events-none absolute left-1/2 top-1/2 h-px origin-left bg-white/70"
+          style={{
+            width: 180 + (i % 6) * 70,
+            transform:
+              "rotate(" +
+              i * 12 +
+              "deg) scaleX(" +
+              (phase === "portal" ? 5 : 0.01) +
+              ")",
+            opacity: phase === "portal" ? 0.8 : 0,
+            transition:
+              "transform .85s cubic-bezier(.1,.8,.1,1) " +
+              i * 8 +
+              "ms, opacity .25s",
+          }}
+        />
+      ))}
+
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
+        style={{
+          transform:
+            "translate(-50%, -50%) scale(" +
+            (phase === "portal" ? 90 : 0) +
+            ")",
+          opacity: phase === "portal" ? 0.95 : 0,
+          transition:
+            "transform 1s cubic-bezier(.05,.75,.1,1), opacity .65s",
+          boxShadow: "0 0 110px 45px rgba(105,95,255,.8)",
+        }}
+      />
+
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at center, transparent 18%, rgba(0,0,0,.28) 58%, rgba(0,0,0,.88) 100%)",
+        }}
+      />
+    </div>
+  );
 }
 const STAGES = [
   ["DISCOVER", "DISCOVER EVERY AGENT.", "Find AI agents, tools and workflows across your organization before they become invisible infrastructure."],
