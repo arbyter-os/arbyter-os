@@ -1,7 +1,32 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { executeAgentTask } from "@/lib/execution/engine"
-import { authorizeConnectorExecution, isConnectorExecutionAuthorizationError } from "@/lib/security/authorize-connector-execution"
+import type { ConnectorCapability } from "@/lib/connectors/types"
+
+type TaskExecutionBody = {
+  taskId?: unknown
+  capability?: unknown
+  agentConnectionId?: unknown
+  environment?: unknown
+  country?: unknown
+  state?: unknown
+  jurisdiction?: unknown
+  sector?: unknown
+  data?: unknown
+}
+
+const CONNECTOR_CAPABILITIES: readonly ConnectorCapability[] = [
+  "messages.send",
+  "messages.read",
+  "messages.reply",
+]
+
+function isConnectorCapability(value: unknown): value is ConnectorCapability {
+  return typeof value === "string" && (CONNECTOR_CAPABILITIES as readonly string[]).includes(value)
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -21,7 +46,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = await request.json()
+    const body = await readJsonBody<TaskExecutionBody>(request)
+    assertApiBody(body, "tasks:execute")
     const taskId =
       typeof body?.taskId === "string" ? body.taskId : ""
 
@@ -35,7 +61,7 @@ export async function POST(request: Request) {
     const { data: userRecord, error: userError } =
       await supabase
         .from("users")
-        .select("organization_id")
+        .select("organization_id, role")
         .eq("id", user.id)
         .maybeSingle()
 
@@ -48,13 +74,14 @@ export async function POST(request: Request) {
       )
     }
 
-    await authorizeConnectorExecution({
-      supabase,
-      userId: user.id,
-      organizationId: userRecord.organization_id,
-    })
-
     const organizationId = userRecord.organization_id
+
+    if (userRecord.role !== "owner" && userRecord.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only an owner or admin can execute tasks." },
+        { status: 403 }
+      )
+    }
 
     const { data: task, error: taskError } = await supabase
       .from("tasks")
@@ -76,6 +103,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "This task is already completed." },
         { status: 409 }
+      )
+    }
+
+    if (!isConnectorCapability(body.capability)) {
+      return NextResponse.json(
+        { error: "A valid connector capability is required." },
+        { status: 400 },
       )
     }
 
@@ -118,6 +152,7 @@ export async function POST(request: Request) {
       organizationId,
       agentId,
       taskId: task.id,
+      requestedCapability: body.capability,
       environment:
         typeof body?.environment === "string"
           ? body.environment
@@ -142,7 +177,7 @@ export async function POST(request: Request) {
         body?.data &&
         typeof body.data === "object" &&
         !Array.isArray(body.data)
-          ? body.data
+          ? body.data as Record<string, unknown>
           : undefined,
     })
 
@@ -189,21 +224,13 @@ export async function POST(request: Request) {
       audit: result.audit,
     })
   } catch (error) {
-    if (isConnectorExecutionAuthorizationError(error)) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 403 }
-      )
-    }
-
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("Task execution failed:", error)
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to execute task.",
+        error: "Failed to execute task.",
       },
       { status: 500 }
     )

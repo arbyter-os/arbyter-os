@@ -3,7 +3,7 @@ import {
   getApplicableRules,
   type GovernanceContext,
 } from "./applicability"
-import { getTriggeredRules } from "./evaluator"
+import { evaluateRule } from "./evaluator"
 import {
   resolveConflicts,
   type ConflictResolution,
@@ -120,6 +120,66 @@ export function applyMissingContextApproval(
   }
 }
 
+export function applyUnevaluableRuleApproval(
+  resolution: ConflictResolution,
+  unevaluableRules: Array<{ rule: GovernanceRule; reason: string }>
+): ConflictResolution {
+  if (unevaluableRules.length === 0) return resolution
+
+  if (resolution.effect === "block" || resolution.effect === "require_approval") {
+    return resolution
+  }
+
+  const unevaluable = unevaluableRules[0]
+
+  return {
+    ...resolution,
+    effect: "require_approval",
+    rule: unevaluable.rule,
+    reason: `Approval required because governance rule "${unevaluable.rule.name}" could not be safely evaluated: ${unevaluable.reason}`,
+  }
+}
+
+export function evaluateGovernanceRules(
+  rules: GovernanceRule[],
+  context: GovernanceContext & Record<string, unknown>
+) {
+  const missingContextRules = getMissingContextualRules(rules, context)
+  const applicableRules = getApplicableRules(rules, context)
+  const evaluations = applicableRules.map((rule) => ({
+    rule,
+    result: evaluateRule(rule, context),
+  }))
+
+  const triggeredRules = evaluations
+    .map(({ result }) => result)
+    .filter((result): result is NonNullable<typeof result> => Boolean(result?.matched))
+
+  const unevaluableRules = evaluations
+    .map(({ result }) => result)
+    .filter((result): result is NonNullable<typeof result> => Boolean(result && !result.evaluable))
+
+  const conflicts = analyzeConflicts(triggeredRules)
+  const baseResolution = resolveConflicts(triggeredRules)
+  const contextResolution = applyMissingContextApproval(baseResolution, missingContextRules)
+  const resolution = applyUnevaluableRuleApproval(
+    contextResolution,
+    unevaluableRules.map((result) => ({ rule: result.rule, reason: result.reason }))
+  )
+  const risk = calculateRisk(triggeredRules)
+  const decision = makeGovernanceDecision(resolution, risk)
+
+  return {
+    decision,
+    resolution,
+    risk,
+    applicableRules,
+    triggeredRules,
+    unevaluableRules,
+    conflicts,
+  }
+}
+
 export async function evaluateGovernance(
   organizationId: string,
   context: GovernanceContext & Record<string, unknown>
@@ -156,42 +216,19 @@ export async function evaluateGovernance(
           : undefined,
     })
 
-  const missingContextRules = getMissingContextualRules(
+  const governanceRules = evaluateGovernanceRules(
     rules,
     context
   )
 
-  const applicableRules = getApplicableRules(
-    rules,
-    context
-  )
-
-  const triggeredRules = getTriggeredRules(
+  const {
     applicableRules,
-    context
-  )
-
-  const conflicts = analyzeConflicts(
-    triggeredRules
-  )
-
-  const baseResolution = resolveConflicts(
-    triggeredRules
-  )
-
-  const resolution = applyMissingContextApproval(
-    baseResolution,
-    missingContextRules
-  )
-
-  const risk = calculateRisk(
-    triggeredRules
-  )
-
-  const decision = makeGovernanceDecision(
+    triggeredRules,
+    conflicts,
+    risk,
+    decision,
     resolution,
-    risk
-  )
+  } = governanceRules
 
   const recommendations =
     generateRecommendations(

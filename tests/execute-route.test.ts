@@ -39,9 +39,53 @@ export async function orchestrateUserRequest() {
 `
 
 const authorizationStub = `
+export class ConnectorExecutionAuthorizationError extends Error {
+  constructor() { super("Only an owner or admin can execute connectors."); this.code = "CONNECTOR_EXECUTION_FORBIDDEN" }
+}
 export function isConnectorExecutionAuthorizationError(error) {
   return error?.code === "CONNECTOR_EXECUTION_FORBIDDEN"
 }
+export async function authorizeConnectorExecution() {}
+`
+
+const supabaseStub = `
+export function createClient() {
+  return {
+    auth: { getUser: async () => ({ data: { user: { id: "user-1" } }, error: null }) },
+    from() {
+      return {
+        select() { return this },
+        eq() { return this },
+        async maybeSingle() { return { data: { organization_id: "org-1" }, error: null } },
+      }
+    },
+  }
+}
+`
+
+
+
+const requestBodyStub = `
+export class RequestBodyLimitError extends Error {}
+export async function readJsonBody(request) {
+  if (!request.body) throw new Error("Request body is required.")
+  const reader = request.body.getReader()
+  const chunks = []
+  let total = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > 256 * 1024) throw new RequestBodyLimitError("Request body too large.")
+    chunks.push(value)
+  }
+  return JSON.parse(Buffer.concat(chunks.map((chunk) => Buffer.from(chunk))).toString("utf8"))
+}
+`
+
+const privilegedAuthStub = `
+export async function requirePrivilegedMfa() {}
+export function isPrivilegedMfaRequiredError() { return false }
 `
 
 const requestSizeStub = `
@@ -51,20 +95,24 @@ export function validateMessageSize(message) {
 }
 `
 
-const loader = `
-const nextServer = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(nextServerStub)}`)}
-const orchestration = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(orchestrationStub)}`)}
-const authorization = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(authorizationStub)}`)}
-const requestSize = ${JSON.stringify(`data:text/javascript,${encodeURIComponent(requestSizeStub)}`)}
+const loader = "\n" +
+  "const nextServer = " + JSON.stringify(`data:text/javascript,${encodeURIComponent(nextServerStub)}`) + "\n" +
+  "const orchestration = " + JSON.stringify(`data:text/javascript,${encodeURIComponent(orchestrationStub)}`) + "\n" +
+  "const authorization = " + JSON.stringify(`data:text/javascript,${encodeURIComponent(authorizationStub)}`) + "\n" +
+  "const requestSize = " + JSON.stringify(`data:text/javascript,${encodeURIComponent(requestSizeStub)}`) + "\n" +
+  "const requestBody = " + JSON.stringify(`data:text/javascript,${encodeURIComponent(requestBodyStub)}`) + "\n" +
+  "const privilegedAuth = " + JSON.stringify(`data:text/javascript,${encodeURIComponent(privilegedAuthStub)}`) + "\n" +
+  "const supabase = " + JSON.stringify(`data:text/javascript,${encodeURIComponent(supabaseStub)}`) + "\n" +
+  "export async function resolve(specifier, context, nextResolve) {\n" +
+  "  if (specifier === \"next/server\") return { url: nextServer, shortCircuit: true }\n" +
+  "  if (specifier === \"@/lib/orchestration\") return { url: orchestration, shortCircuit: true }\n" +
+  "  if (specifier === \"@/lib/security/authorize-connector-execution\") return { url: authorization, shortCircuit: true }\n" +
+  "  if (specifier === \"@/lib/security/validate-request-size\") return { url: requestSize, shortCircuit: true }\n" +
+  "  if (specifier === \"@/lib/security/privileged-auth\") return { url: privilegedAuth, shortCircuit: true }\n" +
+  "  if (specifier === \"@/lib/supabase/server\") return { url: supabase, shortCircuit: true }\n" +
+  "  return nextResolve(specifier, context)\n" +
+  "}\n"
 
-export async function resolve(specifier, context, nextResolve) {
-  if (specifier === "next/server") return { url: nextServer, shortCircuit: true }
-  if (specifier === "@/lib/orchestration") return { url: orchestration, shortCircuit: true }
-  if (specifier === "@/lib/security/authorize-connector-execution") return { url: authorization, shortCircuit: true }
-  if (specifier === "@/lib/security/validate-request-size") return { url: requestSize, shortCircuit: true }
-  return nextResolve(specifier, context)
-}
-`
 
 register(`data:text/javascript,${encodeURIComponent(loader)}`, import.meta.url)
 
@@ -122,6 +170,31 @@ test("non-string message returns 400", async () => {
 test("malformed JSON returns 400", async () => {
   const response = await run("{\"message\":", async () => result)
   assert.equal(response.status, 400)
+})
+
+
+test("chunked request bodies over 256 KiB are rejected before JSON parsing", async () => {
+  const oversized = new TextEncoder().encode(JSON.stringify({ message: "a".repeat(300 * 1024) }))
+  // `duplex: "half"` is required by Node/undici for streamed request bodies but is missing from lib.dom's RequestInit.
+  const init: RequestInit & { duplex: "half" } = {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    duplex: "half",
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(oversized)
+        controller.close()
+      },
+    }),
+  }
+  const request = new Request("http://localhost/api/execute", init)
+
+  const response = await handleExecuteRequest(request, async () => {
+    throw new Error("orchestration must not run")
+  })
+
+  assert.equal(response.status, 413)
+  assert.deepEqual(await json(response), { error: "Request body too large." })
 })
 
 test("message exactly at 32 KiB is accepted", async () => {
@@ -189,13 +262,13 @@ test("multibyte UTF-8 message over 32 KiB returns 413", async () => {
   assert.equal(called, false)
 })
 
-test("orchestration failure returns 500 with the error", async () => {
+test("orchestration failure returns 500 without leaking the internal error", async () => {
   const response = await run(JSON.stringify({ message: "Send an email." }), async () => {
     throw new Error("connector failed")
   })
 
   assert.equal(response.status, 500)
-  assert.deepEqual(await json(response), { error: "connector failed" })
+  assert.deepEqual(await json(response), { error: "Execution orchestration failed." })
 })
 
 test("execution authorization failure returns 403", async () => {
@@ -205,6 +278,6 @@ test("execution authorization failure returns 403", async () => {
 
   assert.equal(response.status, 403)
   assert.deepEqual(await json(response), {
-    error: "Only an owner or admin can execute connectors.",
+    error: "Execution request could not be completed.",
   })
 })

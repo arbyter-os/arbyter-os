@@ -1,5 +1,5 @@
-import { registerConnector } from "./registry.ts";
-import { agentMailConnector } from "./agentmail.ts";
+import { registerConnector } from "./registry";
+import { agentMailConnector } from "./agentmail";
 
 let initialized = false;
 

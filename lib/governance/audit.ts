@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import type { DecisionResult } from "./decision-engine"
 import type { GovernanceRule } from "./rule-loader"
 import type { TriggeredRule } from "./evaluator"
@@ -42,7 +42,7 @@ export async function persistGovernanceEvaluation(
   triggeredRules: TriggeredRule[],
   context: GovernanceAuditContext = {}
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const databaseDecision = mapDecision(
     decision.decision

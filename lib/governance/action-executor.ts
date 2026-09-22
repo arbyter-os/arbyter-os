@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import type { GovernanceAction } from "./action-recommendations"
+import { authorizeApprovalResources } from "./authorization"
 
 export type GovernanceActionContext = {
   organizationId: string
@@ -45,6 +46,22 @@ export async function executeGovernanceAction(
           success: false,
           action: "request_approval",
           message: "Agent and task are required to request approval.",
+          requiresHuman: true,
+        }
+      }
+
+      const authorized = await authorizeApprovalResources(
+        supabase,
+        context.organizationId,
+        context.agentId,
+        context.taskId
+      )
+
+      if (!authorized) {
+        return {
+          success: false,
+          action: "request_approval",
+          message: "Unable to create the approval request.",
           requiresHuman: true,
         }
       }
@@ -136,7 +153,10 @@ export async function executeGovernanceAction(
         .update({ enabled: false })
         .eq("agent_id", context.agentId)
         .eq("organization_id", context.organizationId)
-        .eq("tool", context.tool)
+        // agent_permissions has no `tool` column. The tool identity lives in
+        // permission_key; filtering on a non-existent column made this
+        // governance control fail closed-but-silently (PostgREST 42703).
+        .eq("permission_key", context.tool)
         .select("id")
         .maybeSingle()
 

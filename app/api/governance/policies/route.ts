@@ -110,10 +110,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to load governance policies.",
+        error: "Failed to load governance policies.",
       },
       { status: 500 }
     )

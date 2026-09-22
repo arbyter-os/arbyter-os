@@ -1,3 +1,5 @@
+import { checkRateLimit } from "./rate-limit.ts"
+
 export const GEMINI_BUDGET_LIMIT = 10
 export const GEMINI_BUDGET_WINDOW_MS = 60_000
 
@@ -8,31 +10,16 @@ export class GeminiBudgetExceededError extends Error {
   }
 }
 
-type Bucket = {
-  windowStartedAt: number
-  count: number
+/** Distributed per-user Gemini budget. Fails closed if the rate-limit service is unavailable. */
+export async function consumeGeminiBudget(userId: string): Promise<void> {
+  if (!userId.trim()) throw new Error("Gemini request context is required.")
+  let result
+  try {
+    result = await checkRateLimit(`gemini:${userId}`, GEMINI_BUDGET_LIMIT, GEMINI_BUDGET_WINDOW_MS)
+  } catch {
+    throw new Error("Gemini budget service unavailable.")
+  }
+  if (!result.allowed) throw new GeminiBudgetExceededError()
 }
 
-const buckets = new Map<string, Bucket>()
-
-export function consumeGeminiBudget(userId: string, now = Date.now()): void {
-  if (!userId.trim()) {
-    throw new Error("Gemini request context is required.")
-  }
-
-  const current = buckets.get(userId)
-  if (!current || now - current.windowStartedAt >= GEMINI_BUDGET_WINDOW_MS) {
-    buckets.set(userId, { windowStartedAt: now, count: 1 })
-    return
-  }
-
-  if (current.count >= GEMINI_BUDGET_LIMIT) {
-    throw new GeminiBudgetExceededError()
-  }
-
-  current.count += 1
-}
-
-export function resetGeminiBudgetForTests(): void {
-  buckets.clear()
-}
+export function resetGeminiBudgetForTests(): void {}

@@ -1,5 +1,9 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { isPrivilegedMfaRequiredError, requirePrivilegedMfa } from "@/lib/security/privileged-auth";
 import { scanMCPServer } from "@/lib/discovery/scanners/mcp";
 
 export async function POST(request: Request) {
@@ -18,7 +22,19 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
+    try {
+      await requirePrivilegedMfa(supabase, user.id);
+    } catch (error) {
+      if (isPrivilegedMfaRequiredError(error)) {
+        console.error("MCP discovery authorization failed:", error)
+        return NextResponse.json({ error: "MCP discovery request was not authorized." }, { status: 403 });
+      }
+      console.error("MCP authorization lookup failed:", error);
+      return NextResponse.json({ error: "MCP authorization is temporarily unavailable." }, { status: 503 });
+    }
+
+    const body = await readJsonBody(request)
+    assertApiBody(body, "discovery:mcp");
 
     const serverUrl =
       typeof body?.serverUrl === "string"
@@ -50,14 +66,13 @@ export async function POST(request: Request) {
       status: result.success ? 200 : 502,
     });
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("MCP discovery error:", error);
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "MCP discovery failed.",
+        error: "MCP discovery failed.",
       },
       { status: 500 }
     );

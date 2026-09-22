@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export type ExecutionAuditContext = {
   organizationId: string
@@ -20,7 +20,7 @@ export type ExecutionAuditContext = {
 export async function recordExecutionAudit(
   context: ExecutionAuditContext
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from("agent_executions")

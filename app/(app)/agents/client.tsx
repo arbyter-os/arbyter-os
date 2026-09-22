@@ -499,87 +499,41 @@ export default function AgentsClient({
       }
 
       if (editingConnection && connection) {
-        const { error: updateError } = await supabase
-          .from('agent_connections')
-          .update({
-            connection_type:
-              connectionForm.connectionType,
+        const response = await fetch('/api/agents/connections', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            connectionId: connection.id,
+            agentId: selectedAgent.id,
+            connectionType: connectionForm.connectionType,
             provider: connectionForm.provider.trim(),
-            endpoint_url:
-              connectionForm.endpointUrl.trim() || null,
+            endpointUrl: connectionForm.endpointUrl.trim() || null,
             environment: connectionForm.environment,
             configuration,
             capabilities,
-          })
-          .eq('id', connection.id)
-          .eq('agent_id', selectedAgent.id)
-          .eq(
-            'organization_id',
-            userRecord.organization_id
-          )
-
-        if (updateError) throw updateError
-
-        await supabase
-          .from('agent_connection_events')
-          .insert({
-            organization_id: userRecord.organization_id,
-            agent_id: selectedAgent.id,
-            connection_id: connection.id,
-            event_type: 'connected',
-            metadata: {
-              source: 'agents_ui',
-              action: 'updated',
-            },
-          })
+          }),
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result?.error || 'Failed to update connection.')
 
         setMessage('Connection updated successfully.')
       } else {
-        const { data: newConnection, error: insertError } =
-          await supabase
-            .from('agent_connections')
-            .insert({
-              organization_id: userRecord.organization_id,
-              agent_id: selectedAgent.id,
-              connection_type:
-                connectionForm.connectionType,
-              provider:
-                connectionForm.provider.trim(),
-              endpoint_url:
-                connectionForm.endpointUrl.trim() || null,
-              environment: connectionForm.environment,
-              status: 'pending',
-              configuration,
-              capabilities,
-            })
-            .select(
-              `
-                id,
-                status,
-                health_status,
-                last_connected_at,
-                connection_type,
-                provider,
-                endpoint_url,
-                environment,
-                capabilities
-              `
-            )
-            .single()
-
-        if (insertError) throw insertError
-
-        await supabase
-          .from('agent_connection_events')
-          .insert({
-            organization_id: userRecord.organization_id,
-            agent_id: selectedAgent.id,
-            agent_connection_id: newConnection.id,
-            event_type: 'created',
-            metadata: {
-              source: 'agents_ui',
-            },
-          })
+        const response = await fetch('/api/agents/connections', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: selectedAgent.id,
+            connectionType: connectionForm.connectionType,
+            provider: connectionForm.provider.trim(),
+            endpointUrl: connectionForm.endpointUrl.trim() || null,
+            environment: connectionForm.environment,
+            configuration,
+            capabilities,
+          }),
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result?.error || 'Failed to create connection.')
+        const newConnection = result.connection
 
         setMessage('Connection created successfully.')
       }
@@ -634,17 +588,13 @@ export default function AgentsClient({
         return
       }
 
-      const { error } = await supabase
-        .from('agent_connections')
-        .delete()
-        .eq('id', connection.id)
-        .eq('agent_id', selectedAgent.id)
-        .eq(
-          'organization_id',
-          userRecord.organization_id
-        )
-
-      if (error) throw error
+      const response = await fetch('/api/agents/connections', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connectionId: connection.id, agentId: selectedAgent.id }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to remove connection.')
 
       setConnection(null)
       setVerified(false)
@@ -739,24 +689,19 @@ export default function AgentsClient({
         return
       }
 
-      const { data, error: insertError } =
-        await supabase
-          .from('ai_agents')
-          .insert({
-            organization_id: userRecord.organization_id,
-            name: newAgentName.trim(),
-            description:
-              newAgentPurpose.trim() || null,
-            agent_type:
-              newAgentType.trim() || 'general',
-            status: 'active',
-          })
-          .select(
-            'id, name, description, agent_type, status, created_at'
-          )
-          .single()
+      const response = await fetch('/api/agents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newAgentName.trim(),
+          description: newAgentPurpose.trim() || null,
+          agentType: newAgentType.trim() || 'general',
+        }),
+      })
 
-      if (insertError) throw insertError
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to create agent.')
+      const data = result.agent
 
       const newAgent: Agent = {
         id: data.id,
@@ -833,16 +778,13 @@ export default function AgentsClient({
         return
       }
 
-      const { error: deleteError } = await supabase
-        .from('ai_agents')
-        .delete()
-        .eq('id', selectedAgent.id)
-        .eq(
-          'organization_id',
-          userRecord.organization_id
-        )
-
-      if (deleteError) throw deleteError
+      const response = await fetch('/api/agents', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: selectedAgent.id }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to delete agent.')
 
       setAgents((current) =>
         current.filter(
