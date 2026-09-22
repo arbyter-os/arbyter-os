@@ -272,7 +272,7 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
 
-      scene.traverse((object) => {
+      scene.traverse((object: THREE.Object3D) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Points || object instanceof THREE.InstancedMesh) {
           object.geometry.dispose();
           const material = object.material;
