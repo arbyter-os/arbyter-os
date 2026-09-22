@@ -201,244 +201,155 @@ function World({ progress }: { progress: number }) {
 
 
 function Intro({ onDone }: { onDone: () => void }) {
-  const [phase, setPhase] = useState<"spin" | "ready" | "portal">("spin");
-  const [rotation, setRotation] = useState(0);
+  const [phase, setPhase] = useState<"orb" | "ready" | "warp">("orb");
+  const [camera, setCamera] = useState(0);
   const raf = useRef<number | null>(null);
   const started = useRef(false);
 
   useEffect(() => {
-    const startTime = performance.now();
-    const duration = 3000;
-
+    const startedAt = performance.now();
+    const duration = 4200;
     const animate = (now: number) => {
-      const p = Math.min(1, (now - startTime) / duration);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setRotation(eased * 920);
-
+      const p = Math.min(1, (now - startedAt) / duration);
+      const eased = p < 0.7 ? (p / 0.7) * 0.55 : 0.55 + ((p - 0.7) / 0.3) * 0.45;
+      setCamera(eased);
       if (p < 1) raf.current = requestAnimationFrame(animate);
-      else {
-        setRotation(920);
-        setPhase("ready");
-      }
+      else setPhase("ready");
     };
-
     raf.current = requestAnimationFrame(animate);
-    return () => {
-      if (raf.current) cancelAnimationFrame(raf.current);
-    };
+    return () => { if (raf.current) cancelAnimationFrame(raf.current); };
   }, []);
 
   const enter = () => {
     if (phase !== "ready" || started.current) return;
     started.current = true;
-    setPhase("portal");
-    window.setTimeout(onDone, 1500);
+    setPhase("warp");
+    window.setTimeout(onDone, 1750);
   };
 
+  const orbScale = 0.35 + camera * 1.65;
+
   return (
-    <div
-      className="fixed inset-0 z-[9999] overflow-hidden bg-black"
-      onClick={phase === "ready" ? enter : undefined}
-    >
-      {/* Everything is locked to one exact viewport center. */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at 50% 50%, rgba(19,0,186,.50) 0%, rgba(19,0,186,.18) 25%, rgba(5,4,28,.82) 58%, #000 100%)",
-        }}
-      />
+    <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#010207]" onClick={phase === "ready" ? enter : undefined}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,#101b39_0%,#050813_38%,#010207_78%,#000_100%)]" />
 
-      <div
-        className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(19,0,186,.42), rgba(19,0,186,.10) 40%, transparent 72%)",
-          filter: "blur(22px)",
-          transform:
-            "translate(-50%, -50%) scale(" + (phase === "portal" ? 8 : 1) + ")",
-          opacity: phase === "portal" ? 0 : 0.8,
-          transition:
-            "transform 1.05s cubic-bezier(.08,.82,.12,1), opacity .75s ease",
-        }}
-      />
+      <div className="absolute left-1/2 top-1/2 h-[900px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{
+        background: "radial-gradient(circle, rgba(19,0,186,.25), rgba(0,130,255,.08) 32%, transparent 68%)",
+        filter: "blur(50px)",
+        transform: `translate(-50%, -50%) scale(${0.65 + camera * 1.1})`,
+      }} />
 
-      {/* Fixed concentric portal geometry. */}
-      <div
-        className="absolute left-1/2 top-1/2 h-[460px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
-          transform:
-            "translate(-50%, -50%) scale(" + (phase === "portal" ? 7 : 1) + ")",
-          opacity: phase === "portal" ? 0 : 1,
-          transition:
-            "transform 1.05s cubic-bezier(.08,.82,.12,1), opacity .8s ease",
-          border: "1px solid rgba(190,195,255,.28)",
-          boxShadow:
-            "0 0 90px rgba(19,0,186,.24), inset 0 0 70px rgba(19,0,186,.12)",
-        }}
-      >
-        <div className="absolute inset-8 rounded-full border border-white/10" />
-        <div className="absolute inset-16 rounded-full border border-[#7065ff]/20" />
-      </div>
+      <div className="absolute left-1/2 top-1/2" style={{
+        width: "min(620px, 72vw)",
+        height: "min(620px, 72vw)",
+        transform: `translate(-50%, -50%) scale(${phase === "warp" ? 7 : orbScale})`,
+        opacity: phase === "warp" ? 0 : 1,
+        transition: phase === "warp" ? "transform 1.15s cubic-bezier(.04,.78,.08,1), opacity .7s ease" : "none",
+      }}>
+        <div className="absolute inset-[-18%] rounded-full" style={{
+          background: "radial-gradient(circle, rgba(19,0,186,.30), rgba(0,180,255,.12) 40%, transparent 70%)",
+          filter: "blur(35px)",
+        }} />
 
-      {/* Rotating JARVIS-style gear. */}
-      <div
-        className="absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2"
-        style={{
-          transform:
-            "translate(-50%, -50%) rotate(" +
-            rotation +
-            "deg) scale(" +
-            (phase === "portal" ? 7 : 1) +
-            ")",
-          opacity: phase === "portal" ? 0 : 1,
-          transition:
-            phase === "portal"
-              ? "transform 1.05s cubic-bezier(.08,.82,.12,1), opacity .7s ease"
-              : "none",
-        }}
-      >
-        <svg
-          viewBox="0 0 400 400"
-          className="h-full w-full"
-          preserveAspectRatio="xMidYMid meet"
-          style={{
-            filter:
-              "drop-shadow(0 0 22px rgba(19,0,186,.42)) drop-shadow(0 18px 45px rgba(0,0,0,.55))",
-          }}
-        >
-          <defs>
-            <linearGradient id="jarvisMetal" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#fff" stopOpacity=".46" />
-              <stop offset=".24" stopColor="#aeb5c8" stopOpacity=".16" />
-              <stop offset=".48" stopColor="#fff" stopOpacity=".34" />
-              <stop offset=".72" stopColor="#667084" stopOpacity=".12" />
-              <stop offset="1" stopColor="#fff" stopOpacity=".30" />
-            </linearGradient>
-            <linearGradient id="jarvisEdge" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="#fff" stopOpacity=".78" />
-              <stop offset=".5" stopColor="#8790a7" stopOpacity=".22" />
-              <stop offset="1" stopColor="#fff" stopOpacity=".58" />
-            </linearGradient>
-            <radialGradient id="jarvisCore">
-              <stop offset="0" stopColor="#1300BA" stopOpacity=".36" />
-              <stop offset=".5" stopColor="#1300BA" stopOpacity=".10" />
-              <stop offset="1" stopColor="#000" stopOpacity=".02" />
-            </radialGradient>
-          </defs>
+        <div className="absolute inset-0 overflow-hidden rounded-full" style={{
+          background: "radial-gradient(circle at 38% 28%, rgba(255,255,255,.24), transparent 20%), radial-gradient(circle at 50% 50%, rgba(0,135,255,.16), rgba(19,0,186,.10) 42%, rgba(255,255,255,.025) 68%, rgba(255,255,255,.12) 100%)",
+          border: "1px solid rgba(190,225,255,.48)",
+          boxShadow: "inset 18px 18px 45px rgba(255,255,255,.08), inset -25px -30px 60px rgba(0,0,0,.55), 0 0 80px rgba(19,0,186,.32), 0 0 180px rgba(0,150,255,.14)",
+          backdropFilter: "blur(7px)",
+        }}>
+          <div className="absolute inset-[8%] rounded-full" style={{
+            background: "radial-gradient(ellipse at 40% 38%, rgba(100,225,255,.9), transparent 11%), radial-gradient(ellipse at 62% 52%, rgba(19,0,186,.95), transparent 28%), radial-gradient(ellipse at 35% 68%, rgba(0,190,255,.72), transparent 20%), radial-gradient(circle, rgba(10,30,100,.5), rgba(0,0,0,.18) 65%, transparent 80%)",
+            filter: "blur(8px)",
+            animation: "orbPulse 3.5s ease-in-out infinite alternate",
+          }} />
 
-          <g transform="translate(200 200)">
-            {Array.from({ length: 16 }).map((_, i) => (
-              <rect
-                key={i}
-                x="-17"
-                y="-191"
-                width="34"
-                height="48"
-                rx="7"
-                transform={"rotate(" + i * 22.5 + ")"}
-                fill="url(#jarvisMetal)"
-                stroke="url(#jarvisEdge)"
-                strokeWidth="2"
-              />
-            ))}
-            <circle r="155" fill="url(#jarvisMetal)" stroke="url(#jarvisEdge)" strokeWidth="3" />
-            <circle r="123" fill="rgba(2,2,10,.34)" stroke="rgba(255,255,255,.22)" strokeWidth="2" />
-            <circle r="105" fill="url(#jarvisCore)" stroke="rgba(255,255,255,.13)" />
-            <circle r="84" fill="none" stroke="rgba(255,255,255,.24)" strokeWidth="2" />
-            <circle r="66" fill="none" stroke="rgba(19,0,186,.48)" />
-            <circle r="11" fill="#1300BA" opacity=".85" />
-            <circle r="5" fill="#fff" opacity=".9" />
-          </g>
-        </svg>
-      </div>
+          <svg viewBox="0 0 600 600" className="absolute inset-[8%] h-[84%] w-[84%]" style={{ transform: `rotate(${camera * 55}deg)` }}>
+            <g fill="none" strokeLinecap="round" filter="url(#plasmaGlow)">
+              <path d="M85 300 C170 130 255 470 330 245 C405 25 475 280 515 170" stroke="#42ddff" strokeWidth="3" opacity=".8" />
+              <path d="M70 390 C190 300 200 120 350 190 C455 240 420 410 530 350" stroke="#1300BA" strokeWidth="5" opacity=".75" />
+              <path d="M105 160 C210 245 245 390 355 335 C440 290 465 135 510 255" stroke="#8cf4ff" strokeWidth="2" opacity=".72" />
+              <path d="M110 470 C205 405 280 510 350 400 C430 275 440 430 500 455" stroke="#168cff" strokeWidth="3" opacity=".8" />
+            </g>
+            <defs><filter id="plasmaGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>
+          </svg>
 
-      {/* ENTER is exactly centered over the gear core. */}
-      <button
-        aria-label="Enter Arbyter"
-        onClick={(e) => {
-          e.stopPropagation();
-          enter();
-        }}
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/30 bg-white/[.035] px-9 py-4 text-[11px] font-semibold tracking-[.42em] text-white backdrop-blur-xl"
-        style={{
+          <svg viewBox="0 0 600 600" className="absolute inset-0 h-full w-full" style={{ transform: `rotate(${-camera * 20}deg)` }}>
+            <g fill="none" stroke="rgba(110,225,255,.55)" strokeWidth="1.2">
+              <circle cx="300" cy="300" r="235" /><circle cx="300" cy="300" r="205" opacity=".45" /><circle cx="300" cy="300" r="170" opacity=".3" />
+              <path d="M80 240 H170 L205 205 H285" /><path d="M520 365 H420 L390 395 H315" />
+              <path d="M245 65 V145 L220 170" /><path d="M355 535 V445 L380 420" />
+              <path d="M130 330 H190 L220 360 H300" /><path d="M470 270 H410 L375 235 H300" />
+              <path d="M180 120 L230 170" /><path d="M420 480 L370 430" />
+            </g>
+            <g fill="#72eaff"><circle cx="170" cy="240" r="3" /><circle cx="420" cy="365" r="3" /><circle cx="245" cy="145" r="2.5" /><circle cx="390" cy="395" r="2.5" /><circle cx="190" cy="330" r="2" /><circle cx="410" cy="270" r="2" /></g>
+          </svg>
+
+          <div className="absolute left-[12%] top-[10%] h-[38%] w-[30%] rounded-full bg-white/10 blur-2xl" style={{ transform: "rotate(-25deg)" }} />
+          <div className="absolute inset-[3%] rounded-full border border-white/15" />
+          <div className="absolute inset-[7%] rounded-full border border-cyan-200/10" />
+        </div>
+
+        <div className="absolute inset-[-6%] rounded-full border border-cyan-200/20" style={{ transform: `rotateX(68deg) rotateZ(${camera * 55}deg)` }} />
+        <div className="absolute inset-[-11%] rounded-full border border-[#1300BA]/30" style={{ transform: `rotateX(68deg) rotateZ(${-camera * 75}deg)` }} />
+
+        <button aria-label="Enter Arbyter" onClick={(e) => { e.stopPropagation(); enter(); }} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-100/40 bg-black/20 px-10 py-4 text-[11px] font-semibold tracking-[.5em] text-white backdrop-blur-xl" style={{
           opacity: phase === "ready" ? 1 : 0,
-          transform:
-            "translate(-50%, -50%) scale(" + (phase === "ready" ? 1 : .7) + ")",
+          transform: `translate(-50%, -50%) scale(${phase === "ready" ? 1 : .6})`,
           pointerEvents: phase === "ready" ? "auto" : "none",
-          transition:
-            "opacity .55s ease, transform .65s cubic-bezier(.2,.8,.2,1)",
-          boxShadow:
-            "0 0 35px rgba(19,0,186,.30), inset 0 0 22px rgba(255,255,255,.05)",
-        }}
-      >
-        ENTER
-      </button>
+          transition: "opacity .8s ease, transform .8s cubic-bezier(.2,.8,.2,1)",
+          animation: phase === "ready" ? "enterPulse 2s ease-in-out infinite" : "none",
+        }}>ENTER</button>
+      </div>
 
-      {/* Portal-vortex streaks: every ray starts at the exact center. */}
       <div className="pointer-events-none absolute inset-0">
-        {Array.from({ length: 56 }).map((_, i) => {
-          const angle = (360 / 56) * i;
-          const length = 18 + (i % 7) * 9;
-          return (
-            <span
-              key={i}
-              className="absolute left-1/2 top-1/2 h-[2px] origin-left rounded-full"
-              style={{
-                width: length + "vw",
-                background:
-                  "linear-gradient(90deg, rgba(255,255,255,.95), rgba(115,140,255,.72), transparent)",
-                filter: "blur(1.5px)",
-                transform:
-                  "rotate(" +
-                  angle +
-                  "deg) translateX(0) scaleX(" +
-                  (phase === "portal" ? 4.8 : .01) +
-                  ")",
-                opacity: phase === "portal" ? .82 : 0,
-                transition:
-                  "transform .82s cubic-bezier(.06,.82,.12,1) " +
-                  i * 7 +
-                  "ms, opacity .22s ease",
-              }}
-            />
-          );
+        {Array.from({ length: 80 }).map((_, i) => {
+          const angle = (360 / 80) * i;
+          const length = 20 + (i % 9) * 8;
+          return <span key={i} className="absolute left-1/2 top-1/2 h-[1.5px] origin-left rounded-full" style={{
+            width: `${length}vw`,
+            background: "linear-gradient(90deg, rgba(255,255,255,.95), rgba(60,190,255,.65), transparent)",
+            filter: "blur(1px)",
+            transform: `rotate(${angle}deg) scaleX(${phase === "warp" ? 7 : 0})`,
+            opacity: phase === "warp" ? .9 : 0,
+            transition: `transform ${.65 + (i % 8) * .035}s cubic-bezier(.03,.82,.08,1) ${i * 3}ms, opacity .2s ease`,
+          }} />;
         })}
       </div>
 
-      {/* Final aligned white core / flash. */}
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white"
-        style={{
-          transform:
-            "translate(-50%, -50%) scale(" + (phase === "portal" ? 95 : 0) + ")",
-          opacity: phase === "portal" ? .98 : 0,
-          transition:
-            "transform 1.05s cubic-bezier(.04,.76,.08,1), opacity .72s ease",
-          boxShadow:
-            "0 0 120px 55px rgba(108,98,255,.82), 0 0 260px 90px rgba(255,255,255,.45)",
-        }}
-      />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        {[0,1,2,3,4,5].map((i) => <div key={i} className="absolute left-1/2 top-1/2 rounded-full border border-cyan-100/40" style={{
+          width: `${120 + i * 130}px`, height: `${120 + i * 130}px`,
+          transform: `translate(-50%, -50%) scale(${phase === "warp" ? 9 : .05})`,
+          opacity: phase === "warp" ? .8 - i * .1 : 0,
+          transition: `transform ${1 + i * .08}s cubic-bezier(.03,.8,.06,1) ${i * 35}ms, opacity .35s ease`,
+          boxShadow: "0 0 30px rgba(40,200,255,.22)",
+        }} />)}
+      </div>
 
-      <div
-        className="pointer-events-none absolute inset-0 bg-white"
-        style={{
-          opacity: phase === "portal" ? 1 : 0,
-          transition: "opacity .18s ease 1.12s",
-        }}
-      />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white" style={{
+        transform: `translate(-50%, -50%) scale(${phase === "warp" ? 130 : 0})`,
+        opacity: phase === "warp" ? 1 : 0,
+        transition: "transform 1.25s cubic-bezier(.02,.76,.05,1), opacity .8s ease",
+        boxShadow: "0 0 100px 60px rgba(80,210,255,.8), 0 0 260px 110px rgba(255,255,255,.7)",
+      }} />
 
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(circle at center, transparent 16%, rgba(0,0,0,.22) 55%, rgba(0,0,0,.92) 100%)",
-        }}
-      />
+      <div className="pointer-events-none absolute inset-0 bg-white" style={{ opacity: phase === "warp" ? 1 : 0, transition: "opacity .2s ease 1.35s" }} />
+
+      <div className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(circle at center, transparent 25%, rgba(0,0,0,.25) 62%, rgba(0,0,0,.88) 100%)" }} />
+
+      <style jsx>{`
+        @keyframes orbPulse {
+          0% { transform: scale(.96) rotate(0deg); opacity: .65; }
+          100% { transform: scale(1.06) rotate(8deg); opacity: 1; }
+        }
+        @keyframes enterPulse {
+          0%,100% { box-shadow: 0 0 25px rgba(0,190,255,.25), inset 0 0 20px rgba(255,255,255,.04); }
+          50% { box-shadow: 0 0 55px rgba(0,210,255,.55), inset 0 0 28px rgba(255,255,255,.1); }
+        }
+      `}</style>
     </div>
   );
 }
-
 const STAGES = [
   ["DISCOVER", "DISCOVER EVERY AGENT.", "Find AI agents, tools and workflows across your organization before they become invisible infrastructure."],
   ["THE AI WORKFORCE IS MOVING", "COMMAND YOUR WORKFORCE.", "One command layer between your organization and every agent, tool and action."],
