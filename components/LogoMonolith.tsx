@@ -14,20 +14,19 @@ export function LogoMonolith({ className = "h-12", glow = true }: LogoProps) {
           aria-hidden="true"
         />
       )}
-
       <svg
-        viewBox="0 0 100 120"
+        viewBox="0 0 500 600"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="relative z-10 h-full w-auto drop-shadow-[0_0_12px_rgba(255,255,255,0.85)]"
+        className="relative z-10 h-full w-auto"
+        style={{
+          filter:
+            "drop-shadow(0 0 2px #ffffff) drop-shadow(0 0 8px rgba(255,255,255,0.95)) drop-shadow(0 0 22px rgba(255,255,255,0.6)) drop-shadow(0 0 45px rgba(255,255,255,0.3))",
+        }}
       >
         <path
-          d="M 46 16 C 34 18, 22 17, 16 15 C 27 50, 26 72, 10 105 C 22 103, 34 102, 46 104 C 33 65, 33 55, 46 16 Z"
-          fill="#FFFFFF"
-        />
-        <path
-          d="M 54 16 C 66 18, 78 17, 84 15 C 73 50, 74 72, 90 105 C 78 103, 66 102, 54 104 C 67 65, 67 55, 54 16 Z"
-          fill="#FFFFFF"
+          d="M 185 170 Q 250 178 315 170 C 310 230 306 280 320 330 C 330 370 348 400 365 430 Q 335 428 305 430 C 292 350 274 212 250 212 C 226 212 208 350 195 430 Q 165 428 135 430 C 152 400 170 370 180 330 C 194 280 190 230 185 170 Z"
+          fill="#ffffff"
         />
       </svg>
     </div>
