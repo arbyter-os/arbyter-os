@@ -1,5 +1,5 @@
 import dns from "node:dns/promises";
-import type { LookupAddress, LookupFunction } from "node:dns";
+import { lookup as dnsLookup } from "node:dns";
 import http from "node:http";
 import https from "node:https";
 import net from "node:net";
@@ -142,7 +142,7 @@ export async function fetchValidatedExternalUrl(
         ? Buffer.from(init.body)
         : undefined;
 
-  const lookup: LookupFunction = (
+  const lookup: typeof dnsLookup = (
     _hostname,
     options,
     callback,
