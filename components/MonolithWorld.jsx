@@ -57,7 +57,7 @@ export default function MonolithWorld({ progress }) {
     rightShape.quadraticCurveTo(0.62, 0.0, 0.12, 2.6);
     rightShape.closePath();
 
-    const extrudeSettings: THREE.ExtrudeGeometryOptions = {
+    const extrudeSettings = {
       depth: 0.7,
       bevelEnabled: true,
       bevelSegments: 4,
