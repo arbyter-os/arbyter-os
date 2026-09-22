@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { LogoMonolith } from "@/components/LogoMonolith";
+import  from "@/components/LogoMonolith";
 
 const ArbyterWorld = dynamic(() => import("@/components/ArbyterWorld"), {
   ssr: false,
@@ -11,7 +11,8 @@ const ArbyterWorld = dynamic(() => import("@/components/ArbyterWorld"), {
 });
 
 const SECTIONS = [
-  {
+  
+   {
     kicker: "01 / THRESHOLD",
     title: "THE WORKFORCE IS MOVING.",
     body: "AI agents operate as independent infrastructure across engineering, finance, and operations.",
