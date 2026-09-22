@@ -201,17 +201,17 @@ function World({ progress }: { progress: number }) {
 
 
 function Intro({ onDone }: { onDone: () => void }) {
-  const [phase, setPhase] = useState<"orb" | "ready" | "warp">("orb");
+  const [phase, setPhase] = useState<"ground" | "ready" | "warp">("ground");
   const [camera, setCamera] = useState(0);
   const raf = useRef<number | null>(null);
   const started = useRef(false);
 
   useEffect(() => {
     const startedAt = performance.now();
-    const duration = 4200;
+    const duration = 5200;
     const animate = (now: number) => {
       const p = Math.min(1, (now - startedAt) / duration);
-      const eased = p < 0.7 ? (p / 0.7) * 0.55 : 0.55 + ((p - 0.7) / 0.3) * 0.45;
+      const eased = p < 0.72 ? (p / 0.72) * 0.52 : 0.52 + ((p - 0.72) / 0.28) * 0.48;
       setCamera(eased);
       if (p < 1) raf.current = requestAnimationFrame(animate);
       else setPhase("ready");
@@ -227,11 +227,26 @@ function Intro({ onDone }: { onDone: () => void }) {
     window.setTimeout(onDone, 1750);
   };
 
-  const orbScale = 0.35 + camera * 1.65;
+  const orbScale = 0.18 + camera * 0.82;
 
   return (
-    <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#010207]" onClick={phase === "ready" ? enter : undefined}>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,#101b39_0%,#050813_38%,#010207_78%,#000_100%)]" />
+    <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#020207]" onClick={phase === "ready" ? enter : undefined}>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_34%,#10152d_0%,#050711_38%,#010105_76%,#000_100%)]" />
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ perspective: "900px" }}>
+        <div className="absolute left-1/2 top-[52%] h-[120vh] w-[180vw] -translate-x-1/2" style={{
+          transform: "translateX(-50%) rotateX(64deg)",
+          transformOrigin: "50% 0%",
+          opacity: 0.62,
+        }}>
+          <div className="absolute inset-0" style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,.11) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.11) 1px, transparent 1px)",
+            backgroundSize: "100px 100px",
+            maskImage: "linear-gradient(to bottom, transparent 0%, #000 22%, #000 62%, transparent 100%)",
+          }} />
+        </div>
+        <div className="absolute left-1/2 top-[52%] h-px w-[140vw] -translate-x-1/2 bg-white/20" />
+      </div>
 
       <div className="absolute left-1/2 top-1/2 h-[900px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{
         background: "radial-gradient(circle, rgba(19,0,186,.25), rgba(0,130,255,.08) 32%, transparent 68%)",
@@ -242,7 +257,7 @@ function Intro({ onDone }: { onDone: () => void }) {
       <div className="absolute left-1/2 top-1/2" style={{
         width: "min(620px, 72vw)",
         height: "min(620px, 72vw)",
-        transform: `translate(-50%, -50%) scale(${phase === "warp" ? 7 : orbScale})`,
+        transform: `translate(-50%, -50%) scale(${phase === "warp" ? 8 : orbScale})`,
         opacity: phase === "warp" ? 0 : 1,
         transition: phase === "warp" ? "transform 1.15s cubic-bezier(.04,.78,.08,1), opacity .7s ease" : "none",
       }}>
@@ -252,13 +267,13 @@ function Intro({ onDone }: { onDone: () => void }) {
         }} />
 
         <div className="absolute inset-0 overflow-hidden rounded-full" style={{
-          background: "radial-gradient(circle at 38% 28%, rgba(255,255,255,.24), transparent 20%), radial-gradient(circle at 50% 50%, rgba(0,135,255,.16), rgba(19,0,186,.10) 42%, rgba(255,255,255,.025) 68%, rgba(255,255,255,.12) 100%)",
-          border: "1px solid rgba(190,225,255,.48)",
-          boxShadow: "inset 18px 18px 45px rgba(255,255,255,.08), inset -25px -30px 60px rgba(0,0,0,.55), 0 0 80px rgba(19,0,186,.32), 0 0 180px rgba(0,150,255,.14)",
+          background: "radial-gradient(circle at 38% 28%, rgba(255,255,255,.24), transparent 20%), radial-gradient(circle at 50% 50%, rgba(255,255,255,.98) 0%, rgba(255,255,255,.92) 42%, rgba(238,248,255,.85) 68%, rgba(255,255,255,1) 100%)",
+          border: "1px solid rgba(255,255,255,.72)",
+          boxShadow: "inset 18px 18px 45px rgba(255,255,255,.08), inset -25px -30px 60px rgba(0,0,0,.55), 0 0 80px rgba(255,255,255,.55), 0 0 180px rgba(190,225,255,.35)",
           backdropFilter: "blur(7px)",
         }}>
           <div className="absolute inset-[8%] rounded-full" style={{
-            background: "radial-gradient(ellipse at 40% 38%, rgba(100,225,255,.9), transparent 11%), radial-gradient(ellipse at 62% 52%, rgba(19,0,186,.95), transparent 28%), radial-gradient(ellipse at 35% 68%, rgba(0,190,255,.72), transparent 20%), radial-gradient(circle, rgba(10,30,100,.5), rgba(0,0,0,.18) 65%, transparent 80%)",
+            background: "radial-gradient(ellipse at 40% 38%, rgba(255,255,255,.98), transparent 11%), radial-gradient(ellipse at 62% 52%, rgba(235,248,255,.95), transparent 28%), radial-gradient(ellipse at 35% 68%, rgba(255,255,255,.9), transparent 20%), radial-gradient(circle, rgba(255,255,255,.9), rgba(210,235,255,.45) 65%, transparent 80%)",
             filter: "blur(8px)",
             animation: "orbPulse 3.5s ease-in-out infinite alternate",
           }} />
@@ -266,9 +281,9 @@ function Intro({ onDone }: { onDone: () => void }) {
           <svg viewBox="0 0 600 600" className="absolute inset-[8%] h-[84%] w-[84%]" style={{ transform: `rotate(${camera * 55}deg)` }}>
             <g fill="none" strokeLinecap="round" filter="url(#plasmaGlow)">
               <path d="M85 300 C170 130 255 470 330 245 C405 25 475 280 515 170" stroke="#42ddff" strokeWidth="3" opacity=".8" />
-              <path d="M70 390 C190 300 200 120 350 190 C455 240 420 410 530 350" stroke="#1300BA" strokeWidth="5" opacity=".75" />
+              <path d="M70 390 C190 300 200 120 350 190 C455 240 420 410 530 350" stroke="#ffffff" strokeWidth="5" opacity=".75" />
               <path d="M105 160 C210 245 245 390 355 335 C440 290 465 135 510 255" stroke="#8cf4ff" strokeWidth="2" opacity=".72" />
-              <path d="M110 470 C205 405 280 510 350 400 C430 275 440 430 500 455" stroke="#168cff" strokeWidth="3" opacity=".8" />
+              <path d="M110 470 C205 405 280 510 350 400 C430 275 440 430 500 455" stroke="#eaf8ff" strokeWidth="3" opacity=".8" />
             </g>
             <defs><filter id="plasmaGlow"><feGaussianBlur stdDeviation="4" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>
           </svg>
@@ -292,7 +307,7 @@ function Intro({ onDone }: { onDone: () => void }) {
         <div className="absolute inset-[-6%] rounded-full border border-cyan-200/20" style={{ transform: `rotateX(68deg) rotateZ(${camera * 55}deg)` }} />
         <div className="absolute inset-[-11%] rounded-full border border-[#1300BA]/30" style={{ transform: `rotateX(68deg) rotateZ(${-camera * 75}deg)` }} />
 
-        <button aria-label="Enter Arbyter" onClick={(e) => { e.stopPropagation(); enter(); }} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-100/40 bg-black/20 px-10 py-4 text-[11px] font-semibold tracking-[.5em] text-white backdrop-blur-xl" style={{
+        <button aria-label="Enter Arbyter" onClick={(e) => { e.stopPropagation(); enter(); }} className="absolute left-1/2 top-[52%] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 bg-black/20 px-10 py-4 text-[11px] font-semibold tracking-[.5em] text-white backdrop-blur-xl" style={{
           opacity: phase === "ready" ? 1 : 0,
           transform: `translate(-50%, -50%) scale(${phase === "ready" ? 1 : .6})`,
           pointerEvents: phase === "ready" ? "auto" : "none",
