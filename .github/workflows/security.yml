@@ -98,14 +98,28 @@ jobs:
           # Parse by HTTP status first, capture the body to a temp file, and
           # never echo it: error bodies are attacker-influenceable noise and
           # must not leak into annotations or logs.
+
+          # GitHub stores secret bytes verbatim. A token pasted via a Windows
+          # echo/Set-Content pipeline typically carries a trailing CRLF (or
+          # quotes), which the API rejects with 401 "JWT could not be
+          # decoded". Strip whitespace, CR/LF and quote characters anywhere
+          # in the value (none are legal in a Personal Access Token); never
+          # log the value.
+          token=$(printf '%s' "$SUPABASE_ACCESS_TOKEN" | tr -d '\40\11\15\12\42\47')
+          if [ -z "$token" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN secret is empty or whitespace-only after normalization. Re-create it with the raw Personal Access Token value."
+            exit 1
+          fi
+
           http_code=$(curl -sS -o "$RUNNER_TEMP/prod_version.json" -w "%{http_code}" -X POST \
             "https://api.supabase.com/v1/projects/vbtwythnuhayqrswiojy/database/query" \
-            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Authorization: Bearer $token" \
             -H "Content-Type: application/json" \
             -d '{"query":"select max(version) as version from supabase_migrations.schema_migrations"}') || {
             echo "::error::Production migration state unreadable: Management API request failed."
             exit 1
           }
+          unset token
 
           ver=""
           if [ "$http_code" = "201" ]; then
@@ -119,7 +133,14 @@ jobs:
           rm -f "$RUNNER_TEMP/prod_version.json"
 
           if [ -z "$ver" ]; then
-            echo "::error::Production migration state unreadable: Management API returned HTTP ${http_code} with an unparseable or error response."
+            case "$http_code" in
+              401|403)
+                echo "::error::Management API rejected the SUPABASE_ACCESS_TOKEN secret (HTTP ${http_code}). The value is invalid, expired, or malformed after normalization - re-create a Personal Access Token (Dashboard > Account > Access Tokens) and run: gh secret set SUPABASE_ACCESS_TOKEN"
+                ;;
+              *)
+                echo "::error::Production migration state unreadable: Management API returned HTTP ${http_code} with an unparseable or error response."
+                ;;
+            esac
             exit 1
           fi
 
