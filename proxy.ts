@@ -11,7 +11,7 @@ function applySecurityHeaders(response: NextResponse) {
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
   response.headers.set("X-DNS-Prefetch-Control", "off")
   if (process.env.NODE_ENV === "production") {
-    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
   }
 }
 
@@ -22,8 +22,17 @@ function isAllowedOrigin(request: NextRequest) {
 }
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request })
   const pathname = request.nextUrl.pathname
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-arbyter-pathname", pathname)
+
+  if (process.env.NODE_ENV === "production" && request.nextUrl.protocol !== "https:") {
+    const url = request.nextUrl.clone()
+    url.protocol = "https:"
+    return NextResponse.redirect(url, 308)
+  }
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,7 +42,7 @@ export async function updateSession(request: NextRequest) {
         getAll() { return request.cookies.getAll() },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request })
+          response = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
         },
       },
@@ -42,8 +51,6 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Cookie-authenticated state-changing requests must come from Arbyter itself.
-  // This blocks cross-site form/fetch CSRF while keeping normal same-origin API calls working.
   if (MUTATING_METHODS.has(request.method) && pathname.startsWith("/api/") && !isAllowedOrigin(request)) {
     const blocked = NextResponse.json({ error: "Cross-site request blocked." }, { status: 403 })
     applySecurityHeaders(blocked)
@@ -74,7 +81,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   const isAuthPage = pathname === "/login" || pathname.startsWith("/auth")
-  const isProtectedPage = pathname.startsWith("/overview") || pathname.startsWith("/risks") || pathname.startsWith("/compliance") || pathname.startsWith("/investigate") || pathname.startsWith("/audit") || pathname.startsWith("/governance") || pathname.startsWith("/agents") || pathname.startsWith("/tasks") || pathname.startsWith("/policies") || pathname.startsWith("/controls") || pathname.startsWith("/insights") || pathname.startsWith("/reports") || pathname.startsWith("/settings")
+  const isProtectedPage = pathname.startsWith("/overview") || pathname.startsWith("/risks") || pathname.startsWith("/compliance") || pathname.startsWith("/investigate") || pathname.startsWith("/audit") || pathname.startsWith("/governance") || pathname.startsWith("/agents") || pathname.startsWith("/tasks") || pathname.startsWith("/policies") || pathname.startsWith("/controls") || pathname.startsWith("/insights") || pathname.startsWith("/reports") || pathname.startsWith("/settings") || pathname.startsWith("/help") || pathname.startsWith("/chat") || pathname.startsWith("/approvals")
 
   if (!user && isProtectedPage) {
     const url = request.nextUrl.clone()
