@@ -25,10 +25,8 @@ export default function Home(){
   <section className="dark-section"><div className="eyebrow">RUNTIME DECISION</div><h2>Not another dashboard.<br/>A boundary at the moment of action.</h2><Flow items={["Organization intent","Arbyter","Agent action","Allow / Block / Approve","Audit"]}/></section>
   <section className="editorial-section"><div><div className="eyebrow">BUILT FOR THE AI WORKFORCE</div><h2>Discover agents. Govern capabilities. Enforce policy.</h2></div><p>Connect agents through MCP, APIs, webhooks, SDKs and internal systems. Build one governance model across the workforce instead of managing every agent as a separate exception.</p></section>
   <section className="page-hero" style={{paddingTop:80,paddingBottom:170}}>
-   <div className="eyebrow">ARBYTER</div><h1 style={{fontSize:"clamp(54px,8vw,120px)"}}>Intelligence<br/><em>meets governance.</em></h1>
+   <div className="eyebrow">ARBYTER</div><h2 style={{fontSize:"clamp(54px,8vw,120px)"}}>Intelligence<br/><em>meets governance.</em></h2>
    <Link href="/platform" className="site-enter" style={{display:"inline-flex",marginTop:35}}>EXPLORE PLATFORM</Link>
   </section>
  </main>
 }
-
-// Keep Git-triggered preview deployments aligned with the current branch head.
