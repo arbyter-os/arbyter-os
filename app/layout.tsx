@@ -29,6 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { absolute: title },
     description,
     alternates: { canonical },
+    icons: { icon: "/arbyter-logo.svg", apple: "/arbyter-logo.svg" },
     openGraph: {
       title,
       description,
@@ -44,14 +45,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#050505" }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const pathname = (await headers()).get("x-arbyter-pathname") || "/"
   return (
     <html lang="en" className={`dark bg-black ${manrope.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
         <JsonLd data={organizationSchema} />
         <JsonLd data={softwareSchema} />
         <JsonLd data={websiteSchema()} />
-        <JsonLd data={breadcrumbSchema("/")} />
+        <JsonLd data={breadcrumbSchema(pathname)} />
         {children}
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
