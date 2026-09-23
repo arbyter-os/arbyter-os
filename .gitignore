@@ -4,6 +4,9 @@ out/
 .env
 .env.*
 !.env.example
+
+# Supabase CLI local state (project link metadata)
+supabase/.temp/
 *.log
 .DS_Store
 coverage/
