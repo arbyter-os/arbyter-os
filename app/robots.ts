@@ -9,6 +9,5 @@ export default function robots(): MetadataRoute.Robots {
       disallow: ["/api/", "/playground/"],
     },
     sitemap: new URL("/sitemap.xml", SITE.baseUrl).toString(),
-    host: SITE.baseUrl,
   }
 }
