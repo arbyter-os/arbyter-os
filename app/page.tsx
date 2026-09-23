@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { SiteNav } from "@/components/site/SiteNav";
 import { RuntimeVisual, Flow } from "@/components/site/VisualSystem";
+import { Cinematic3D } from "@/components/site/Cinematic3D";
 
 export default function Home(){
  return <main className="site-page">
@@ -16,6 +17,7 @@ export default function Home(){
     <Link href="/how-it-works" style={{padding:"11px 18px",fontSize:9,letterSpacing:".18em",textTransform:"uppercase",border:"1px solid rgba(255,255,255,.16)",borderRadius:999,color:"rgba(255,255,255,.65)"}}>HOW IT WORKS</Link>
    </div>
   </section>
+  <Cinematic3D />
   <section className="visual-section">
    <RuntimeVisual/>
    <div className="visual-copy"><div className="eyebrow">THE IDEA</div><h2>The missing layer between intent and execution.</h2><p>Agents can reason, call tools and move through business systems. Arbyter gives the organization a place to define what those actions are allowed to become.</p></div>
