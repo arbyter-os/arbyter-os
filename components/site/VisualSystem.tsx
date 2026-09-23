@@ -22,8 +22,8 @@ export function RuntimeVisual({ mode = "runtime" }: { mode?: Mode }) {
     if (!el) return;
     const onMove = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
-      el.style.setProperty("--mx", `${((e.clientX - r.left) / r.width - 0.5) * 10}deg`);
-      el.style.setProperty("--my", `${((e.clientY - r.top) / r.height - 0.5) * -8}deg`);
+      el.style.setProperty("--mx", `${((e.clientX-r.left)/r.width-.5)*10}deg`);
+      el.style.setProperty("--my", `${((e.clientY-r.top)/r.height-.5)*-8}deg`);
     };
     el.addEventListener("pointermove", onMove);
     return () => el.removeEventListener("pointermove", onMove);
@@ -34,20 +34,21 @@ export function RuntimeVisual({ mode = "runtime" }: { mode?: Mode }) {
     return () => window.clearInterval(timer);
   }, []);
 
-  return <div ref={ref} className={`runtime-visual visual-${mode}`} aria-label="Arbyter runtime governance visual">
+  return <div ref={ref} className={`runtime-visual visual-${mode}`} aria-label={`Arbyter ${mode} governance visual`}>
     <div className="visual-grid" />
     <div className="visual-orbit orbit-a" />
     <div className="visual-orbit orbit-b" />
     <div className="visual-orbit orbit-c" />
     <div className="visual-beam beam-a" />
     <div className="visual-beam beam-b" />
+    <div className="visual-beam beam-c" />
     <div className="visual-core"><span>ARBYTER</span><b>{mode === "runtime" ? "RUNTIME" : labels[1]}</b></div>
-    {labels.map((label, i) => <div key={label} className={`visual-label l${i + 1} ${active === i ? "is-active" : ""}`}><i />{label}</div>)}
+    {labels.map((label, i) => <div key={label} className={`visual-label l${i+1} ${active===i ? "is-active":""}`}><i />{label}</div>)}
     <div className="visual-pulse" />
     <div className="visual-caption">01 / {mode.toUpperCase()} SYSTEM</div>
   </div>;
 }
 
 export function Flow({ items }: { items: string[] }) {
-  return <div className="flow">{items.map((item, i) => <div className="flow-node" key={item}><span>0{i + 1}</span><strong>{item}</strong>{i < items.length - 1 && <i />}</div>)}</div>;
+  return <div className="flow">{items.map((item,i)=><div className="flow-node" key={item}><span>0{i+1}</span><strong>{item}</strong>{i<items.length-1&&<i/>}</div>)}</div>;
 }
