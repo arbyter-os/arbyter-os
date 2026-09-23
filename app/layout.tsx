@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { headers } from "next/headers"
 import { Geist_Mono, Manrope } from "next/font/google"
 import { JsonLd } from "@/components/seo/JsonLd"
-import { organizationSchema, softwareSchema, websiteSchema, breadcrumbSchema } from "@/lib/seo/schemas"
+import { organizationSchema, softwareSchema, websiteSchema } from "@/lib/seo/schemas"
 import { SITE } from "@/lib/seo/config"
 import { SEO_ROUTES } from "@/lib/seo/routes"
 import "./globals.css"
@@ -45,15 +45,13 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#050505" }
 
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const pathname = (await headers()).get("x-arbyter-pathname") || "/"
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`dark bg-black ${manrope.variable} ${geistMono.variable}`}>
-      <body className="font-sans antialiased">
+      <body className="antialiased">
         <JsonLd data={organizationSchema} />
         <JsonLd data={softwareSchema} />
         <JsonLd data={websiteSchema()} />
-        <JsonLd data={breadcrumbSchema(pathname)} />
         {children}
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>
