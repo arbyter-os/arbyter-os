@@ -1,5 +1,14 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+/**
+ * Testing escape hatch ONLY: when explicitly set to "false", the AAL2 portion
+ * of the privileged-MFA gate is skipped. Default (unset, any other value) is
+ * fail-secure: MFA remains required. This loosens NOTHING else — the
+ * owner/admin role check, authentication, and org isolation still run.
+ */
+function isMfaRequirementDisabled(): boolean {
+  return process.env.ARBYTER_REQUIRE_MFA === "false"
+}
 export class PrivilegedAuthorizationError extends Error {
   readonly code = "PRIVILEGED_AUTHORIZATION_REQUIRED"
 
@@ -39,7 +48,11 @@ export async function requirePrivilegedMfa(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<"owner" | "admin"> {
+  // Role authorization ALWAYS runs — only the AAL2 check below is skippable.
   const role = await requireOwnerOrAdmin(supabase, userId)
+  if (isMfaRequirementDisabled()) {
+    return role
+  }
   const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
   if (error || data?.currentLevel !== "aal2") {
     throw new PrivilegedMfaRequiredError()
