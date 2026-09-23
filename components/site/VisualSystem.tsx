@@ -19,14 +19,46 @@ export function RuntimeVisual({ mode = "runtime" }: { mode?: Mode }) {
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    let frame = 0;
+    let targetX = 0;
+    let targetY = 0;
+    let currentX = 0;
+    let currentY = 0;
+
+    const render = () => {
+      currentX += (targetX - currentX) * 0.14;
+      currentY += (targetY - currentY) * 0.14;
+      el.style.transform = `perspective(1200px) rotateX(${currentY}deg) rotateY(${currentX}deg)`;
+      if (Math.abs(targetX - currentX) > 0.01 || Math.abs(targetY - currentY) > 0.01) {
+        frame = window.requestAnimationFrame(render);
+      } else {
+        frame = 0;
+      }
+    };
+
     const onMove = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
-      el.style.setProperty("--mx", `${((e.clientX - r.left) / r.width - 0.5) * 10}deg`);
-      el.style.setProperty("--my", `${((e.clientY - r.top) / r.height - 0.5) * -8}deg`);
+      targetX = ((e.clientX - r.left) / r.width - 0.5) * 10;
+      targetY = ((e.clientY - r.top) / r.height - 0.5) * -8;
+      if (!frame) frame = window.requestAnimationFrame(render);
     };
+
+    const onLeave = () => {
+      targetX = 0;
+      targetY = 0;
+      if (!frame) frame = window.requestAnimationFrame(render);
+    };
+
     el.addEventListener("pointermove", onMove);
-    return () => el.removeEventListener("pointermove", onMove);
+    el.addEventListener("pointerleave", onLeave);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerleave", onLeave);
+    };
   }, []);
 
   useEffect(() => {
