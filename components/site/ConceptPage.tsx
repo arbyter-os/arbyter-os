@@ -4,6 +4,7 @@ export type ConceptPageData = {
   eyebrow: string; title: string; intro: string; statement: string;
   steps: { label: string; title: string; body: string }[];
   facts: { label: string; value: string }[];
+  details?: { title: string; body: string }[];
 };
 
 export function ConceptPage({ data }: { data: ConceptPageData }) {
@@ -20,6 +21,7 @@ export function ConceptPage({ data }: { data: ConceptPageData }) {
           ))}
         </div>
         <div className="concept-facts">{data.facts.map((fact) => <div key={fact.label}><span>{fact.label}</span><strong>{fact.value}</strong></div>)}</div>
+        {data.details?.length ? <section className="concept-depth" aria-label="Detailed explanation">{data.details.map((detail) => <article key={detail.title}><span>ARBYTER / DETAIL</span><h3>{detail.title}</h3><p>{detail.body}</p></article>)}</section> : null}
       </section>
     </PageFrame>
   );
