@@ -11,8 +11,7 @@ const ArbyterWorld = dynamic(() => import("@/components/ArbyterWorld"), {
 });
 
 const SECTIONS = [
-  
-   {
+  {
     kicker: "01 / THRESHOLD",
     title: "THE WORKFORCE IS MOVING.",
     body: "AI agents operate as independent infrastructure across engineering, finance, and operations.",
@@ -61,7 +60,9 @@ function Intro({ onDone }: { onDone: () => void }) {
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] overflow-hidden bg-[radial-gradient(circle_at_center,#202432_0%,#0a0b10_48%,#020204_100%)] transition-opacity duration-1000 ${clicked ? "pointer-events-none opacity-0" : "opacity-100"}`}
+      className={`fixed inset-0 z-[9999] overflow-hidden bg-[radial-gradient(circle_at_center,#202432_0%,#0a0b10_48%,#020204_100%)] transition-opacity duration-1000 ${
+        clicked ? "pointer-events-none opacity-0" : "opacity-100"
+      }`}
     >
       <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:70px_70px] [mask-image:linear-gradient(to_top,black,transparent_70%)]" />
 
@@ -81,17 +82,33 @@ function Intro({ onDone }: { onDone: () => void }) {
 
       <div className="absolute inset-0 flex items-center justify-center">
         <div
-          className={`relative transition-all duration-[4000ms] ease-out ${ready ? "scale-[1.45] opacity-100" : "scale-[0.38] opacity-0"}`}
+          className={`relative transition-all duration-[4000ms] ease-out ${
+            ready ? "scale-[1.45]" : "scale-[0.38]"
+          }`}
         >
-          <div className="absolute -inset-24 rounded-full bg-white/[0.06] blur-3xl" />
-          <LogoMonolith className="h-48 w-48 md:h-64 md:w-64" glow={true} />
+          <div className="absolute -inset-20 rounded-full bg-[#dce9ff]/10 blur-3xl" />
+          <div className="absolute -inset-10 rounded-full border border-white/10 bg-white/[0.025] blur-md" />
+          <div className="relative h-36 w-36 rounded-full border border-white/80 bg-white shadow-[0_0_25px_rgba(255,255,255,.9),0_0_90px_rgba(130,170,255,.65),0_0_180px_rgba(19,0,186,.45)]">
+            <div className="absolute inset-3 rounded-full border border-blue-100/60" />
+            <div className="absolute inset-6 rounded-full bg-white blur-[1px]" />
+          </div>
+        </div>
+
+        <div
+          className={`absolute transition-all duration-700 ${
+            ready ? "translate-y-28 opacity-100" : "translate-y-20 opacity-0"
+          }`}
+        >
+          <LogoMonolith className="h-20 w-20" glow={true} />
         </div>
       </div>
 
       <button
         onClick={handleEnter}
         disabled={!ready}
-        className={`absolute bottom-20 left-1/2 -translate-x-1/2 rounded-full border border-white/15 bg-black/35 px-10 py-3.5 text-[10px] font-bold tracking-[0.45em] text-white backdrop-blur-xl transition-all duration-700 hover:border-white/60 hover:bg-white hover:text-black ${ready ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"}`}
+        className={`absolute bottom-20 left-1/2 -translate-x-1/2 rounded-full border border-white/15 bg-black/35 px-10 py-3.5 text-[10px] font-bold tracking-[0.45em] text-white backdrop-blur-xl transition-all duration-700 hover:border-white/60 hover:bg-white hover:text-black ${
+          ready ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
+        }`}
       >
         ENTER
       </button>
@@ -130,6 +147,7 @@ export default function Home() {
       setProgress(window.scrollY / maxScroll);
     };
 
+    handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
