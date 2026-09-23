@@ -60,3 +60,17 @@ a{text-decoration:none;color:inherit}button{font:inherit}::selection{background:
 @keyframes cinematic-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @media(max-width:800px){.cinematic-3d{height:300vh}.cinematic-copy{left:6vw;bottom:14vh}.cinematic-copy h2{font-size:clamp(38px,11vw,64px)}.cinematic-copy p{font-size:13px;max-width:86vw}.cinematic-meta{display:none}.cinematic-progress{left:6vw;right:6vw;bottom:7vh}}
 @media(prefers-reduced-motion:reduce){.cinematic-copy h2,.cinematic-copy p{animation:none}}
+
+
+.platform-story{position:relative;height:360vh;background:#050507;z-index:2}
+.platform-story-sticky{position:sticky;top:0;height:100vh;overflow:hidden;padding:8vh 6vw}
+.platform-story-sticky .runtime-visual{position:absolute;inset:0;border:0;min-height:100vh;transform:none!important}
+.platform-story-overlay{position:absolute;inset:0;z-index:2;background:linear-gradient(90deg,rgba(5,5,7,.94) 0%,rgba(5,5,7,.7) 28%,rgba(5,5,7,.12) 65%,rgba(5,5,7,.72) 100%),linear-gradient(0deg,rgba(5,5,7,.72),transparent 35%,rgba(5,5,7,.5))}
+.platform-story-copy{position:absolute;z-index:5;left:10vw;bottom:16vh;width:min(610px,76vw)}
+.platform-story-copy h2{font-size:clamp(44px,6.5vw,92px);line-height:.9;letter-spacing:-.065em;margin:18px 0 0;max-width:720px;animation:cinematic-in .65s cubic-bezier(.2,.7,.2,1)}
+.platform-story-copy p{font-size:15px;line-height:1.75;color:rgba(255,255,255,.48);max-width:500px;margin-top:24px;animation:cinematic-in .65s .05s cubic-bezier(.2,.7,.2,1) both}
+.platform-story-index{position:absolute;z-index:6;right:6vw;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:13px}
+.platform-story-index span{font-size:8px;letter-spacing:.16em;color:rgba(255,255,255,.25);transition:color .3s,transform .3s}
+.platform-story-index span.active{color:#fff;transform:translateX(-5px)}
+@media(max-width:800px){.platform-story{height:300vh}.platform-story-sticky{padding:0}.platform-story-copy{left:7vw;bottom:15vh;width:82vw}.platform-story-copy h2{font-size:clamp(40px,11vw,66px)}.platform-story-copy p{font-size:13px}.platform-story-index{right:6vw}}
+@media(prefers-reduced-motion:reduce){.platform-story-copy h2,.platform-story-copy p{animation:none}}
