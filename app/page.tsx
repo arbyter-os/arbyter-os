@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const BLUE = "#1300BA";
-const DARK = "#07080C";
 const WHITE = "#f8f9fc";
 
 const LOGO = (
@@ -207,7 +205,7 @@ export default function Home() {
           <div className="mx-auto max-w-5xl px-6 text-center">
             <div
               className="mx-auto mb-8 h-2 w-2 rounded-full"
-              style={{ backgroundColor: DARK }}
+              style={{ backgroundColor: BLACK = "#070603" }}
             />
 
             <h2 className="text-5xl font-black leading-[0.92] tracking-[-0.06em] md:text-7xl lg:text-8xl">
