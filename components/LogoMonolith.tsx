@@ -5,7 +5,10 @@ interface LogoProps {
   glow?: boolean;
 }
 
-export function LogoMonolith({ className = "h-12", glow = true }: LogoProps) {
+export default function LogoMonolith({
+  className = "h-12",
+  glow = true,
+}: LogoProps) {
   return (
     <div className={`relative inline-flex items-center justify-center ${className}`}>
       {glow && (
