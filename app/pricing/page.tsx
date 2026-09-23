@@ -44,6 +44,18 @@ export default function Pricing() {
           </div>
         </div>
 
+
+        <section className="pricing-faq">
+          <div>
+            <span className="eyebrow">PRICING / QUESTIONS</span>
+            <h2>Designed for the workforce you have now, not the one you might have later.</h2>
+          </div>
+          <div className="pricing-faq-list">
+            <article><h3>What happens if discovery finds more agents than my plan?</h3><p>You can upgrade to a higher capacity or continue within the agent capacity available on your plan. Discovery does not require you to manually add every agent one at a time.</p></article>
+            <article><h3>Does every plan use the same governance model?</h3><p>The core model remains consistent: connect agents, define organizational intent, enforce policy at runtime and retain the decision trail. Capacity scales with the number of governed agents.</p></article>
+            <article><h3>What counts as a governed agent?</h3><p>An agent is part of the governed workforce when it is connected to Arbyter and included in the organization’s runtime governance boundary.</p></article>
+          </div>
+        </section>
         <div className="pricing-flow" aria-label="Arbyter pricing and governance flow">
           <span>DISCOVER</span><i>→</i><span>CONNECT</span><i>→</i><span>GOVERN</span><i>→</i><span>ENFORCE</span><i>→</i><span>AUDIT</span>
         </div>
