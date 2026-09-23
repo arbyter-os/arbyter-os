@@ -10,7 +10,12 @@ import {
 import { validateMessageSize } from "@/lib/security/validate-request-size"
 import { readJsonBody, RequestBodyLimitError } from "@/lib/security/request-body"
 import { createClient } from "@/lib/supabase/server"
-import { isPrivilegedMfaRequiredError, requirePrivilegedMfa } from "@/lib/security/privileged-auth"
+import {
+  isPrivilegedMfaRequiredError,
+  requirePrivilegedMfa,
+} from "@/lib/security/privileged-auth"
+import { GeminiBudgetExceededError, GEMINI_BUDGET_WINDOW_MS } from "@/lib/security/gemini-budget"
+import { IntentMappingError } from "@/lib/connectors/intent-mapping"
 
 type Orchestrator = (message: string) => Promise<OrchestrationResult>
 
@@ -42,6 +47,14 @@ export async function handleExecuteRequest(
   } catch (error) {
     if (isConnectorExecutionAuthorizationError(error)) {
       return NextResponse.json({ error: "Only an owner or admin can execute connectors." }, { status: 403 })
+    }
+    if (isPrivilegedMfaRequiredError(error)) {
+      // Defense-in-depth: the proxy normally maps this first. Keep the route
+      // correct when invoked directly (tests, future callers).
+      return NextResponse.json(
+        { error: "Multi-factor authentication is required for this action." },
+        { status: 403 },
+      )
     }
     console.error("Execution authorization lookup failed:", error)
     return NextResponse.json({ error: "Execution authorization is temporarily unavailable." }, { status: 503 })
@@ -102,6 +115,37 @@ export async function handleExecuteRequest(
       return NextResponse.json(
         { error: "Execution request could not be completed." },
         { status: 403 },
+      )
+    }
+
+    if (isPrivilegedMfaRequiredError(error)) {
+      // Defense-in-depth: the proxy normally maps this first. Keep the route
+      // correct when invoked directly (tests, future callers).
+      return NextResponse.json(
+        { error: "Multi-factor authentication is required for this action." },
+        { status: 403 },
+      )
+    }
+
+    // Per-user LLM budget exhausted: a rate-limit condition, not a server fault.
+    if (error instanceof GeminiBudgetExceededError) {
+      return NextResponse.json(
+        { error: "Gemini usage budget exceeded. Please try again shortly." },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil(GEMINI_BUDGET_WINDOW_MS / 1000)) },
+        },
+      )
+    }
+
+    // Intent parameters cannot satisfy the connector contract: client-fixable
+    // request problem. The client gets a fixed message + code; the specific
+    // contract reason stays in server logs only (six-point hardening rule).
+    if (error instanceof IntentMappingError) {
+      console.warn("Intent-to-connector mapping failed:", error.message)
+      return NextResponse.json(
+        { error: "The request could not be mapped to a connector action.", code: "INTENT_MAPPING_FAILED" },
+        { status: 400 },
       )
     }
 

@@ -14,6 +14,11 @@ import {
   Sparkles,
   X,
 } from 'lucide-react'
+import {
+  buildExecuteRequestBody,
+  executeMessageToBubbles,
+  type ChatBubble,
+} from '@/lib/chat/bridge'
 
 const BLUE = '#1300BA'
 
@@ -21,10 +26,34 @@ export default function ChatPage() {
   const [message, setMessage] = useState('')
   const [listening, setListening] = useState(false)
   const [voiceOpen, setVoiceOpen] = useState(false)
+  const [messages, setMessages] = useState<ChatBubble[]>([])
+  const [pending, setPending] = useState(false)
 
-  const sendMessage = () => {
-    if (!message.trim()) return
+  const sendMessage = async () => {
+    const trimmed = message.trim()
+    if (!trimmed || pending) return
+
+    setMessages((prev) => [...prev, { role: 'user', kind: 'text', text: trimmed }])
     setMessage('')
+    setPending(true)
+
+    try {
+      const response = await fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildExecuteRequestBody(trimmed)),
+      })
+      const bubbles = await executeMessageToBubbles(response)
+      setMessages((prev) => [...prev, ...bubbles])
+    } catch {
+      // Transport-level failure (offline, aborted). Fixed text only.
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', kind: 'error', text: 'Cannot reach the server. Check your connection and try again.' },
+      ])
+    } finally {
+      setPending(false)
+    }
   }
 
   return (
@@ -64,7 +93,22 @@ export default function ChatPage() {
           </div>
         </div>
 
+        {/* Conversation */}
+        {messages.length > 0 && (
+          <div className="flex flex-1 flex-col gap-3 overflow-y-auto pb-6 pt-6">
+            {messages.map((bubble, index) => (
+              <ChatBubbleRow key={index} bubble={bubble} />
+            ))}
+            {pending && (
+              <div className="self-start rounded-3xl rounded-bl-lg bg-white px-4 py-3 text-sm text-black/45 ring-1 ring-black/[0.06]">
+                Arbyter is working…
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Empty state */}
+        {messages.length === 0 && (
         <div className="flex flex-1 flex-col items-center justify-center pb-10">
 
           <div
@@ -106,6 +150,7 @@ export default function ChatPage() {
             ))}
           </div>
         </div>
+        )}
 
         {/* Composer */}
         <div className="fixed bottom-[88px] left-1/2 z-30 w-[calc(100%-32px)] max-w-3xl -translate-x-1/2">
@@ -125,7 +170,7 @@ export default function ChatPage() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
-                    sendMessage()
+                    void sendMessage()
                   }
                 }}
                 rows={1}
@@ -145,8 +190,8 @@ export default function ChatPage() {
               </button>
 
               <button
-                onClick={sendMessage}
-                disabled={!message.trim()}
+                onClick={() => void sendMessage()}
+                disabled={!message.trim() || pending}
                 className="mb-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition disabled:opacity-25"
                 style={{
                   background: message.trim() ? BLUE : 'rgba(0,0,0,0.06)',
@@ -233,6 +278,43 @@ export default function ChatPage() {
         </div>
       )}
     </main>
+  )
+}
+
+function ChatBubbleRow({ bubble }: { bubble: ChatBubble }) {
+  if (bubble.role === 'user') {
+    return (
+      <div
+        className="max-w-[80%] self-end rounded-3xl rounded-br-lg px-4 py-3 text-[15px] leading-[1.45] text-white"
+        style={{ background: BLUE }}
+      >
+        {bubble.text}
+      </div>
+    )
+  }
+
+  if (bubble.kind === 'error') {
+    return (
+      <div className="max-w-[85%] self-start rounded-3xl rounded-bl-lg bg-white px-4 py-3 ring-1 ring-black/[0.06]">
+        <p className="text-[15px] leading-[1.45] text-[#c62828]">{bubble.text}</p>
+        {bubble.detail && <p className="mt-1 text-xs text-black/45">{bubble.detail}</p>}
+      </div>
+    )
+  }
+
+  if (bubble.kind === 'status') {
+    return (
+      <div className="max-w-[85%] self-start rounded-3xl rounded-bl-lg bg-white px-4 py-3 ring-1 ring-black/[0.06]">
+        <p className="text-[15px] leading-[1.45]">{bubble.text}</p>
+        {bubble.detail && <p className="mt-1 text-xs text-black/45">{bubble.detail}</p>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-[85%] self-start rounded-3xl rounded-bl-lg bg-white px-4 py-3 text-[15px] leading-[1.45] ring-1 ring-black/[0.06]">
+      {bubble.text}
+    </div>
   )
 }
 

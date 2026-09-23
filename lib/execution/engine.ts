@@ -7,6 +7,7 @@ import { getConnector } from "@/lib/connectors/registry"
 import { resolveConnectionCredential } from "@/lib/credentials/runtime"
 import { recordExecutionAudit } from "./audit"
 import { sanitizeExecutionError } from "./error-sanitizer"
+import { mapIntentParametersToConnectorPayload } from "@/lib/connectors/intent-mapping"
 
 export type ExecutionInput = {
   organizationId: string
@@ -273,6 +274,16 @@ export async function executeAgentTask(
     )
   }
 
+  // Contract enforcement: translate the LLM-generated intent parameters into
+  // the connector's strict payload contract BEFORE any execution row is
+  // created, so a contract violation cannot burn governance/audit state.
+  // Governance and the persisted execution record keep receiving the ORIGINAL
+  // intent data; only the final connector call receives the mapped payload.
+  const connectorPayload = mapIntentParametersToConnectorPayload({
+    action,
+    parameters: input.data ?? {},
+  })
+
   const executionInput = {
     task: task
       ? {
@@ -523,7 +534,7 @@ export async function executeAgentTask(
                 }
               : null,
 
-            data: input.data ?? {},
+            data: connectorPayload.payload,
           },
         },
         {
