@@ -422,3 +422,11 @@ canvas{display:block;max-width:100%}
 .pricing-flow i{font-style:normal;color:rgba(255,255,255,.25)}
 @media(max-width:900px){.pricing-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pricing-explainer{grid-template-columns:1fr;gap:40px}}
 @media(max-width:600px){.pricing-grid{grid-template-columns:1fr}.pricing-plan{min-height:250px}.pricing-flow{flex-wrap:wrap;gap:10px}.pricing-flow i{display:none}}
+
+/* Topical depth */
+.concept-depth{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-top:80px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.1)}
+.concept-depth article{min-height:260px;padding:32px;background:#050505}
+.concept-depth span{font-family:var(--font-mono),monospace;font-size:8px;letter-spacing:.16em;color:rgba(255,255,255,.35)}
+.concept-depth h3{font-size:clamp(22px,2vw,32px);line-height:1.05;letter-spacing:-.035em;margin:30px 0 18px}
+.concept-depth p{font-size:14px;line-height:1.8;color:rgba(255,255,255,.58);max-width:440px}
+@media(max-width:800px){.concept-depth{grid-template-columns:1fr}.concept-depth article{min-height:0}}
