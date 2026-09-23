@@ -7,7 +7,7 @@
 :root{color-scheme:dark;--background:#050505;--foreground:#f5f5f7;--primary:#1300ba}
 *{box-sizing:border-box}
 html{background:#050505;scroll-behavior:smooth}
-body{margin:0;background:#050505;color:#f5f5f7;font-family:var(--font-geist-sans),ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{margin:0;background:#050505;color:#f5f5f7;font-family:var(--font-display),ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 a{text-decoration:none;color:inherit}button{font:inherit}::selection{background:#fff;color:#000}
 
 .site-page{position:relative;min-height:100vh;overflow:hidden;background:#050505}
