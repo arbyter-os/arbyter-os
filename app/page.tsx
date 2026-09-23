@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const BLUE = "#1300BA";
+const WHITE = "#f8f9fc";
 
 const LOGO = (
   <svg
@@ -170,7 +170,7 @@ export default function Home() {
 
             <p
               className="mt-7 text-sm uppercase tracking-[0.35em]"
-              style={{ color: BLUE }}
+              style={{ color: WHITE }}
             >
               Intelligence Meets Governance.
             </p>
@@ -205,7 +205,7 @@ export default function Home() {
           <div className="mx-auto max-w-5xl px-6 text-center">
             <div
               className="mx-auto mb-8 h-2 w-2 rounded-full"
-              style={{ backgroundColor: BLUE }}
+              style={{ backgroundColor: BLACK = "#070603" }}
             />
 
             <h2 className="text-5xl font-black leading-[0.92] tracking-[-0.06em] md:text-7xl lg:text-8xl">
