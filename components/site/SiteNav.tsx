@@ -9,6 +9,7 @@ const links = [
   ["Intelligence", "/ai-agent-command"],
   ["Security", "/ai-agent-security"],
   ["Discovery", "/agent-discovery"],
+  ["Pricing", "/pricing"],
   ["Demo", "/demo"],
 ];
 
