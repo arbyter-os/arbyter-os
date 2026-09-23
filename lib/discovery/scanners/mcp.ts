@@ -26,9 +26,13 @@ export async function scanMCPServer(
   const { serverUrl, headers = {} } = options;
 
   try {
-    const hasAuthorization = hasAuthorizationHeader(headers);
+    // HTTPS-only: plaintext HTTP is not permitted for MCP discovery, with or
+    // without credentials. (validate-external-url retains all SSRF defenses:
+    // DNS resolution checks, private/reserved IP blocking, IPv4/IPv6 checks,
+    // IP pinning, certificate validation, redirect restrictions and
+    // credential-in-URL rejection.)
     const validation = await validateExternalUrl(serverUrl, {
-      protocols: hasAuthorization ? ["https:"] : ["https:", "http:"],
+      protocols: ["https:"],
     });
 
     if (!validation.valid) {
@@ -101,7 +105,7 @@ export async function scanMCPServer(
 async function listMCPItems(serverUrl: string, method: string, headers: Record<string, string>) {
   try {
     const validation = await validateExternalUrl(serverUrl, {
-      protocols: hasAuthorizationHeader(headers) ? ["https:"] : ["https:", "http:"],
+      protocols: ["https:"],
     });
     if (!validation.valid) return null;
 
@@ -128,12 +132,6 @@ async function listMCPItems(serverUrl: string, method: string, headers: Record<s
   } catch {
     return null;
   }
-}
-
-function hasAuthorizationHeader(headers: Record<string, string>): boolean {
-  return Object.entries(headers).some(
-    ([name, value]) => name.toLowerCase() === "authorization" && value.trim().length > 0,
-  );
 }
 
 function normalizeTools(value: any): MCPDiscoveryResult["tools"] {

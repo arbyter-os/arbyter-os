@@ -6,6 +6,7 @@ import { executeConnectorAction } from "@/lib/connectors/runtime"
 import { getConnector } from "@/lib/connectors/registry"
 import { resolveConnectionCredential } from "@/lib/credentials/runtime"
 import { recordExecutionAudit } from "./audit"
+import { sanitizeExecutionError } from "./error-sanitizer"
 
 export type ExecutionInput = {
   organizationId: string
@@ -44,6 +45,30 @@ async function updateTaskStatus(
     throw new Error(
       `Failed to update task status: ${error.message}`
     )
+  }
+}
+
+async function revalidateExecutionPrivilege(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  organizationId: string
+) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("organization_id, role")
+    .eq("id", userId)
+    .maybeSingle()
+
+  if (
+    error ||
+    !data?.organization_id ||
+    data.organization_id !== organizationId
+  ) {
+    throw new Error("Execution authorization could not be re-verified.")
+  }
+
+  if (data.role !== "owner" && data.role !== "admin") {
+    throw new Error("Only an owner or admin can execute connector actions.")
   }
 }
 
@@ -464,6 +489,17 @@ export async function executeAgentTask(
       }
     }
 
+    // TOCTOU hardening: the caller's role was verified at the start of this
+    // request, but privileged state can change before the connector action
+    // actually runs (role demotion, organization transfer). Re-verify
+    // immediately before resolving credentials and executing, mirroring the
+    // approval-resume revalidation path.
+    await revalidateExecutionPrivilege(
+      supabase,
+      user.id,
+      input.organizationId,
+    )
+
     const credential =
       await resolveConnectionCredential({
         organizationId: input.organizationId,
@@ -564,10 +600,14 @@ export async function executeAgentTask(
       audit,
     }
   } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Execution failed."
+    // Raw provider/infrastructure error text can expose internal endpoints,
+    // provider error bodies and schema details, and execution audit rows are
+    // member-readable. Store a fixed category message in the audit record and
+    // keep the full diagnostic in server-side logs only.
+    const sanitized = sanitizeExecutionError(error)
+    console.error(
+      `[execution] execution=${execution?.id ?? "unknown"} task=${input.taskId ?? "unknown"} category=${sanitized.category}:\n${sanitized.diagnostics}`,
+    )
 
     await updateTaskStatus(
       input.organizationId,
@@ -584,7 +624,7 @@ export async function executeAgentTask(
       status: "failed",
       riskLevel: "high",
       output: {},
-      errorMessage: message,
+      errorMessage: sanitized.message,
     })
 
     throw error

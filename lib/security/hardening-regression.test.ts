@@ -193,10 +193,10 @@ test("API error responses no longer expose raw exception messages", () => {
   }
 });
 
-test("MCP credential-bearing requests require HTTPS while unauthenticated HTTP remains supported", () => {
+test("MCP discovery is HTTPS-only regardless of credentials", () => {
   const source = read("lib/discovery/scanners/mcp.ts");
-  assert.match(source, /hasAuthorizationHeader\(headers\)/);
-  assert.match(source, /hasAuthorizationHeader\(headers\) \? \["https:"\] : \["https:", "http:"\]/);
+  assert.doesNotMatch(source, /"https:",\s*"http:"/);
+  assert.match(source, /protocols:\s*\["https:"\]/);
   assert.match(source, /validateExternalUrl/);
 });
 

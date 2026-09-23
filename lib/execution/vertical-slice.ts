@@ -5,6 +5,7 @@ import { selectAgent } from "@/lib/routing"
 import { evaluatePolicy } from "@/lib/policy"
 import { getTool, validateToolInput } from "@/lib/tools/registry"
 import { recordExecutionAudit } from "./audit"
+import { sanitizeExecutionError } from "./error-sanitizer"
 
 export async function executeUserRequest(requestText: string) {
   const started = Date.now()
@@ -90,7 +91,12 @@ export async function executeUserRequest(requestText: string) {
 
     return { executionId: execution.id, intent, candidates, agent, policy, status: "completed", result, latencyMs: Date.now() - started, audit }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Execution failed."
+    // Sanitize for member-readable audit rows and the API result; full
+    // diagnostics go to server logs only.
+    const sanitized = sanitizeExecutionError(error)
+    console.error(
+      `[vertical-slice] category=${sanitized.category}:\n${sanitized.diagnostics}`,
+    )
     const audit = await recordExecutionAudit({
       organizationId: userRecord.organization_id,
       executionId: execution.id,
@@ -98,8 +104,8 @@ export async function executeUserRequest(requestText: string) {
       status: "failed",
       riskLevel: "high",
       output: {},
-      errorMessage: message,
+      errorMessage: sanitized.message,
     })
-    return { executionId: execution.id, intent, candidates, agent, policy, status: "failed", result: null, error: message, latencyMs: Date.now() - started, audit }
+    return { executionId: execution.id, intent, candidates, agent, policy, status: "failed", result: null, error: sanitized.message, latencyMs: Date.now() - started, audit }
   }
 }

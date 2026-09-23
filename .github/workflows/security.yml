@@ -15,15 +15,15 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0 # full history so the secret scan covers past commits
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 12.4.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
@@ -36,13 +36,13 @@ jobs:
   dependency-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: 12.4.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
@@ -54,13 +54,81 @@ jobs:
       # Advisory Database for over a week), so also watch the Next.js security release notes.
       - run: pnpm audit --audit-level=high
 
-  secret-scan:
+  # Deployment-drift prevention: fail when the deployed production database is
+  # behind the migration state that the repository requires. On PRs the
+  # comparison uses the merge-base state (so a PR introducing new migrations is
+  # not self-blocking); after merge, main's own run enforces the new state,
+  # blocking further merges until production is migrated. The project ref is
+  # public (it is part of NEXT_PUBLIC_SUPABASE_URL); access is via the
+  # Management API token stored as the SUPABASE_ACCESS_TOKEN secret.
+  deployment-migration-drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
 
-      - uses: gitleaks/gitleaks-action@v2
+      - name: Required migration version (merge-base for PRs, HEAD for pushes)
+        id: required
+        run: |
+          if [ -n "${{ github.base_ref }}" ]; then
+            git fetch origin main --quiet
+            base=$(git merge-base origin/main HEAD)
+            ver=$(git ls-tree --name-only "$base" supabase/migrations | grep -E '[0-9]{14}' | sort | tail -1 | grep -oE '^[0-9]{14}')
+          else
+            ver=$(ls supabase/migrations | grep -E '^[0-9]{14}' | sort | tail -1)
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Deployed production migration version
+        id: prod
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::warning::SUPABASE_ACCESS_TOKEN secret is not set - drift check skipped. Add it (Management API token) to enforce production migration sync."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          resp=$(curl -sS -X POST \
+            "https://api.supabase.com/v1/projects/vbtwythnuhayqrswiojy/database/query" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"query":"select max(version) as version from supabase_migrations.schema_migrations"}')
+          ver=$(echo "$resp" | jq -r '.[0].version // empty')
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+          if [ -z "$ver" ]; then
+            echo "::error::Could not read production migration state: $resp"
+          fi
+
+      - name: Fail if production is behind the repository
+        env:
+          REQUIRED: ${{ steps.required.outputs.version }}
+          DEPLOYED: ${{ steps.prod.outputs.version }}
+          AVAILABLE: ${{ steps.prod.outputs.available }}
+        run: |
+          echo "required: $REQUIRED  deployed (production): $DEPLOYED"
+          if [ "$AVAILABLE" != "true" ]; then
+            echo "Drift enforcement inactive until SUPABASE_ACCESS_TOKEN secret is configured."
+            exit 0
+          fi
+          if [ -z "$DEPLOYED" ]; then
+            echo "::error::Production migration state unreadable (check SUPABASE_ACCESS_TOKEN secret)."
+            exit 1
+          fi
+          if [[ "$DEPLOYED" < "$REQUIRED" ]]; then
+            echo "::error::Production Supabase (vbtwythnuhayqrswiojy) is behind the required migration state ($DEPLOYED < $REQUIRED). Apply the pending migrations to production before merging."
+            exit 1
+          fi
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
