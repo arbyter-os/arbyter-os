@@ -19,8 +19,8 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     if (!mount) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#aeb3bf");
-    scene.fog = new THREE.FogExp2("#aeb3bf", 0.018);
+    scene.background = new THREE.Color("#030307");
+    scene.fog = new THREE.FogExp2("#030307", 0.018);
 
     const camera = new THREE.PerspectiveCamera(
       42,
@@ -42,14 +42,14 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     renderer.toneMappingExposure = 1.15;
     mount.appendChild(renderer.domElement);
 
-    const ambient = new THREE.HemisphereLight("#ffffff", "#555a68", 2.2);
+    const ambient = new THREE.HemisphereLight("#ffffff", "#090a18", 1.7);
     scene.add(ambient);
 
-    const sunLight = new THREE.PointLight("#ffffff", 180, 70);
+    const sunLight = new THREE.PointLight("#ffffff", 120, 70);
     sunLight.position.set(0, 5.5, -1);
     scene.add(sunLight);
 
-    const blueLight = new THREE.PointLight(BLUE, 30, 50);
+    const blueLight = new THREE.PointLight("#6f78ff", 45, 55);
     blueLight.position.set(-8, 4, 3);
     scene.add(blueLight);
 
@@ -72,7 +72,7 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     terrainGeometry.computeVertexNormals();
 
     const terrainMaterial = new THREE.MeshStandardMaterial({
-      color: "#858a98",
+      color: "#11131c",
       roughness: 0.96,
       metalness: 0.02,
     });
@@ -83,7 +83,7 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
 
     const mountainBaseGeo = new THREE.ConeGeometry(8, 14, 6);
     const mountainMaterial = new THREE.MeshStandardMaterial({
-      color: "#737887",
+      color: "#0a0b12",
       roughness: 1,
     });
     const mountainCount = 20;
@@ -292,5 +292,5 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     };
   }, []);
 
-  return <div ref={mountRef} className="fixed inset-0 pointer-events-none" />;
+  return <div ref={mountRef} className="absolute inset-0 pointer-events-none" />;
 }
