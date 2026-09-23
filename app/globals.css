@@ -370,3 +370,19 @@ a{text-decoration:none;color:inherit}button{font:inherit}::selection{background:
 }
 
 /* Mobile pass verified for preview build */
+
+
+/* Accessibility and performance polish */
+:focus-visible{outline:2px solid rgba(255,255,255,.9);outline-offset:4px}
+button,a{touch-action:manipulation}
+@media(max-width:800px){
+  .site-enter{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+  .site-menu-toggle{min-width:44px;min-height:44px}
+  .site-mobile-nav a{min-height:48px;display:flex;align-items:center}
+  .flow{scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .flow::-webkit-scrollbar{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
