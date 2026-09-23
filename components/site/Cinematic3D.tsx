@@ -56,10 +56,17 @@ export function Cinematic3D() {
       <div className="cinematic-sticky">
         <ArbyterWorld progress={progress} />
         <div className="cinematic-vignette" />
-        <div className="cinematic-copy">
+        <div className="cinematic-copy" aria-live="polite">
           <div className="eyebrow">{active.eyebrow}</div>
-          <h2 key={active.title}>{active.title}</h2>
-          <p key={active.body}>{active.body}</p>
+          <h2>{active.title}</h2>
+          <p>{active.body}</p>
+          <div className="cinematic-chapter-index" aria-label="Cinematic chapters">
+            {chapters.map((item, index) => (
+              <span key={item.eyebrow} className={index === chapter ? "active" : ""}>
+                {String(index + 1).padStart(2, "0")}
+              </span>
+            ))}
+          </div>
         </div>
         <div className="cinematic-progress" aria-hidden="true">
           <span style={{ transform: `scaleX(${progress})` }} />
