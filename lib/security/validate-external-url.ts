@@ -3,6 +3,8 @@ import http from "node:http";
 import https from "node:https";
 import net from "node:net";
 
+export const MAX_EXTERNAL_RESPONSE_BYTES = 1024 * 1024;
+
 export type ExternalUrlValidationOptions = {
   protocols: string[];
 };
@@ -10,8 +12,6 @@ export type ExternalUrlValidationOptions = {
 export type ExternalUrlValidationResult =
   | { valid: true; url: URL; addresses: string[] }
   | { valid: false; error: string };
-
-export const MAX_EXTERNAL_RESPONSE_BYTES = 1024 * 1024;
 
 function ipv4ToNumber(address: string): number {
   return address.split(".").map(Number).reduce((value, octet) => value * 256 + octet, 0);
@@ -141,82 +141,61 @@ export async function fetchValidatedExternalUrl(
         ? Buffer.from(init.body)
         : undefined;
 
-  const lookup = (
-    _hostname: string,
-    options: { family?: number | "IPv4" | "IPv6"; all?: boolean },
-    callback: (
-      error: NodeJS.ErrnoException | null,
-      address: string | Array<{ address: string; family: number }>,
-      family?: number,
-    ) => void,
-  ) => {
-    const family = typeof options.family === "number" ? options.family : undefined;
-    const address = addresses.find((candidate) => !family || net.isIP(candidate) === family);
-    if (!address) {
-      callback(new Error("No validated address is available for this connection."), "");
-      return;
-    }
-    callback(null, address, net.isIPv6(address) ? 6 : 4);
-  };
+  // Node 20+ can reject a custom DNS lookup result during socket setup in
+  // ways that are both runtime/version dependent and easy to accidentally
+  // “fix” by removing the pin. Connect directly to the validated IP instead.
+  // For HTTPS, keep the original hostname as SNI so certificate validation
+  // still applies to the requested host. The Host header is also pinned to
+  // the URL hostname rather than accepting a caller-supplied override.
+  const address = addresses[0];
+  if (!address) {
+    return Promise.reject(new Error("No validated address is available for this connection."));
+  }
+
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  const port = url.port || undefined;
+  const hostHeader = net.isIPv6(hostname)
+    ? `[${hostname}]${port ? `:${port}` : ""}`
+    : `${hostname}${port ? `:${port}` : ""}`;
+  headers.host = hostHeader;
 
   return new Promise((resolve, reject) => {
     const requestOptions = {
       protocol: url.protocol,
-      hostname: url.hostname,
-      port: url.port || undefined,
+      hostname: address,
+      port,
       path: `${url.pathname}${url.search}`,
       method,
       headers,
-      lookup,
-      servername: url.hostname,
+      servername: url.protocol === "https:" && !net.isIP(hostname) ? hostname : undefined,
       signal: init.signal ?? undefined,
     };
     const handleResponse = (response: http.IncomingMessage) => {
-      const contentLengthHeader = response.headers["content-length"];
-      const contentLength = typeof contentLengthHeader === "string"
-        ? Number(contentLengthHeader)
-        : Array.isArray(contentLengthHeader)
-          ? Number(contentLengthHeader[0])
-          : undefined;
-      if (contentLength !== undefined && Number.isFinite(contentLength) && contentLength > MAX_EXTERNAL_RESPONSE_BYTES) {
+      const declaredLength = Number(response.headers["content-length"] ?? "");
+      if (Number.isFinite(declaredLength) && declaredLength > MAX_EXTERNAL_RESPONSE_BYTES) {
         response.destroy();
-        reject(new Error(`External response exceeds the ${MAX_EXTERNAL_RESPONSE_BYTES}-byte limit.`));
+        reject(new Error("External response is too large."));
         return;
       }
 
       const chunks: Buffer[] = [];
-      let totalBytes = 0;
-      let settled = false;
-      const rejectTooLarge = () => {
-        if (settled) return;
-        settled = true;
-        response.destroy();
-        reject(new Error(`External response exceeds the ${MAX_EXTERNAL_RESPONSE_BYTES}-byte limit.`));
-      };
-
+      let total = 0;
       response.on("data", (chunk) => {
         const buffer = Buffer.from(chunk);
-        totalBytes += buffer.length;
-        if (totalBytes > MAX_EXTERNAL_RESPONSE_BYTES) {
-          rejectTooLarge();
+        total += buffer.length;
+        if (total > MAX_EXTERNAL_RESPONSE_BYTES) {
+          response.destroy();
+          reject(new Error("External response is too large."));
           return;
         }
         chunks.push(buffer);
       });
-      response.on("end", () => {
-        if (settled) return;
-        settled = true;
-        resolve(new Response(Buffer.concat(chunks), {
-          status: response.statusCode ?? 0,
-          statusText: response.statusMessage ?? "",
-          headers: response.headers as Record<string, string>,
-        }));
-      });
-      response.on("error", (error) => {
-        if (settled) return;
-        settled = true;
-        reject(error);
-      });
+      response.on("end", () => resolve(new Response(Buffer.concat(chunks, total), {
+        status: response.statusCode ?? 0,
+        statusText: response.statusMessage ?? "",
+        headers: response.headers as Record<string, string>,
+      })));
+      response.on("error", reject);
     };
     const request = url.protocol === "https:"
       ? https.request(requestOptions, handleResponse)

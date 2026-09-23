@@ -26,8 +26,9 @@ export async function scanMCPServer(
   const { serverUrl, headers = {} } = options;
 
   try {
+    const hasAuthorization = hasAuthorizationHeader(headers);
     const validation = await validateExternalUrl(serverUrl, {
-      protocols: ["https:", "http:"],
+      protocols: hasAuthorization ? ["https:"] : ["https:", "http:"],
     });
 
     if (!validation.valid) {
@@ -83,13 +84,16 @@ export async function scanMCPServer(
       raw: data,
     };
   } catch (error) {
+    // Network/TLS/DNS error text can expose internal hostnames, addresses and ports.
+    // Log it server-side and hand callers a fixed message.
+    console.error("MCP scanner request failed:", error);
     return {
       success: false,
       serverUrl,
       tools: [],
       resources: [],
       prompts: [],
-      error: error instanceof Error ? error.message : "Unknown MCP scanner error.",
+      error: "The MCP server could not be reached or returned an unexpected response.",
     };
   }
 }
@@ -97,7 +101,7 @@ export async function scanMCPServer(
 async function listMCPItems(serverUrl: string, method: string, headers: Record<string, string>) {
   try {
     const validation = await validateExternalUrl(serverUrl, {
-      protocols: ["https:", "http:"],
+      protocols: hasAuthorizationHeader(headers) ? ["https:"] : ["https:", "http:"],
     });
     if (!validation.valid) return null;
 
@@ -124,6 +128,12 @@ async function listMCPItems(serverUrl: string, method: string, headers: Record<s
   } catch {
     return null;
   }
+}
+
+function hasAuthorizationHeader(headers: Record<string, string>): boolean {
+  return Object.entries(headers).some(
+    ([name, value]) => name.toLowerCase() === "authorization" && value.trim().length > 0,
+  );
 }
 
 function normalizeTools(value: any): MCPDiscoveryResult["tools"] {

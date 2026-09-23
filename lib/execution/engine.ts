@@ -1,19 +1,18 @@
 import { createExecutionApproval } from "./approval"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { evaluateGovernance } from "@/lib/governance"
 import { executeConnectorAction } from "@/lib/connectors/runtime"
 import { getConnector } from "@/lib/connectors/registry"
 import { resolveConnectionCredential } from "@/lib/credentials/runtime"
 import { recordExecutionAudit } from "./audit"
-import { resolveExecutionCapability } from "./capability"
-import type { ConnectorCapability } from "@/lib/connectors/types"
 
 export type ExecutionInput = {
   organizationId: string
   agentId: string
   taskId?: string
   agentConnectionId?: string
-  requestedCapability?: ConnectorCapability
+  requestedCapability: import("@/lib/connectors/types").ConnectorCapability
   environment?: string
   country?: string
   state?: string
@@ -86,6 +85,25 @@ export async function executeAgentTask(
   const supabase = await createClient()
   const startedAt = new Date().toISOString()
 
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    throw new Error("Execution requires an authenticated user.")
+  }
+
+  const { data: caller, error: callerError } = await supabase
+    .from("users")
+    .select("organization_id, role")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (callerError || !caller?.organization_id || caller.organization_id !== input.organizationId) {
+    throw new Error("Execution authorization could not be verified.")
+  }
+
+  if (caller.role !== "owner" && caller.role !== "admin") {
+    throw new Error("Only an owner or admin can execute connector actions.")
+  }
+
   const { data: agent, error: agentError } =
     await supabase
       .from("ai_agents")
@@ -128,6 +146,17 @@ export async function executeAgentTask(
       )
     }
 
+    const { data: assignment, error: assignmentError } = await supabase
+      .from("agent_tasks")
+      .select("agent_id")
+      .eq("task_id", input.taskId)
+      .eq("agent_id", input.agentId)
+      .maybeSingle()
+
+    if (assignmentError || !assignment?.agent_id) {
+      throw new Error("Task is not assigned to the requested agent.")
+    }
+
     task = data
   }
 
@@ -138,7 +167,7 @@ export async function executeAgentTask(
       await supabase
         .from("agent_connections")
         .select(
-          "id, provider, status, health_status, capabilities"
+          "id, provider, status, health_status, capabilities, environment"
         )
         .eq("id", input.agentConnectionId)
         .eq("agent_id", input.agentId)
@@ -159,7 +188,7 @@ export async function executeAgentTask(
       await supabase
         .from("agent_connections")
         .select(
-          "id, provider, status, health_status, capabilities"
+          "id, provider, status, health_status, capabilities, environment"
         )
         .eq("agent_id", input.agentId)
         .eq(
@@ -205,11 +234,19 @@ export async function executeAgentTask(
         >)
       : {}
 
-  const action = resolveExecutionCapability({
-    requestedCapability: input.requestedCapability,
-    enabledCapabilities: capabilities,
-    connectorCapabilities: connector.capabilities,
-  })
+  const action = input.requestedCapability
+
+  if (!connector.capabilities.includes(action)) {
+    throw new Error(
+      "Requested connector capability is not supported by this provider."
+    )
+  }
+
+  if (capabilities[action] !== true) {
+    throw new Error(
+      "Requested connector capability is not enabled for this connection."
+    )
+  }
 
   const executionInput = {
     task: task
@@ -240,8 +277,10 @@ export async function executeAgentTask(
     input.taskId
   )
 
+  const executionWriter = createAdminClient()
+
   const { data: execution, error: executionError } =
-    await supabase
+    await executionWriter
       .from("agent_executions")
       .insert({
         organization_id:
@@ -264,7 +303,7 @@ export async function executeAgentTask(
     await updateTaskStatus(
       input.organizationId,
       input.taskId,
-      "blocked"
+      "pending"
     )
     throw executionError
   }
@@ -302,16 +341,18 @@ export async function executeAgentTask(
             provider: connection.provider,
           },
 
-          environment: input.environment,
-          country: input.country,
-          state: input.state,
-          jurisdiction: input.jurisdiction,
-          sector: input.sector,
+          // Governance context must come from trusted persisted state, not the
+          // execution request. Caller-supplied jurisdiction/sector/country/state
+          // values are intentionally ignored so they cannot bypass scoped rules.
+          environment:
+            typeof connection.environment === "string"
+              ? connection.environment
+              : undefined,
           data: input.data,
         }
       )
 
-    const riskLevel = governance.risk
+    const riskLevel = governance.risk ?? "low"
 
     if (
       governance.decision.decision ===
@@ -391,6 +432,7 @@ export async function executeAgentTask(
               provider:
                 connection.provider,
               action,
+              capability: action,
               governanceDecision:
                 governance.decision,
             },

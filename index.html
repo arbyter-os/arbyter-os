@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARBYTER — 3D Luminous Emblem</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #030303;
+      cursor: grab;
+      user-select: none;
+    }
+    body:active {
+      cursor: grabbing;
+    }
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+      display: block;
+    }
+  </style>
+
+  <!-- Modern Three.js with Addons via ES Modules -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+    // 1. Scene, Camera, and WebGL Renderer
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x030303, 0.0018);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 2000);
+    camera.position.set(0, 0, 480);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    // 2. Post-processing Bloom (UnrealBloomPass)
+    const renderScene = new RenderPass(scene, camera);
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      1.65, // Bloom intensity
+      0.65, // Radius
+      0.25  // Threshold
+    );
+
+    const composer = new EffectComposer(renderer);
+    composer.addPass(renderScene);
+    composer.addPass(bloomPass);
+
+    // 3. Lighting (Atmospheric Rim & Specular Highlights)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.5);
+    keyLight.position.set(120, 150, 200);
+    scene.add(keyLight);
+
+    const rimLightLeft = new THREE.PointLight(0xe8f0ff, 4.0, 600);
+    rimLightLeft.position.set(-180, 80, -90);
+    scene.add(rimLightLeft);
+
+    const rimLightRight = new THREE.PointLight(0xffffff, 3.5, 600);
+    rimLightRight.position.set(180, -80, -90);
+    scene.add(rimLightRight);
+
+    // 4. Extrude the Exact SVG Path
+    const svgPathData = `
+      M 430,348
+      C 465,355 535,355 570,348
+      C 564,385 556,425 554,465
+      C 552,515 570,580 604,630
+      Q 552,624 500,630
+      Q 448,624 396,630
+      C 430,580 448,515 446,465
+      C 444,425 436,385 430,348
+      Z
+      M 500,630
+      C 490,575 478,520 473,465
+      C 468,420 464,398 466,388
+      C 468,381 474,380 479,384
+      C 487,390 510,420 523,460
+      C 531,485 522,555 500,630
+      Z
+    `;
+
+    const svgLoader = new SVGLoader();
+    const parsedSVG = svgLoader.parse(
+      `<svg xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="${svgPathData}" /></svg>`
+    );
+
+    const shapes = [];
+    parsedSVG.paths.forEach((path) => {
+      shapes.push(...SVGLoader.createShapes(path));
+    });
+
+    const extrudeSettings = {
+      depth: 26,
+      bevelEnabled: true,
+      bevelSegments: 24,
+      steps: 2,
+      bevelSize: 4.5,
+      bevelThickness: 4.5,
+      curveSegments: 64
+    };
+
+    const geometry = new THREE.ExtrudeGeometry(shapes, extrudeSettings);
+    geometry.center();
+    geometry.scale(1, -1, 1); // Invert Y to match vertical SVG coords
+
+    // 5. Igloo.inc Frosted Luminous Material
+    const material = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.85,
+      roughness: 0.16,
+      metalness: 0.1,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.12,
+      transmission: 0.25,
+      ior: 1.52,
+      thickness: 15
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    const pivot = new THREE.Group();
+    pivot.add(mesh);
+    scene.add(pivot);
+
+    // 6. Interactive Inertia & Floating Loop
+    let mouse = { x: 0, y: 0 };
+    let targetRotation = { x: 0, y: 0 };
+    const clock = new THREE.Clock();
+
+    window.addEventListener('pointermove', (event) => {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+      targetRotation.y = mouse.x * 0.55;
+      targetRotation.x = -mouse.y * 0.4;
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const elapsedTime = clock.getElapsedTime();
+
+      // Smooth inertia damping toward cursor
+      pivot.rotation.y += (targetRotation.y - pivot.rotation.y) * 0.055;
+      pivot.rotation.x += (targetRotation.x - pivot.rotation.x) * 0.055;
+
+      // Organic hovering and breathing motion
+      pivot.position.y = Math.sin(elapsedTime * 1.6) * 9;
+      pivot.rotation.z = Math.sin(elapsedTime * 0.8) * 0.035;
+
+      composer.render();
+    }
+
+    animate();
+  </script>
+</body>
+</html>

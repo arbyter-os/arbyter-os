@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
+import { createServer, type RequestListener } from "node:http";
 import test from "node:test";
 import {
   fetchValidatedExternalUrl,
@@ -15,7 +15,7 @@ function validation(port: number) {
 }
 
 async function withServer(
-  handler: Parameters<typeof createServer>[0],
+  handler: RequestListener,
   fn: (port: number) => Promise<void>,
 ) {
   const server = createServer(handler);
@@ -53,7 +53,7 @@ test("response exceeding the limit fails", async () => {
   }, async (port) => {
     await assert.rejects(
       fetchValidatedExternalUrl(validation(port)),
-      /exceeds the 1048576-byte limit/,
+      /External response is too large\./g,
     );
   });
 });
@@ -65,7 +65,7 @@ test("oversized Content-Length is rejected before buffering", async () => {
   }, async (port) => {
     await assert.rejects(
       fetchValidatedExternalUrl(validation(port)),
-      /exceeds the 1048576-byte limit/,
+      /External response is too large\./g,
     );
   });
 });
@@ -77,7 +77,7 @@ test("a response without Content-Length is still limited", async () => {
   }, async (port) => {
     await assert.rejects(
       fetchValidatedExternalUrl(validation(port)),
-      /exceeds the 1048576-byte limit/,
+      /External response is too large\./g,
     );
   });
 });
@@ -89,7 +89,7 @@ test("a chunked response that exceeds the limit is stopped", async () => {
   }, async (port) => {
     await assert.rejects(
       fetchValidatedExternalUrl(validation(port)),
-      /exceeds the 1048576-byte limit/,
+      /External response is too large\./g,
     );
   });
 });

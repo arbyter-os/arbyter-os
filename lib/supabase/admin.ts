@@ -1,18 +1,10 @@
 import { createClient } from "@supabase/supabase-js"
+import { getSupabaseAdminConfig } from "@/lib/security/supabase-config"
 
 export function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY
+  const { url, secretKey } = getSupabaseAdminConfig()
 
-  if (!supabaseUrl) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL")
-  }
-
-  if (!supabaseSecretKey) {
-    throw new Error("Missing SUPABASE_SECRET_KEY")
-  }
-
-  return createClient(supabaseUrl, supabaseSecretKey, {
+  return createClient(url, secretKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

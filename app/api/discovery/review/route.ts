@@ -1,5 +1,10 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createOrResolveOnboardedAgent } from "@/lib/discovery/onboarding";
 
 type ReviewAction = "confirm" | "reject" | "onboard";
 
@@ -12,7 +17,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 });
     }
 
-    const body = await request.json();
+    const body = await readJsonBody(request)
+    assertApiBody(body, "discovery:review");
     const findingId = typeof body.findingId === "string" ? body.findingId.trim() : "";
     const action = body.action as ReviewAction;
 
@@ -38,6 +44,7 @@ export async function POST(request: Request) {
     }
 
     const organizationId = profile.organization_id;
+    const findingWriter = createAdminClient();
     const { data: finding, error: findingError } = await supabase
       .from("discovery_findings")
       .select(`
@@ -54,7 +61,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "confirm") {
-      const { data: updated, error } = await supabase
+      const { data: updated, error } = await findingWriter
         .from("discovery_findings")
         .update({
           review_status: "confirmed",
@@ -70,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "reject") {
-      const { data: updated, error } = await supabase
+      const { data: updated, error } = await findingWriter
         .from("discovery_findings")
         .update({
           review_status: "rejected",
@@ -101,21 +108,15 @@ export async function POST(request: Request) {
     const agentName = finding.name?.trim() || "Discovered AI Agent";
     const agentType = finding.framework?.trim() || finding.provider?.trim() || finding.classification || "discovered_agent";
 
-    const { data: agent, error: agentError } = await supabase
-      .from("ai_agents")
-      .insert({
-        organization_id: organizationId,
-        name: agentName,
-        description: finding.description || "Agent discovered by Arbyter Discovery.",
-        agent_type: agentType,
-        status: "active",
-      })
-      .select("id, name, status")
-      .single();
+    const agent = await createOrResolveOnboardedAgent(supabase, {
+      findingId,
+      organizationId,
+      name: agentName,
+      description: finding.description || "Agent discovered by Arbyter Discovery.",
+      agentType,
+    });
 
-    if (agentError || !agent) throw new Error("Could not create the agent.");
-
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await findingWriter
       .from("discovery_findings")
       .update({
         review_status: "confirmed",
@@ -137,6 +138,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, action, agentId: agent.id, agent, finding: updated });
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("Discovery review error:", error);
     return NextResponse.json({ error: "Discovery review failed." }, { status: 500 });
   }

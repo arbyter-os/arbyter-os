@@ -1,8 +1,17 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
 import { NextRequest, NextResponse } from "next/server";
 
+const testMcpEnabled = process.env.ALLOW_TEST_MCP === "true";
+
 export async function POST(request: NextRequest) {
+  if (!testMcpEnabled) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request)
+    assertApiBody(body, "test-mcp");
 
     const method = body?.method;
 
@@ -156,6 +165,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  if (!testMcpEnabled) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   return NextResponse.json({
     name: "Arbyter Test MCP",
     version: "1.0.0",

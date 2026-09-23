@@ -18,7 +18,7 @@ export class GeminiProvider implements LLMProvider {
     }
 
     try {
-      consumeGeminiBudget(context.userId)
+      await consumeGeminiBudget(context.userId)
       const response = await this.client.models.generateContent({
         model: this.model,
         contents: input,

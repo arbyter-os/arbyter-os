@@ -1,4 +1,9 @@
+import { readJsonBody } from "@/lib/security/request-body";
+import { assertApiBody } from "@/lib/validation/api-schemas"
+import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server"
+import { assertApiParam } from "@/lib/validation/api-schemas"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
 type RouteContext = {
@@ -26,11 +31,13 @@ export async function POST(
     }
 
     const { approvalId } = await context.params
+    assertApiParam(approvalId, "uuid", "approvalId")
     if (!approvalId) {
       return NextResponse.json({ error: "Approval ID is required." }, { status: 400 })
     }
 
-    const body = await request.json()
+    const body = await readJsonBody(request)
+    assertApiBody(body, "approvals:resolve")
     const decision = body?.decision === "approved" || body?.decision === "rejected"
       ? body.decision
       : null
@@ -59,7 +66,7 @@ export async function POST(
     const organizationId = userRecord.organization_id
     const { data: approval, error: approvalError } = await supabase
       .from("approval_requests")
-      .select("id, organization_id, agent_id, execution_id, title, status")
+      .select("id, organization_id, agent_id, execution_id, requested_by, title, status")
       .eq("id", approvalId)
       .eq("organization_id", organizationId)
       .maybeSingle()
@@ -71,6 +78,34 @@ export async function POST(
 
     if (approval.status !== "pending") {
       return NextResponse.json({ error: "This approval request has already been resolved." }, { status: 409 })
+    }
+
+    if (!approval.requested_by || typeof approval.requested_by !== "string") {
+      return NextResponse.json({ error: "This approval request has no valid requester and cannot be resolved." }, { status: 409 })
+    }
+
+    const { data: requesterRecord, error: requesterError } = await supabase
+      .from("users")
+      .select("id, organization_id")
+      .eq("id", approval.requested_by)
+      .maybeSingle()
+
+    if (requesterError) {
+      throw requesterError
+    }
+
+    if (
+      !requesterRecord ||
+      requesterRecord.organization_id !== organizationId
+    ) {
+      return NextResponse.json(
+        { error: "This approval request has inconsistent requester information and cannot be processed." },
+        { status: 409 },
+      )
+    }
+
+    if (approval.requested_by === user.id) {
+      return NextResponse.json({ error: "The requester cannot approve their own approval request." }, { status: 409 })
     }
 
     const resolvedAt = new Date().toISOString()
@@ -102,7 +137,8 @@ export async function POST(
 
     if (approval.execution_id) {
       const executionStatus = decision === "approved" ? "approved" : "blocked"
-      const { error: executionError } = await supabase
+      const executionWriter = createAdminClient()
+      const { error: executionError } = await executionWriter
         .from("agent_executions")
         .update({
           status: executionStatus,
@@ -153,6 +189,8 @@ export async function POST(
       nextTaskStatus: decision === "approved" ? "pending" : "blocked",
     })
   } catch (error) {
+    const invalidRequest = validationErrorResponse(error)
+    if (invalidRequest) return invalidRequest
     console.error("Approval resolution failed:", error)
     return NextResponse.json({ error: "Approval resolution failed." }, { status: 500 })
   }

@@ -99,7 +99,19 @@ export default function TasksPage() {
 
       if (agentError) throw agentError
 
-      setTasks((taskData ?? []) as Task[])
+      const normalizedTasks: Task[] = (taskData ?? []).map((task) => ({
+        ...task,
+        agent_tasks: (task.agent_tasks ?? []).map((assignment) => ({
+          agent_id: assignment.agent_id,
+          ai_agents: Array.isArray(assignment.ai_agents)
+            ? assignment.ai_agents
+            : assignment.ai_agents
+              ? [assignment.ai_agents]
+              : [],
+        })),
+      }))
+
+      setTasks(normalizedTasks)
       setAgents((agentData ?? []) as Agent[])
     } catch (err) {
       console.error('Failed to load tasks:', err)
@@ -134,6 +146,11 @@ export default function TasksPage() {
       return
     }
 
+    if (!agents.some((agent) => agent.id === agentId)) {
+      setError('Select an agent from your organization.')
+      return
+    }
+
     setCreating(true)
 
     try {
@@ -159,29 +176,18 @@ export default function TasksPage() {
 
       const organizationId = userRecord.organization_id
 
-      const { data: task, error: taskError } = await supabase
-        .from('tasks')
-        .insert({
-          organization_id: organizationId,
+      const response = await fetch('/api/tasks/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,
-          status: 'pending',
           priority,
-          created_by: user.id,
-        })
-        .select('id')
-        .single()
-
-      if (taskError) throw taskError
-
-      const { error: assignmentError } = await supabase
-        .from('agent_tasks')
-        .insert({
-          task_id: task.id,
-          agent_id: agentId,
-        })
-
-      if (assignmentError) throw assignmentError
+          agentId,
+        }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to create task.')
 
       setTitle('')
       setDescription('')
