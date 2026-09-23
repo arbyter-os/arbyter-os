@@ -1,5 +1,6 @@
 import { PageFrame } from "@/components/site/PageFrame";
 import { RuntimeVisual } from "@/components/site/VisualSystem";
+import { ScrollStory } from "@/components/site/ScrollStory";
 
 export default function RuntimeGovernance(){return <PageFrame eyebrow="RUNTIME GOVERNANCE / 03" title={<>Governance<br/><em>at execution.</em></>} intro="Static policies cannot see what an autonomous agent is about to do. Runtime governance evaluates the action where it matters: before execution.">
 <section className="full-visual"><RuntimeVisual mode="runtime"/></section>
