@@ -30,3 +30,5 @@ export default function Home(){
   </section>
  </main>
 }
+
+// Keep Git-triggered preview deployments aligned with the current branch head.
