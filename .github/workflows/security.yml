@@ -71,12 +71,19 @@ jobs:
       - name: Required migration version (merge-base for PRs, HEAD for pushes)
         id: required
         run: |
+          # Extract exactly the 14-digit version stamp from migration filenames
+          # (never the full filename) so the comparison below is numeric-string
+          # exact; fail closed if nothing parseable is found.
           if [ -n "${{ github.base_ref }}" ]; then
             git fetch origin main --quiet
             base=$(git merge-base origin/main HEAD)
-            ver=$(git ls-tree --name-only "$base" supabase/migrations | grep -E '[0-9]{14}' | sort | tail -1 | grep -oE '^[0-9]{14}')
+            ver=$(git ls-tree --name-only "$base" supabase/migrations | grep -oE '[0-9]{14}' | sort | tail -1)
           else
-            ver=$(ls supabase/migrations | grep -E '^[0-9]{14}' | sort | tail -1)
+            ver=$(ls supabase/migrations | grep -oE '^[0-9]{14}' | sort | tail -1)
+          fi
+          if ! [[ "$ver" =~ ^[0-9]{14}$ ]]; then
+            echo "::error::Could not determine the repository's required migration version."
+            exit 1
           fi
           echo "version=$ver" >> "$GITHUB_OUTPUT"
 
