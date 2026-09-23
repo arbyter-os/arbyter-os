@@ -10,7 +10,10 @@ const policies = [
 ] as const;
 
 export default function PolicyEnforcement() {
-  const [selected,setSelected]=useState(0), [version,setVersion]=useState(1), [evaluated,setEvaluated]=useState(false), [changed,setChanged]=useState(false);
+  const [selected, setSelected] = useState(0);
+  const [version, setVersion] = useState(1);
+  const [evaluated, setEvaluated] = useState(false);
+  const [changed, setChanged] = useState(false);
   const policy=policies[selected];
   const variants = [
     { label:"Authorized HR agents may finalize high-impact decisions.", rule:"IF identity.hr_authorized = true THEN decision = ALLOW", outcome:"ALLOW", reason:"The new policy permits an authorized HR agent to complete the workflow." },
@@ -18,7 +21,7 @@ export default function PolicyEnforcement() {
     { label:"Operational reads require human approval.", rule:"IF action.type = operational-read THEN decision = APPROVAL", outcome:"APPROVAL", reason:"The new policy requires a human checkpoint before operational data is read." },
   ] as const;
   const active = changed ? variants[selected] : policy;
-  const audit=useMemo(()=>({id:`evt_${version}_${policy.id.toLowerCase()}`,policy:policy.id,result:active.outcome}),[policy,version,active.outcome]);
+  const audit = useMemo(() => ({ id: `evt_${version}_${policy.id.toLowerCase()}`, policy: policy.id, result: active.outcome }), [policy, version, active.outcome]);
 
   return <PageFrame eyebrow="POLICY ENFORCEMENT / 04" title={<>Words become<br/><em>runtime rules.</em></>} intro="Write the rule in the language your organization already uses. Arbyter turns the intent into an enforceable decision path.">
     <section className="policy-lab" aria-label="Interactive policy enforcement simulation">
