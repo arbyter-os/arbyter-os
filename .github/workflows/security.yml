@@ -90,17 +90,46 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          resp=$(curl -sS -X POST \
+
+          # Response shapes (verified against the live API and the official
+          # OpenAPI spec): success is HTTP 201 with a JSON row ARRAY
+          # ([{"version": ...}]); failures are JSON error OBJECTS
+          # (e.g. {"message":"JWT could not be decoded"}) with 4xx/5xx codes.
+          # Parse by HTTP status first, capture the body to a temp file, and
+          # never echo it: error bodies are attacker-influenceable noise and
+          # must not leak into annotations or logs.
+          http_code=$(curl -sS -o "$RUNNER_TEMP/prod_version.json" -w "%{http_code}" -X POST \
             "https://api.supabase.com/v1/projects/vbtwythnuhayqrswiojy/database/query" \
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"query":"select max(version) as version from supabase_migrations.schema_migrations"}')
-          ver=$(echo "$resp" | jq -r '.[0].version // empty')
+            -d '{"query":"select max(version) as version from supabase_migrations.schema_migrations"}') || {
+            echo "::error::Production migration state unreadable: Management API request failed."
+            exit 1
+          }
+
+          ver=""
+          if [ "$http_code" = "201" ]; then
+            ver=$(jq -re '
+              if type == "array" then (.[0].version // empty)
+              elif type == "object" then (.version // .rows[0].version // empty)
+              else empty end
+            ' "$RUNNER_TEMP/prod_version.json" 2>/dev/null || true)
+          fi
+
+          rm -f "$RUNNER_TEMP/prod_version.json"
+
+          if [ -z "$ver" ]; then
+            echo "::error::Production migration state unreadable: Management API returned HTTP ${http_code} with an unparseable or error response."
+            exit 1
+          fi
+
+          if ! [[ "$ver" =~ ^[0-9]{14}$ ]]; then
+            echo "::error::Production migration state unreadable: unexpected version format (HTTP ${http_code})."
+            exit 1
+          fi
+
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           echo "available=true" >> "$GITHUB_OUTPUT"
-          if [ -z "$ver" ]; then
-            echo "::error::Could not read production migration state: $resp"
-          fi
 
       - name: Fail if production is behind the repository
         env:
