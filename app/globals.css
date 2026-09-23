@@ -405,3 +405,20 @@ canvas{display:block;max-width:100%}
   .page-hero p,.visual-copy p,.editorial-section p,.dark-section.split p{max-width:100%}
   .site-nav{padding-left:5vw;padding-right:5vw}
 }
+
+/* Pricing / commercial architecture */
+.pricing-section{padding:20px 5vw 140px}
+.pricing-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid rgba(255,255,255,.12);border-left:1px solid rgba(255,255,255,.12)}
+.pricing-plan{min-height:300px;padding:28px;border-right:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12);display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.008))}
+.pricing-plan-top span,.pricing-capacity,.pricing-flow span{font-family:var(--font-mono),monospace;font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.38)}
+.pricing-plan h2{font-size:clamp(25px,2.5vw,42px);margin:28px 0 0;letter-spacing:-.04em}
+.pricing-price{font-size:clamp(42px,4vw,68px);letter-spacing:-.06em;line-height:1;font-weight:600}
+.pricing-price small{font-family:var(--font-mono),monospace;font-size:10px;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-left:6px}
+.pricing-plan p{color:rgba(255,255,255,.58);font-size:13px;line-height:1.7;max-width:260px}
+.pricing-explainer{display:grid;grid-template-columns:1fr 1fr;gap:8vw;padding:120px 4vw 90px}
+.pricing-explainer h2{font-size:clamp(32px,4vw,64px);line-height:1.02;letter-spacing:-.05em;margin:20px 0 0;max-width:700px}
+.pricing-copy{max-width:600px;color:rgba(255,255,255,.62);font-size:15px;line-height:1.8}
+.pricing-flow{display:flex;align-items:center;justify-content:center;gap:20px;padding:34px 20px;border-top:1px solid rgba(255,255,255,.12);border-bottom:1px solid rgba(255,255,255,.12)}
+.pricing-flow i{font-style:normal;color:rgba(255,255,255,.25)}
+@media(max-width:900px){.pricing-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.pricing-explainer{grid-template-columns:1fr;gap:40px}}
+@media(max-width:600px){.pricing-grid{grid-template-columns:1fr}.pricing-plan{min-height:250px}.pricing-flow{flex-wrap:wrap;gap:10px}.pricing-flow i{display:none}}
