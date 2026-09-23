@@ -40,8 +40,8 @@ export function DiscoveryExperience() {
 
         {sources.map((source) => (
           <div
-            className={\`discovery-source \${phase >= 1 ? "is-found" : ""}\`}
-            style={{ left: \`\${source.x}%\`, top: \`\${source.y}%\` }}
+            className={`discovery-source ${phase >= 1 ? "is-found" : ""}`}
+            style={{ left: `${source.x}%`, top: `${source.y}%` }}
             key={source.id}
           >
             <span>{source.label}</span>
@@ -50,7 +50,7 @@ export function DiscoveryExperience() {
           </div>
         ))}
 
-        <div className={\`discovery-core phase-\${phase}\`}>
+        <div className={`discovery-core phase-${phase}`}>
           <div className="discovery-core-inner">
             <span>ARBYTER</span>
             <strong>{phaseLabel}</strong>
@@ -96,7 +96,7 @@ export function DiscoveryExperience() {
         </div>
       </div>
 
-      <style jsx global>{\`
+      <style jsx global>{`
         .discovery-experience{position:relative;margin:0 0 8rem}
         .discovery-stage{position:relative;height:min(78vh,760px);min-height:620px;overflow:hidden;border-top:1px solid rgba(255,255,255,.09);border-bottom:1px solid rgba(255,255,255,.09);background:radial-gradient(circle at 50% 50%,rgba(72,82,255,.13),transparent 30%),#030307}
         .discovery-grid{position:absolute;inset:0;opacity:.32;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:72px 72px;mask-image:radial-gradient(circle at center,#000 0,transparent 78%)}
@@ -141,7 +141,7 @@ export function DiscoveryExperience() {
         .discovery-agent-detail p{margin:7px 0 0;font-size:12px;line-height:1.5}
         @media(max-width:800px){.discovery-stage{height:650px;min-height:650px}.discovery-source{width:105px;padding:10px}.discovery-source:nth-of-type(4),.discovery-source:nth-of-type(5),.discovery-source:nth-of-type(6){display:none}.discovery-core{width:210px;height:210px}.discovery-control{grid-template-columns:1fr;gap:2.5rem;padding-top:4rem}.discovery-count{right:4%;bottom:4%}.discovery-agent-list{grid-template-columns:1fr}.discovery-agent-list button{border-right:0}}
         @media(prefers-reduced-motion:reduce){.discovery-rings i,.discovery-core:before,.discovery-stream{animation:none}}
-      \`}
+      `}
       </style>
     </section>
   );
