@@ -1,12 +1,12 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
+import { Geist_Mono, Manrope } from 'next/font/google'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { organizationSchema, softwareSchema } from '@/lib/seo/schemas'
 import './globals.css'
 
-const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
-const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
+const manrope = Manrope({ subsets: ['latin'], variable: '--font-display' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' })
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://arbyter-os-qy.vercel.app'
 
@@ -24,7 +24,7 @@ export const viewport: Viewport = { width: 'device-width', initialScale: 1, them
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`dark bg-black ${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`dark bg-black ${manrope.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
         <JsonLd data={organizationSchema} />
         <JsonLd data={softwareSchema} />
