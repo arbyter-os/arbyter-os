@@ -368,3 +368,5 @@ a{text-decoration:none;color:inherit}button{font:inherit}::selection{background:
   .site-nav-actions { display:flex; align-items:center; }
   .site-menu-toggle, .site-mobile-nav { display:none; }
 }
+
+/* Mobile pass verified for preview build */
