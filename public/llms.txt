@@ -4,6 +4,7 @@
 
 ## What Arbyter does
 - Translates organizational policy, permissions, regulatory requirements, and operational intent into enforceable runtime controls.
+- Connects company knowledge and business intent to governed runtime decisions.
 - Discovers and connects AI agents across enterprise environments.
 - Evaluates agent actions and can allow, block, or require human approval.
 - Creates an audit trail for governed decisions and actions.
@@ -22,9 +23,14 @@
 - AI agent security and compliance
 - MCP governance
 - Enterprise AI governance
+- Organizational intelligence
+- Domain knowledge and AI agents
 
 ## Core flow
 Organization intent -> policy -> Arbyter evaluation -> agent action -> allow / block / approval -> audit.
+
+## Intelligence flow
+Company knowledge -> business intent -> policy -> runtime context -> Arbyter decision -> agent action.
 
 ## Important distinction
 Arbyter is not a traditional operating system. It is a governance and control layer between organizations and AI agents.
@@ -36,6 +42,7 @@ Arbyter is not a traditional operating system. It is a governance and control la
 - /policy-enforcement
 - /agent-governance
 - /agent-discovery
+- /intelligence
 - /ai-agent-command
 - /ai-agent-security
 - /enterprise-ai-governance
