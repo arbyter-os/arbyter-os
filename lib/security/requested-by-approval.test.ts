@@ -4,7 +4,8 @@ import path from "node:path"
 import test from "node:test"
 
 const read = (relative: string) =>
-  fs.readFileSync(path.join(process.cwd(), relative), "utf8")
+  // Normalise CRLF to LF so multi-line and ordering assertions hold on Windows checkouts too.
+  fs.readFileSync(path.join(process.cwd(), relative), "utf8").replace(/\r\n/g, "\n")
 
 const executionApproval = read("lib/execution/approval.ts")
 const genericApproval = read("lib/approvals/approval.ts")

@@ -2,11 +2,14 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { readFileSync } from "node:fs"
 
-const sourceRoute = readFileSync("./app/api/discovery/sources/route.ts", "utf8")
-const runScan = readFileSync("./lib/discovery/run-scan.ts", "utf8")
-const helper = readFileSync("./lib/credentials/mcp.ts", "utf8")
-const client = readFileSync("./app/(app)/discovery/page.tsx", "utf8")
-const mcpRoute = readFileSync("./app/api/discovery/mcp/route.ts", "utf8")
+// Normalise CRLF to LF so multi-line string assertions hold on Windows checkouts too.
+const read = (relative: string) => readFileSync(relative, "utf8").replace(/\r\n/g, "\n")
+
+const sourceRoute = read("./app/api/discovery/sources/route.ts")
+const runScan = read("./lib/discovery/run-scan.ts")
+const helper = read("./lib/credentials/mcp.ts")
+const client = read("./app/(app)/discovery/page.tsx")
+const mcpRoute = read("./app/api/discovery/mcp/route.ts")
 
 test("MCP source storage strips plaintext authorization before database persistence", () => {
   assert.ok(sourceRoute.includes("requestedMcpAuthorization(rawConfiguration)"))
