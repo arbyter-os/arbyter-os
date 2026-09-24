@@ -1,0 +1,65 @@
+{
+  "profiles": {
+    "org-replay-alpha": {
+      "description": "Single-org replay profile for the production Chat pipeline. One active agent with one healthy agentmail connection (send+reply enabled, read disabled). No credentials values are stored here; Stage 4 provisions a throwaway agentmail credential through the real credentials flow.",
+      "organization": {
+        "organization_id": "a1000000-0000-4000-8000-000000000001",
+        "name": "Replay Alpha",
+        "plan": "starter"
+      },
+      "users": [
+        {
+          "user_id": "a1000000-0000-4000-8000-000000000011",
+          "role": "owner",
+          "email": "owner@replay-alpha.test",
+          "mfa": "either (ARBYTER_REQUIRE_MFA=false locally, or owner with active AAL2)"
+        },
+        {
+          "user_id": "a1000000-0000-4000-8000-000000000022",
+          "role": "member",
+          "email": "member@replay-alpha.test",
+          "mfa": "not enrolled (member never reaches the MFA gate)"
+        }
+      ],
+      "agents": [
+        {
+          "agent_id": "b1000000-0000-4000-8000-000000000001",
+          "name": "Maildesk Agent",
+          "status": "active",
+          "framework": "custom"
+        }
+      ],
+      "agent_connections": [
+        {
+          "connection_id": "c1000000-0000-4000-8000-000000000001",
+          "agent_id": "b1000000-0000-4000-8000-000000000001",
+          "provider": "agentmail",
+          "status": "connected",
+          "health_status": "healthy",
+          "environment": "production",
+          "capabilities": {
+            "messages.send": true,
+            "messages.reply": true,
+            "messages.read": false
+          }
+        }
+      ],
+      "agent_identities": [
+        {
+          "agent_id": "b1000000-0000-4000-8000-000000000001",
+          "verified": false,
+          "note": "identity.verified exists in agent_identities but the production discovery path never consults it; selection therefore never uses it today"
+        }
+      ],
+      "credentials": {
+        "note": "agentmail credential for connection c1000000-...-0001 is provisioned via POST /api/agents/credentials (owner-only) during Stage 4 setup and stored in Supabase Vault. Values never appear in dataset files."
+      },
+      "provisioning_notes": [
+        "Create org + users via auth.users insert; handle_new_user trigger provisions public.users with role owner for the first user; set member role explicitly.",
+        "Insert ai_agents and agent_connections rows with the fixed IDs above.",
+        "Seed governance_policies / governance_policy_rules per-example from the example's stage 4 rules array (enabled, active, effective now).",
+        "Runtime-generated IDs (executions, governance decisions, approvals) are created by the pipeline and must not be preset."
+      ]
+    }
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "example_id": "ex-10-undeliverable-mapping",
+    "schema_version": "stage3-1.0",
+    "pipeline": "production-chat",
+    "profile_id": "org-replay-alpha",
+    "tags": ["T"],
+    "distribution_slot": "UNDELIVERABLE_REQUEST",
+    "decision_label": "UNDELIVERABLE_REQUEST",
+    "spec_mapping": "No section 10 primitive; production input-contract enforcement (spec sections 12 and 35 support contract validation and fail-closed posture).",
+    "notes": "The intent is deliverable ('send the sales report to Ali') but cannot satisfy the connector contract: 'Ali' is not a usable email, so mapIntentParametersToConnectorPayload throws before the execution row is created. Mirrors the tested production path (tests/intent-connector-e2e.test.ts)."
+  },
+  "stages": {
+    "s1": {
+      "request_text": "Send the sales report to Ali",
+      "channel": "chat",
+      "actor": { "role": "owner", "user_id": "a1000000-0000-4000-8000-000000000011" },
+      "org": { "organization_id": "a1000000-0000-4000-8000-000000000001" }
+    },
+    "s2": {
+      "generated": true,
+      "intent": "send_report",
+      "action": "send_email",
+      "parameters": {
+        "recipient": "Ali",
+        "document": "sales report"
+      },
+      "required_capabilities": ["messages.send"],
+      "canonical_note": "Production-faithful parse: recipient 'Ali' is extracted verbatim; the intent engine does not resolve names to addresses (explicit 'do not invent values' prompt rule)."
+    },
+    "s3": {
+      "reached": true,
+      "candidates": [
+        {
+          "agentId": "b1000000-0000-4000-8000-000000000001",
+          "agentName": "Maildesk Agent",
+          "connectionId": "c1000000-0000-4000-8000-000000000001",
+          "provider": "agentmail",
+          "capabilities": { "messages.send": true, "messages.reply": true, "messages.read": false }
+        }
+      ],
+      "discovery_filters_applied": [
+        "connection.status='connected'",
+        "connection.health_status!='unhealthy'",
+        "agent.status!='paused'",
+        "provider registered in connector registry",
+        "all required capabilities enabled on connection"
+      ]
+    },
+    "s4": {
+      "reached": false,
+      "rules": [],
+      "evaluation_context": {
+        "action": "messages.send",
+        "tool": "agentmail",
+        "agentId": "b1000000-0000-4000-8000-000000000001",
+        "agentConnectionId": "c1000000-0000-4000-8000-000000000001",
+        "environment": "production",
+        "data": { "recipient": "Ali", "document": "sales report" }
+      },
+      "reached_note": "Governance never runs: the mapping failure precedes execution-row creation, so there is no execution for governance to evaluate."
+    },
+    "s5": { "reached": false, "risk_level": "low", "derivation": "Not evaluated: contract mapping failed before governance." },
+    "s6": {
+      "reached": true,
+      "agent": { "id": "b1000000-0000-4000-8000-000000000001", "name": "Maildesk Agent", "status": "active" },
+      "connection": {
+        "id": "c1000000-0000-4000-8000-000000000001",
+        "provider": "agentmail",
+        "status": "connected",
+        "health_status": "healthy",
+        "capabilities": { "messages.send": true, "messages.reply": true, "messages.read": false },
+        "environment": "production"
+      },
+      "identity_declared": { "verified": false, "provider": null, "version": null, "owner_id": null },
+      "identity_used_in_selection": false
+    },
+    "s7": {
+      "role_gate": "owner",
+      "mfa_gate": "skipped-by-flag",
+      "rate_limits": {
+        "execute_per_min_per_user": 30,
+        "gemini_budget_per_5min_per_user": 10,
+        "approvals_per_min": 10,
+        "body_cap_bytes": 262144,
+        "message_cap_bytes": 32768,
+        "fail_closed": true
+      },
+      "capability_enablement": "messages.send enabled on connection and supported by the agentmail connector; all routing checks pass.",
+      "connector_contract_mapping": "FAILS HERE: normalizeRecipient rejects 'Ali' (not a usable email) -> IntentMappingError -> route returns 400 {error, code:'INTENT_MAPPING_FAILED'}; no execution row, no governance, no audit burn."
+    },
+    "s8": {
+      "decision_label": "UNDELIVERABLE_REQUEST",
+      "decision_subtype": "intent_mapping_failed_400",
+      "deciding_rule": { "ruleId": null, "reason": "Intent parameter recipient is not a usable email address." },
+      "execution_status": null,
+      "terminal_status": null,
+      "http_contract": { "status": 400, "body_shape": "{error:'The request could not be mapped to a connector action.', code:'INTENT_MAPPING_FAILED'}" },
+      "approval_request": null,
+      "ordering_note": "Route: auth -> org -> owner/admin -> MFA gate -> body validation -> orchestration: intent -> discovery -> selection -> engine: capability checks -> connector-contract mapping THROWS -> 400 before claimTask/execution insert. Specific contract reason stays in server logs only; client gets the fixed message."
+    },
+    "s9": {
+      "reached": false,
+      "records_written": [],
+      "records_note": "Zero records: mapping precedes execution-row creation by design (contract violations cannot burn governance/audit state). The detailed reason is logged server-side only."
+    }
+  }
+}

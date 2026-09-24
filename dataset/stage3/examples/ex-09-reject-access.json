@@ -1,0 +1,79 @@
+{
+  "meta": {
+    "example_id": "ex-09-reject-access",
+    "schema_version": "stage3-1.0",
+    "pipeline": "production-chat",
+    "profile_id": "org-replay-alpha",
+    "tags": ["T"],
+    "distribution_slot": "REJECT_ACCESS",
+    "decision_label": "REJECT_ACCESS",
+    "spec_mapping": "No section 10 primitive; zero-trust posture per sections 15 and 35 (production identity/role gates).",
+    "notes": "Member-role user sends a plausible send request; the owner/admin gate rejects at the route before any LLM call, so stages 3-7 are unreached and no governance or audit rows exist. Gemini budget is not consumed."
+  },
+  "stages": {
+    "s1": {
+      "request_text": "Send the onboarding checklist to chris@example.com",
+      "channel": "chat",
+      "actor": { "role": "member", "user_id": "a1000000-0000-4000-8000-000000000022" },
+      "org": { "organization_id": "a1000000-0000-4000-8000-000000000001" }
+    },
+    "s2": {
+      "generated": false,
+      "intent": "",
+      "action": "",
+      "parameters": {},
+      "required_capabilities": [],
+      "canonical_note": "Not generated: the request never reaches the intent engine (role gate fires first). Empty intent is the honest representation."
+    },
+    "s3": { "reached": false, "candidates": [] },
+    "s4": {
+      "reached": false,
+      "rules": [],
+      "evaluation_context": {
+        "action": "messages.send",
+        "tool": "agentmail",
+        "agentId": "b1000000-0000-4000-8000-000000000001",
+        "agentConnectionId": "c1000000-0000-4000-8000-000000000001",
+        "environment": "production",
+        "data": {}
+      }
+    },
+    "s5": { "reached": false, "risk_level": "low", "derivation": "Not evaluated: request rejected before governance." },
+    "s6": {
+      "reached": false,
+      "agent": null,
+      "connection": null,
+      "identity_declared": { "verified": false, "provider": null, "version": null, "owner_id": null },
+      "identity_used_in_selection": false
+    },
+    "s7": {
+      "role_gate": "member",
+      "mfa_gate": "not-reached",
+      "rate_limits": {
+        "execute_per_min_per_user": 30,
+        "gemini_budget_per_5min_per_user": 10,
+        "approvals_per_min": 10,
+        "body_cap_bytes": 262144,
+        "message_cap_bytes": 32768,
+        "fail_closed": true
+      },
+      "capability_enablement": "Never assessed: authorization precedes capability checks.",
+      "connector_contract_mapping": "Never reached."
+    },
+    "s8": {
+      "decision_label": "REJECT_ACCESS",
+      "decision_subtype": "not_owner_or_admin_403",
+      "deciding_rule": { "ruleId": null, "reason": "Only an owner or admin can execute connectors." },
+      "execution_status": null,
+      "terminal_status": null,
+      "http_contract": { "status": 403, "body_shape": "{error:'Only an owner or admin can execute connectors.'}" },
+      "approval_request": null,
+      "ordering_note": "Proxy passes authentication and MFA policy -> route authenticates user (401 if absent) -> profile lookup -> authorizeConnectorExecution rejects member role -> 403 returned; no intent, no execution row, no governance evaluation."
+    },
+    "s9": {
+      "reached": false,
+      "records_written": [],
+      "records_note": "Zero records: authorization failure precedes execution-row creation. Rejection is observable only in the HTTP response and server logs."
+    }
+  }
+}

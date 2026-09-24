@@ -1,0 +1,205 @@
+{
+  "meta": {
+    "example_id": "ex-06-block",
+    "schema_version": "stage3-1.0",
+    "pipeline": "production-chat",
+    "profile_id": "org-replay-alpha",
+    "tags": [
+      "T"
+    ],
+    "distribution_slot": "BLOCK",
+    "decision_label": "BLOCK",
+    "spec_mapping": "SPEC-V4-MASTER section 10 primitive DENY (canonical label BLOCK per approved taxonomy).",
+    "notes": "Highest-weight rule is a security block on customer-list exports; execution stops before the connector call and the audit records the denial."
+  },
+  "stages": {
+    "s1": {
+      "request_text": "Email the customer list export to alex@example.com",
+      "channel": "chat",
+      "actor": {
+        "role": "owner",
+        "user_id": "a1000000-0000-4000-8000-000000000011"
+      },
+      "org": {
+        "organization_id": "a1000000-0000-4000-8000-000000000001"
+      }
+    },
+    "s2": {
+      "generated": true,
+      "intent": "send_export",
+      "action": "send_email",
+      "parameters": {
+        "recipient": "alex@example.com",
+        "document": "customer list export"
+      },
+      "required_capabilities": [
+        "messages.send"
+      ],
+      "canonical_note": "Single capability messages.send; document feeds subject and text fallbacks in mapSend."
+    },
+    "s3": {
+      "reached": true,
+      "candidates": [
+        {
+          "agentId": "b1000000-0000-4000-8000-000000000001",
+          "agentName": "Maildesk Agent",
+          "connectionId": "c1000000-0000-4000-8000-000000000001",
+          "provider": "agentmail",
+          "capabilities": {
+            "messages.send": true,
+            "messages.reply": true,
+            "messages.read": false
+          }
+        }
+      ],
+      "discovery_filters_applied": [
+        "connection.status='connected'",
+        "connection.health_status!='unhealthy'",
+        "agent.status!='paused'",
+        "provider registered in connector registry",
+        "all required capabilities enabled on connection"
+      ]
+    },
+    "s4": {
+      "reached": true,
+      "rules": [
+        {
+          "id": "rule-block-export-001",
+          "policyId": "pol-sec-001",
+          "policyName": "Data Exfiltration Guardrails",
+          "policyType": "security_policy",
+          "name": "Block customer list exports",
+          "description": "Customer data exports by email are prohibited.",
+          "ruleType": "block",
+          "effect": "block",
+          "conditions": {
+            "action": "messages.send",
+            "data.document": "customer list export"
+          },
+          "priority": 100,
+          "enabled": true,
+          "sourceType": "security",
+          "authority": "Replay Alpha security team",
+          "jurisdiction": null,
+          "sector": null,
+          "effectiveFrom": null,
+          "effectiveUntil": null,
+          "version": "1",
+          "scope": {},
+          "exceptions": {}
+        }
+      ],
+      "evaluation_context": {
+        "action": "messages.send",
+        "tool": "agentmail",
+        "agentId": "b1000000-0000-4000-8000-000000000001",
+        "agentConnectionId": "c1000000-0000-4000-8000-000000000001",
+        "environment": "production",
+        "data": {
+          "recipient": "alex@example.com",
+          "document": "customer list export"
+        }
+      },
+      "context_matches_rules": "Both conditions match: action equals messages.send and the nested path data.document equals 'customer list export'."
+    },
+    "s5": {
+      "reached": true,
+      "risk_level": "high",
+      "derivation": "calculateRisk: block-effect rule triggered so risk floor is high; conditions.risk absent so no higher level."
+    },
+    "s6": {
+      "reached": true,
+      "agent": {
+        "id": "b1000000-0000-4000-8000-000000000001",
+        "name": "Maildesk Agent",
+        "status": "active"
+      },
+      "connection": {
+        "id": "c1000000-0000-4000-8000-000000000001",
+        "provider": "agentmail",
+        "status": "connected",
+        "health_status": "healthy",
+        "capabilities": {
+          "messages.send": true,
+          "messages.reply": true,
+          "messages.read": false
+        },
+        "environment": "production"
+      },
+      "identity_declared": {
+        "verified": false,
+        "provider": null,
+        "version": null,
+        "owner_id": null
+      },
+      "identity_used_in_selection": false
+    },
+    "s7": {
+      "role_gate": "owner",
+      "mfa_gate": "skipped-by-flag",
+      "rate_limits": {
+        "execute_per_min_per_user": 30,
+        "gemini_budget_per_5min_per_user": 10,
+        "approvals_per_min": 10,
+        "body_cap_bytes": 262144,
+        "message_cap_bytes": 32768,
+        "fail_closed": true
+      },
+      "capability_enablement": "messages.send enabled on connection and supported by the agentmail connector.",
+      "connector_contract_mapping": "recipient -> to; document -> subject and text fallbacks; mapping succeeds but the block fires before any connector call.",
+      "approval_integrity_hashes": false
+    },
+    "s8": {
+      "decision_label": "BLOCK",
+      "deciding_rule": {
+        "ruleId": "rule-block-export-001",
+        "reason": "Decision determined by rule \"Block customer list exports\" with priority 100."
+      },
+      "execution_status": "blocked",
+      "terminal_status": null,
+      "http_contract": {
+        "status": 200,
+        "body_shape": "{intent,candidates,selectedAgent,execution{status:'blocked'},latencyMs,status:'completed'}"
+      },
+      "approval_request": null,
+      "ordering_note": "Execution row 'running' -> governance BLOCK -> task status 'blocked' -> audit updated with blocked status and reason; connector NOT called; credential resolution skipped."
+    },
+    "s9": {
+      "reached": true,
+      "records_written": [
+        {
+          "table": "agent_executions",
+          "columns": [
+            "status",
+            "risk_level",
+            "output_data",
+            "error_message",
+            "completed_at"
+          ],
+          "note": "status='blocked'; error_message carries the governance reason; completed_at set"
+        },
+        {
+          "table": "governance_decisions",
+          "columns": [
+            "decision",
+            "risk_level",
+            "reason",
+            "policy_id",
+            "decided_at"
+          ],
+          "note": "decision='blocked'"
+        },
+        {
+          "table": "policy_evaluations",
+          "columns": [
+            "policy_id",
+            "policy_rule_id",
+            "result",
+            "explanation"
+          ],
+          "note": "one row: matched"
+        }
+      ]
+    }
+  }
+}

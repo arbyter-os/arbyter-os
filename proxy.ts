@@ -3,7 +3,11 @@ import { createContentSecurityPolicy } from "@/lib/security/content-security-pol
 import { NextResponse, type NextRequest } from "next/server"
 import { checkRateLimit, getClientIp } from "@/lib/security/rate-limit"
 import { getSupabaseConfig } from "@/lib/security/supabase-config"
-import { isPrivilegedMfaRequiredError, requirePrivilegedMfa } from "@/lib/security/privileged-auth"
+import {
+  isPrivilegedAuthorizationError,
+  isPrivilegedMfaRequiredError,
+  requirePrivilegedMfa,
+} from "@/lib/security/privileged-auth"
 import { RATE_LIMITS } from "@/lib/security/rate-limit-config"
 
 function applySecurityHeaders(response: NextResponse) {
@@ -161,6 +165,17 @@ export async function updateSession(request: NextRequest) {
         if (isPrivilegedMfaRequiredError(error)) {
           return NextResponse.json(
             { error: "Additional authentication is required for this action." },
+            { status: 403 },
+          )
+        }
+        // requirePrivilegedMfa runs the owner/admin role check before the AAL2
+        // check, so a non-privileged user is denied here too. That denial is a
+        // normal authorization outcome and must surface as 403 — returning the
+        // generic 503 below would misreport it as an infrastructure failure
+        // (Stage 4 finding D-4).
+        if (isPrivilegedAuthorizationError(error)) {
+          return NextResponse.json(
+            { error: "Only an owner or admin can perform this action." },
             { status: 403 },
           )
         }

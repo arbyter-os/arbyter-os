@@ -31,6 +31,7 @@ export function getSupabaseConfig() { return { url: "http://supabase.local", pub
 const privilegedAuthStub = `
 export async function requirePrivilegedMfa() {}
 export function isPrivilegedMfaRequiredError() { return false }
+export function isPrivilegedAuthorizationError() { return false }
 `
 
 const cspStub = `export function createContentSecurityPolicy() { return { nonce: "test", policy: "default-src 'self'" } }`

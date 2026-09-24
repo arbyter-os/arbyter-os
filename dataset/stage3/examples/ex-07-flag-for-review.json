@@ -1,0 +1,203 @@
+{
+  "meta": {
+    "example_id": "ex-07-flag-for-review",
+    "schema_version": "stage3-1.0",
+    "pipeline": "production-chat",
+    "profile_id": "org-replay-alpha",
+    "tags": [
+      "T"
+    ],
+    "distribution_slot": "FLAG_FOR_REVIEW",
+    "decision_label": "FLAG_FOR_REVIEW",
+    "spec_mapping": "No direct section 10 primitive; adjacent to section O (dynamic risk tiering). Production-only outcome, kept separate per approved taxonomy.",
+    "notes": "A flag rule wins resolution: execution is recorded 'flagged', no approval_requests row is created and the connector is NOT called. Today's Chat UI shows the same approval bubble as awaiting_approval (known UX conflation, flagged not resolved)."
+  },
+  "stages": {
+    "s1": {
+      "request_text": "Send the draft pricing memo to riley@example.com",
+      "channel": "chat",
+      "actor": {
+        "role": "owner",
+        "user_id": "a1000000-0000-4000-8000-000000000011"
+      },
+      "org": {
+        "organization_id": "a1000000-0000-4000-8000-000000000001"
+      }
+    },
+    "s2": {
+      "generated": true,
+      "intent": "send_memo",
+      "action": "send_email",
+      "parameters": {
+        "recipient": "riley@example.com",
+        "document": "draft pricing memo"
+      },
+      "required_capabilities": [
+        "messages.send"
+      ],
+      "canonical_note": "Single capability messages.send; document feeds subject and text fallbacks."
+    },
+    "s3": {
+      "reached": true,
+      "candidates": [
+        {
+          "agentId": "b1000000-0000-4000-8000-000000000001",
+          "agentName": "Maildesk Agent",
+          "connectionId": "c1000000-0000-4000-8000-000000000001",
+          "provider": "agentmail",
+          "capabilities": {
+            "messages.send": true,
+            "messages.reply": true,
+            "messages.read": false
+          }
+        }
+      ],
+      "discovery_filters_applied": [
+        "connection.status='connected'",
+        "connection.health_status!='unhealthy'",
+        "agent.status!='paused'",
+        "provider registered in connector registry",
+        "all required capabilities enabled on connection"
+      ]
+    },
+    "s4": {
+      "reached": true,
+      "rules": [
+        {
+          "id": "rule-flag-pricing-001",
+          "policyId": "pol-gov-001",
+          "policyName": "Financial Communications Watchlist",
+          "policyType": "company_policy",
+          "name": "Flag pricing communications",
+          "description": "Pricing-related outbound messages are flagged for review.",
+          "ruleType": "flag",
+          "effect": "flag",
+          "conditions": {
+            "action": "messages.send",
+            "data.document": "draft pricing memo"
+          },
+          "priority": 60,
+          "enabled": true,
+          "sourceType": "company",
+          "authority": "Replay Alpha finance policy",
+          "jurisdiction": null,
+          "sector": null,
+          "effectiveFrom": null,
+          "effectiveUntil": null,
+          "version": "1",
+          "scope": {},
+          "exceptions": {}
+        }
+      ],
+      "evaluation_context": {
+        "action": "messages.send",
+        "tool": "agentmail",
+        "agentId": "b1000000-0000-4000-8000-000000000001",
+        "agentConnectionId": "c1000000-0000-4000-8000-000000000001",
+        "environment": "production",
+        "data": {
+          "recipient": "riley@example.com",
+          "document": "draft pricing memo"
+        }
+      }
+    },
+    "s5": {
+      "reached": true,
+      "risk_level": "medium",
+      "derivation": "calculateRisk: a triggered rule without conditions.risk normalizes to medium (production normalizeRisk default); Corrected by Stage 3 validation replay to match production semantics."
+    },
+    "s6": {
+      "reached": true,
+      "agent": {
+        "id": "b1000000-0000-4000-8000-000000000001",
+        "name": "Maildesk Agent",
+        "status": "active"
+      },
+      "connection": {
+        "id": "c1000000-0000-4000-8000-000000000001",
+        "provider": "agentmail",
+        "status": "connected",
+        "health_status": "healthy",
+        "capabilities": {
+          "messages.send": true,
+          "messages.reply": true,
+          "messages.read": false
+        },
+        "environment": "production"
+      },
+      "identity_declared": {
+        "verified": false,
+        "provider": null,
+        "version": null,
+        "owner_id": null
+      },
+      "identity_used_in_selection": false
+    },
+    "s7": {
+      "role_gate": "owner",
+      "mfa_gate": "skipped-by-flag",
+      "rate_limits": {
+        "execute_per_min_per_user": 30,
+        "gemini_budget_per_5min_per_user": 10,
+        "approvals_per_min": 10,
+        "body_cap_bytes": 262144,
+        "message_cap_bytes": 32768,
+        "fail_closed": true
+      },
+      "capability_enablement": "messages.send enabled on connection and supported by the agentmail connector.",
+      "connector_contract_mapping": "recipient -> to; document -> subject and text fallbacks; mapping succeeds but the flag stops execution before the connector call.",
+      "approval_integrity_hashes": false
+    },
+    "s8": {
+      "decision_label": "FLAG_FOR_REVIEW",
+      "deciding_rule": {
+        "ruleId": "rule-flag-pricing-001",
+        "reason": "Decision determined by rule \"Flag pricing communications\" with priority 60."
+      },
+      "execution_status": "flagged",
+      "terminal_status": null,
+      "http_contract": {
+        "status": 200,
+        "body_shape": "{intent,candidates,selectedAgent,execution{status:'flagged'},latencyMs,status:'completed'}"
+      },
+      "approval_request": null,
+      "ordering_note": "Execution row 'running' -> governance FLAG -> status 'flagged' -> audit updated; NO approval row is created (this is the observable difference from REQUIRE_APPROVAL) and the connector is NOT called. Governance audit maps FLAG to decision 'pending'."
+    },
+    "s9": {
+      "reached": true,
+      "records_written": [
+        {
+          "table": "agent_executions",
+          "columns": [
+            "status",
+            "risk_level",
+            "output_data",
+            "completed_at"
+          ],
+          "note": "status='flagged'; completed_at stays null"
+        },
+        {
+          "table": "governance_decisions",
+          "columns": [
+            "decision",
+            "risk_level",
+            "reason",
+            "policy_id",
+            "decided_at"
+          ],
+          "note": "decision='pending' (FLAG maps to pending in governance audit)"
+        },
+        {
+          "table": "policy_evaluations",
+          "columns": [
+            "policy_id",
+            "policy_rule_id",
+            "result",
+            "explanation"
+          ],
+          "note": "one row: matched"
+        }
+      ]
+    }
+  }
+}

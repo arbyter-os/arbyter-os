@@ -1,0 +1,113 @@
+{
+  "meta": {
+    "example_id": "ex-08-no-route",
+    "schema_version": "stage3-1.0",
+    "pipeline": "production-chat",
+    "profile_id": "org-replay-alpha",
+    "tags": [
+      "T"
+    ],
+    "distribution_slot": "NO_ROUTE",
+    "decision_label": "NO_ROUTE",
+    "spec_mapping": "No section 10 primitive; production orchestration terminal state.",
+    "notes": "Read-only capability request but no connection enables messages.read; discovery returns zero candidates; pipeline ends before governance. Governance-only stages are marked reached=false with empty content, honestly reflecting production."
+  },
+  "stages": {
+    "s1": {
+      "request_text": "Show me the latest inbox messages",
+      "channel": "chat",
+      "actor": {
+        "role": "owner",
+        "user_id": "a1000000-0000-4000-8000-000000000011"
+      },
+      "org": {
+        "organization_id": "a1000000-0000-4000-8000-000000000001"
+      }
+    },
+    "s2": {
+      "generated": true,
+      "intent": "read_messages",
+      "action": "read_inbox",
+      "parameters": {},
+      "required_capabilities": [
+        "messages.read"
+      ],
+      "canonical_note": "messages.read is a canonical capability but the profile's connection does not enable it; no parameters required."
+    },
+    "s3": {
+      "reached": true,
+      "candidates": [],
+      "discovery_filters_applied": [
+        "connection.status='connected'",
+        "connection.health_status!='unhealthy'",
+        "agent.status!='paused'",
+        "provider registered in connector registry",
+        "all required capabilities enabled on connection"
+      ]
+    },
+    "s4": {
+      "reached": false,
+      "rules": [],
+      "evaluation_context": {
+        "action": "messages.read",
+        "tool": "agentmail",
+        "agentId": "b1000000-0000-4000-8000-000000000001",
+        "agentConnectionId": "c1000000-0000-4000-8000-000000000001",
+        "environment": "production",
+        "data": {}
+      }
+    },
+    "s5": {
+      "reached": false,
+      "risk_level": "low",
+      "derivation": "Not evaluated: pipeline terminated at discovery."
+    },
+    "s6": {
+      "reached": false,
+      "agent": null,
+      "connection": null,
+      "identity_declared": {
+        "verified": false,
+        "provider": null,
+        "version": null,
+        "owner_id": null
+      },
+      "identity_used_in_selection": false
+    },
+    "s7": {
+      "role_gate": "owner",
+      "mfa_gate": "skipped-by-flag",
+      "rate_limits": {
+        "execute_per_min_per_user": 30,
+        "gemini_budget_per_5min_per_user": 10,
+        "approvals_per_min": 10,
+        "body_cap_bytes": 262144,
+        "message_cap_bytes": 32768,
+        "fail_closed": true
+      },
+      "capability_enablement": "No connection enables messages.read, so the capability check fails at discovery; later per-connection checks are never reached.",
+      "connector_contract_mapping": "Not reached: no connector payload is ever mapped."
+    },
+    "s8": {
+      "decision_label": "NO_ROUTE",
+      "decision_subtype": "no_compatible_agent",
+      "deciding_rule": {
+        "ruleId": null,
+        "reason": "No connection in the organization enables messages.read, so discovery returned zero candidates."
+      },
+      "execution_status": null,
+      "terminal_status": "no_compatible_agent",
+      "http_contract": {
+        "status": 200,
+        "body_shape": "{intent,candidates:[],selectedAgent:null,execution:null,latencyMs,status:'no_compatible_agent'}"
+      },
+      "approval_request": null,
+      "ordering_note": "Intent yields one capability -> discoverAgents returns zero rows -> orchestration returns no_compatible_agent before governance; no execution row is ever created."
+    },
+    "s9": {
+      "reached": false,
+      "records_written": [],
+      "records_note": "Zero records: the pipeline ends before any execution row exists (production-accurate for discovery failure pre-governance)."
+    }
+  }
+}

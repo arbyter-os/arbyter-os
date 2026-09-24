@@ -1,0 +1,1406 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "arbyter-training/stage3-example-schema",
+  "title": "Arbyter OS Stage 3 training example (9-stage canonical schema, [T] examples only)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "meta",
+    "stages"
+  ],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "example_id",
+        "schema_version",
+        "pipeline",
+        "profile_id",
+        "tags",
+        "decision_label"
+      ],
+      "properties": {
+        "example_id": {
+          "type": "string",
+          "pattern": "^ex-[0-9]{2}-[a-z0-9-]+$"
+        },
+        "schema_version": {
+          "const": "stage3-1.0"
+        },
+        "pipeline": {
+          "const": "production-chat"
+        },
+        "profile_id": {
+          "const": "org-replay-alpha"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "const": "T"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "distribution_slot": {
+          "type": "string",
+          "enum": [
+            "ALLOW",
+            "REQUIRE_APPROVAL",
+            "BLOCK",
+            "FLAG_FOR_REVIEW",
+            "NO_ROUTE",
+            "REJECT_ACCESS",
+            "UNDELIVERABLE_REQUEST"
+          ]
+        },
+        "decision_label": {
+          "enum": [
+            "ALLOW",
+            "REQUIRE_APPROVAL",
+            "FLAG_FOR_REVIEW",
+            "BLOCK",
+            "NO_ROUTE",
+            "REJECT_ACCESS",
+            "THROTTLED",
+            "UNDELIVERABLE_REQUEST",
+            "UPSTREAM_UNAVAILABLE"
+          ]
+        },
+        "spec_mapping": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "s1",
+        "s2",
+        "s3",
+        "s4",
+        "s5",
+        "s6",
+        "s7",
+        "s8",
+        "s9"
+      ],
+      "properties": {
+        "s1": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "request_text",
+            "actor",
+            "org",
+            "channel"
+          ],
+          "properties": {
+            "request_text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "channel": {
+              "const": "chat"
+            },
+            "actor": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "role"
+              ],
+              "properties": {
+                "role": {
+                  "enum": [
+                    "owner",
+                    "admin",
+                    "member"
+                  ]
+                },
+                "user_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f-]{36}$"
+                }
+              }
+            },
+            "org": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "organization_id"
+              ],
+              "properties": {
+                "organization_id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f-]{36}$"
+                }
+              }
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "s2": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "intent",
+            "action",
+            "parameters",
+            "required_capabilities",
+            "generated"
+          ],
+          "properties": {
+            "generated": {
+              "type": "boolean"
+            },
+            "intent": {
+              "type": "string"
+            },
+            "action": {
+              "type": "string"
+            },
+            "parameters": {
+              "type": "object",
+              "propertyNames": {
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required_capabilities": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "messages.send",
+                  "messages.read",
+                  "messages.reply"
+                ]
+              },
+              "maxItems": 1
+            },
+            "canonical_note": {
+              "type": "string"
+            },
+            "llm_variants": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "intent",
+                  "action",
+                  "parameters",
+                  "required_capabilities"
+                ],
+                "properties": {
+                  "intent": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "action": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "parameters": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required_capabilities": {
+                    "type": "array",
+                    "items": {
+                      "enum": [
+                        "messages.send",
+                        "messages.read",
+                        "messages.reply"
+                      ]
+                    },
+                    "maxItems": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "s3": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reached",
+            "candidates"
+          ],
+          "properties": {
+            "reached": {
+              "type": "boolean"
+            },
+            "candidates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "agentId",
+                  "agentName",
+                  "connectionId",
+                  "provider",
+                  "capabilities"
+                ],
+                "properties": {
+                  "agentId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f-]{36}$"
+                  },
+                  "agentName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "connectionId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f-]{36}$"
+                  },
+                  "provider": {
+                    "const": "agentmail"
+                  },
+                  "capabilities": {
+                    "type": "object",
+                    "additionalProperties": {
+                      "type": "boolean"
+                    },
+                    "propertyNames": {
+                      "enum": [
+                        "messages.send",
+                        "messages.read",
+                        "messages.reply"
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "discovery_filters_applied": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "connection.status='connected'",
+                  "connection.health_status!='unhealthy'",
+                  "agent.status!='paused'",
+                  "provider registered in connector registry",
+                  "all required capabilities enabled on connection"
+                ]
+              }
+            }
+          }
+        },
+        "s4": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reached",
+            "rules",
+            "evaluation_context"
+          ],
+          "properties": {
+            "reached": {
+              "type": "boolean"
+            },
+            "reached_note": {
+              "type": "string"
+            },
+            "rules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "policyId",
+                  "policyName",
+                  "name",
+                  "effect",
+                  "conditions",
+                  "priority",
+                  "enabled",
+                  "sourceType",
+                  "scope",
+                  "exceptions"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "policyId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "policyName": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "policyType": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "ruleType": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "effect": {
+                    "enum": [
+                      "allow",
+                      "block",
+                      "require_approval",
+                      "flag"
+                    ]
+                  },
+                  "conditions": {
+                    "type": "object"
+                  },
+                  "priority": {
+                    "type": "integer"
+                  },
+                  "enabled": {
+                    "const": true
+                  },
+                  "sourceType": {
+                    "enum": [
+                      "government",
+                      "regulatory",
+                      "security",
+                      "framework",
+                      "company",
+                      "system",
+                      null
+                    ]
+                  },
+                  "authority": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "jurisdiction": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "sector": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "effectiveFrom": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "effectiveUntil": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "version": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "scope": {
+                    "type": "object"
+                  },
+                  "exceptions": {
+                    "type": "object"
+                  }
+                }
+              }
+            },
+            "evaluation_context": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "action",
+                "tool",
+                "agentId",
+                "agentConnectionId",
+                "environment",
+                "data"
+              ],
+              "properties": {
+                "action": {
+                  "enum": [
+                    "messages.send",
+                    "messages.read",
+                    "messages.reply"
+                  ]
+                },
+                "tool": {
+                  "const": "agentmail"
+                },
+                "agentId": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f-]{36}$"
+                },
+                "agentConnectionId": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f-]{36}$"
+                },
+                "environment": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "data": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "context_matches_rules": {
+              "type": "string"
+            }
+          }
+        },
+        "s5": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reached",
+            "risk_level"
+          ],
+          "properties": {
+            "reached": {
+              "type": "boolean"
+            },
+            "risk_level": {
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "critical"
+              ]
+            },
+            "derivation": {
+              "type": "string"
+            }
+          }
+        },
+        "s6": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reached",
+            "agent",
+            "connection",
+            "identity_declared",
+            "identity_used_in_selection"
+          ],
+          "properties": {
+            "reached": {
+              "type": "boolean"
+            },
+            "agent": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "name",
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f-]{36}$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "enum": [
+                    "active",
+                    "paused"
+                  ]
+                }
+              }
+            },
+            "connection": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "provider",
+                "status",
+                "health_status",
+                "capabilities",
+                "environment"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f-]{36}$"
+                },
+                "provider": {
+                  "const": "agentmail"
+                },
+                "status": {
+                  "const": "connected"
+                },
+                "health_status": {
+                  "enum": [
+                    "healthy",
+                    "degraded"
+                  ]
+                },
+                "capabilities": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  }
+                },
+                "environment": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "identity_declared": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "verified"
+              ],
+              "properties": {
+                "verified": {
+                  "type": "boolean"
+                },
+                "provider": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "version": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "owner_id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "identity_used_in_selection": {
+              "const": false
+            }
+          }
+        },
+        "s7": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role_gate",
+            "mfa_gate",
+            "rate_limits",
+            "capability_enablement",
+            "connector_contract_mapping"
+          ],
+          "properties": {
+            "role_gate": {
+              "enum": [
+                "owner",
+                "admin",
+                "member"
+              ]
+            },
+            "mfa_gate": {
+              "enum": [
+                "required",
+                "skipped-by-flag",
+                "not-reached"
+              ]
+            },
+            "rate_limits": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "execute_per_min_per_user",
+                "gemini_budget_per_5min_per_user",
+                "approvals_per_min",
+                "body_cap_bytes",
+                "message_cap_bytes",
+                "fail_closed"
+              ],
+              "properties": {
+                "execute_per_min_per_user": {
+                  "const": 30
+                },
+                "gemini_budget_per_5min_per_user": {
+                  "const": 10
+                },
+                "approvals_per_min": {
+                  "const": 10
+                },
+                "body_cap_bytes": {
+                  "const": 262144
+                },
+                "message_cap_bytes": {
+                  "const": 32768
+                },
+                "fail_closed": {
+                  "const": true
+                }
+              }
+            },
+            "capability_enablement": {
+              "type": "string"
+            },
+            "connector_contract_mapping": {
+              "type": "string"
+            },
+            "approval_integrity_hashes": {
+              "type": "boolean"
+            }
+          }
+        },
+        "s8": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "decision_label",
+            "deciding_rule",
+            "execution_status",
+            "http_contract",
+            "ordering_note"
+          ],
+          "properties": {
+            "decision_label": {
+              "enum": [
+                "ALLOW",
+                "REQUIRE_APPROVAL",
+                "FLAG_FOR_REVIEW",
+                "BLOCK",
+                "NO_ROUTE",
+                "REJECT_ACCESS",
+                "THROTTLED",
+                "UNDELIVERABLE_REQUEST",
+                "UPSTREAM_UNAVAILABLE"
+              ]
+            },
+            "decision_subtype": {
+              "enum": [
+                "no_compatible_agent",
+                "no_agent_selected",
+                "unsupported_multiple_capabilities",
+                "unauthenticated_401",
+                "not_owner_or_admin_403",
+                "mfa_required_403",
+                "malformed_or_missing_400",
+                "intent_mapping_failed_400",
+                "too_large_413"
+              ]
+            },
+            "deciding_rule": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "ruleId",
+                "reason"
+              ],
+              "properties": {
+                "ruleId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            },
+            "execution_status": {
+              "enum": [
+                "running",
+                "completed",
+                "failed",
+                "blocked",
+                "awaiting_approval",
+                "flagged",
+                null
+              ]
+            },
+            "terminal_status": {
+              "enum": [
+                "completed",
+                "no_compatible_agent",
+                "no_agent_selected",
+                "unsupported_multiple_capabilities",
+                null
+              ]
+            },
+            "http_contract": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "status": {
+                  "enum": [
+                    200,
+                    400,
+                    401,
+                    403,
+                    413,
+                    429,
+                    500,
+                    503
+                  ]
+                },
+                "body_shape": {
+                  "type": "string"
+                }
+              }
+            },
+            "approval_request": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "additionalProperties": false,
+              "required": [
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "status": {
+                  "enum": [
+                    "pending",
+                    "approved",
+                    "rejected"
+                  ]
+                }
+              }
+            },
+            "ordering_note": {
+              "type": "string"
+            }
+          }
+        },
+        "s9": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "reached",
+            "records_written"
+          ],
+          "properties": {
+            "reached": {
+              "type": "boolean"
+            },
+            "records_note": {
+              "type": "string"
+            },
+            "records_written": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "table",
+                  "columns"
+                ],
+                "properties": {
+                  "table": {
+                    "enum": [
+                      "agent_executions",
+                      "governance_decisions",
+                      "policy_evaluations",
+                      "approval_requests",
+                      "server_log"
+                    ]
+                  },
+                  "columns": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "minItems": 1
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s2": {
+                "properties": {
+                  "generated": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s2": {
+                "properties": {
+                  "intent": {
+                    "maxLength": 0
+                  },
+                  "action": {
+                    "maxLength": 0
+                  },
+                  "required_capabilities": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s2": {
+                "properties": {
+                  "generated": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s2": {
+                "properties": {
+                  "intent": {
+                    "minLength": 1
+                  },
+                  "action": {
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "decision_label": {
+                    "const": "ALLOW"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "http_contract": {
+                    "properties": {
+                      "status": {
+                        "const": 200
+                      }
+                    }
+                  },
+                  "execution_status": {
+                    "const": "completed"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "decision_label": {
+                    "const": "REQUIRE_APPROVAL"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "http_contract": {
+                    "properties": {
+                      "status": {
+                        "const": 200
+                      }
+                    }
+                  },
+                  "execution_status": {
+                    "const": "awaiting_approval"
+                  },
+                  "approval_request": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "decision_label": {
+                    "const": "FLAG_FOR_REVIEW"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "http_contract": {
+                    "properties": {
+                      "status": {
+                        "const": 200
+                      }
+                    }
+                  },
+                  "execution_status": {
+                    "const": "flagged"
+                  },
+                  "approval_request": {
+                    "const": null
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "decision_label": {
+                    "const": "BLOCK"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "http_contract": {
+                    "properties": {
+                      "status": {
+                        "const": 200
+                      }
+                    }
+                  },
+                  "execution_status": {
+                    "const": "blocked"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "decision_label": {
+                    "const": "REJECT_ACCESS"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "http_contract": {
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          401,
+                          403
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "decision_label": {
+                    "const": "THROTTLED"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "http_contract": {
+                    "properties": {
+                      "status": {
+                        "const": 429
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "decision_label": {
+                    "const": "UNDELIVERABLE_REQUEST"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "properties": {
+                  "http_contract": {
+                    "properties": {
+                      "status": {
+                        "enum": [
+                          400,
+                          413
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "meta": {
+            "properties": {
+              "decision_label": {
+                "const": "NO_ROUTE"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s8": {
+                "required": [
+                  "decision_subtype",
+                  "terminal_status"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "meta": {
+            "properties": {
+              "decision_label": {
+                "const": "REJECT_ACCESS"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s2": {
+                "properties": {
+                  "generated": {
+                    "const": false
+                  }
+                }
+              },
+              "s3": {
+                "properties": {
+                  "reached": {
+                    "const": false
+                  }
+                }
+              },
+              "s4": {
+                "properties": {
+                  "reached": {
+                    "const": false
+                  }
+                }
+              },
+              "s5": {
+                "properties": {
+                  "reached": {
+                    "const": false
+                  }
+                }
+              },
+              "s9": {
+                "properties": {
+                  "reached": {
+                    "const": false
+                  },
+                  "records_written": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "meta": {
+            "properties": {
+              "decision_label": {
+                "const": "NO_ROUTE"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s4": {
+                "properties": {
+                  "reached": {
+                    "const": false
+                  }
+                }
+              },
+              "s5": {
+                "properties": {
+                  "reached": {
+                    "const": false
+                  }
+                }
+              },
+              "s9": {
+                "properties": {
+                  "reached": {
+                    "const": false
+                  },
+                  "records_written": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "meta": {
+            "properties": {
+              "decision_label": {
+                "const": "UNDELIVERABLE_REQUEST"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "stages": {
+            "properties": {
+              "s9": {
+                "properties": {
+                  "reached": {
+                    "const": false
+                  },
+                  "records_written": {
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

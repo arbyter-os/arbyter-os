@@ -1,0 +1,203 @@
+{
+  "meta": {
+    "example_id": "ex-02-allow-reply",
+    "schema_version": "stage3-1.0",
+    "pipeline": "production-chat",
+    "profile_id": "org-replay-alpha",
+    "tags": [
+      "T"
+    ],
+    "distribution_slot": "ALLOW",
+    "decision_label": "ALLOW",
+    "spec_mapping": "SPEC-V4-MASTER section 10 primitive ALLOW.",
+    "notes": "Second ALLOW flavor: messages.reply capability exercising the mapReply contract (no subject field)."
+  },
+  "stages": {
+    "s1": {
+      "request_text": "Reply to dana@example.com letting her know the invoice was paid",
+      "channel": "chat",
+      "actor": {
+        "role": "owner",
+        "user_id": "a1000000-0000-4000-8000-000000000011"
+      },
+      "org": {
+        "organization_id": "a1000000-0000-4000-8000-000000000001"
+      }
+    },
+    "s2": {
+      "generated": true,
+      "intent": "reply_message",
+      "action": "reply_email",
+      "parameters": {
+        "recipient": "dana@example.com",
+        "message": "The invoice was paid."
+      },
+      "required_capabilities": [
+        "messages.reply"
+      ],
+      "canonical_note": "messages.reply; both required mapReply fields (to, text) are present in intent parameters."
+    },
+    "s3": {
+      "reached": true,
+      "candidates": [
+        {
+          "agentId": "b1000000-0000-4000-8000-000000000001",
+          "agentName": "Maildesk Agent",
+          "connectionId": "c1000000-0000-4000-8000-000000000001",
+          "provider": "agentmail",
+          "capabilities": {
+            "messages.send": true,
+            "messages.reply": true,
+            "messages.read": false
+          }
+        }
+      ],
+      "discovery_filters_applied": [
+        "connection.status='connected'",
+        "connection.health_status!='unhealthy'",
+        "agent.status!='paused'",
+        "provider registered in connector registry",
+        "all required capabilities enabled on connection"
+      ]
+    },
+    "s4": {
+      "reached": true,
+      "rules": [
+        {
+          "id": "rule-allow-mail-002",
+          "policyId": "pol-mail-001",
+          "policyName": "Maildesk Conduct",
+          "policyType": "company_policy",
+          "name": "Allow replies for owners",
+          "description": "Allows messages.reply executions by privileged users.",
+          "ruleType": "allow",
+          "effect": "allow",
+          "conditions": {
+            "action": "messages.reply"
+          },
+          "priority": 10,
+          "enabled": true,
+          "sourceType": "company",
+          "authority": "Replay Alpha IT policy",
+          "jurisdiction": null,
+          "sector": null,
+          "effectiveFrom": null,
+          "effectiveUntil": null,
+          "version": "1",
+          "scope": {},
+          "exceptions": {}
+        }
+      ],
+      "evaluation_context": {
+        "action": "messages.reply",
+        "tool": "agentmail",
+        "agentId": "b1000000-0000-4000-8000-000000000001",
+        "agentConnectionId": "c1000000-0000-4000-8000-000000000001",
+        "environment": "production",
+        "data": {
+          "recipient": "dana@example.com",
+          "message": "The invoice was paid."
+        }
+      }
+    },
+    "s5": {
+      "reached": true,
+      "risk_level": "medium",
+      "derivation": "calculateRisk: a triggered rule without conditions.risk normalizes to medium (production normalizeRisk default); Corrected by Stage 3 validation replay to match production semantics."
+    },
+    "s6": {
+      "reached": true,
+      "agent": {
+        "id": "b1000000-0000-4000-8000-000000000001",
+        "name": "Maildesk Agent",
+        "status": "active"
+      },
+      "connection": {
+        "id": "c1000000-0000-4000-8000-000000000001",
+        "provider": "agentmail",
+        "status": "connected",
+        "health_status": "healthy",
+        "capabilities": {
+          "messages.send": true,
+          "messages.reply": true,
+          "messages.read": false
+        },
+        "environment": "production"
+      },
+      "identity_declared": {
+        "verified": false,
+        "provider": null,
+        "version": null,
+        "owner_id": null
+      },
+      "identity_used_in_selection": false
+    },
+    "s7": {
+      "role_gate": "owner",
+      "mfa_gate": "skipped-by-flag",
+      "rate_limits": {
+        "execute_per_min_per_user": 30,
+        "gemini_budget_per_5min_per_user": 10,
+        "approvals_per_min": 10,
+        "body_cap_bytes": 262144,
+        "message_cap_bytes": 32768,
+        "fail_closed": true
+      },
+      "capability_enablement": "messages.reply enabled on connection and supported by the agentmail connector.",
+      "connector_contract_mapping": "recipient -> to; message -> text; mapReply requires both, succeeds; no subject in reply payload.",
+      "approval_integrity_hashes": false
+    },
+    "s8": {
+      "decision_label": "ALLOW",
+      "deciding_rule": {
+        "ruleId": "rule-allow-mail-002",
+        "reason": "Decision determined by rule \"Allow replies for owners\" with priority 10."
+      },
+      "execution_status": "completed",
+      "terminal_status": null,
+      "http_contract": {
+        "status": 200,
+        "body_shape": "{intent,candidates,selectedAgent,execution{status:'completed',result},latencyMs,status:'completed'}"
+      },
+      "approval_request": null,
+      "ordering_note": "Execution row 'running' -> governance ALLOW -> TOCTOU re-verify -> credential resolution -> connector call -> audit completed."
+    },
+    "s9": {
+      "reached": true,
+      "records_written": [
+        {
+          "table": "agent_executions",
+          "columns": [
+            "status",
+            "risk_level",
+            "output_data",
+            "error_message",
+            "completed_at"
+          ],
+          "note": "updated to completed after connector success"
+        },
+        {
+          "table": "governance_decisions",
+          "columns": [
+            "decision",
+            "risk_level",
+            "reason",
+            "policy_id",
+            "decided_at"
+          ],
+          "note": "decision='allowed'"
+        },
+        {
+          "table": "policy_evaluations",
+          "columns": [
+            "policy_id",
+            "policy_rule_id",
+            "result",
+            "explanation"
+          ],
+          "note": "one row: matched"
+        }
+      ]
+    }
+  }
+}
