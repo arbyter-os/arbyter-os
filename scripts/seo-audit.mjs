@@ -38,7 +38,8 @@ for (const file of files) {
 
   const directH1 = (source.match(/<h1\b/gi) || []).length;
   const pageFrameH1 = /<PageFrame\b/.test(source) ? 1 : 0;
-  const h1Count = directH1 + pageFrameH1;
+  const conceptPageH1 = /<ConceptPage\b/.test(source) ? 1 : 0;
+  const h1Count = directH1 + pageFrameH1 + conceptPageH1;
 
   if (h1Count !== 1) {
     errors.push(`${route}: expected exactly 1 H1, found ${h1Count}`);
