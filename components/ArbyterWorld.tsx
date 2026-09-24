@@ -224,7 +224,19 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     const clock = new THREE.Clock();
     let isVisible = true;
     const visibilityObserver = new IntersectionObserver(([entry]) => {
-      isVisible = entry.isIntersecting;
+      if (entry.isIntersecting) {
+        if (!isVisible) {
+          isVisible = true;
+          if (!animationFrameId) animate();
+        }
+        return;
+      }
+
+      isVisible = false;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = 0;
+      }
     }, { threshold: 0 });
     visibilityObserver.observe(mount);
     const lookTarget = new THREE.Vector3();
@@ -232,12 +244,9 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     let animationFrameId = 0;
 
     const animate = () => {
-      if (!isVisible) {
-        animationFrameId = requestAnimationFrame(animate);
-        return;
-      }
+      if (!isVisible) return;
       animationFrameId = requestAnimationFrame(animate);
-      const elapsed = clock.getElapsedTime();
+      const elapsed = reducedMotion ? 0 : clock.getElapsedTime();
       smoothProgress += (progressRef.current - smoothProgress) * 0.055;
 
       sunMaterial.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
