@@ -44,8 +44,11 @@ for (const file of files) {
     errors.push(`${route}: expected exactly 1 H1, found ${h1Count}`);
   }
 
-  for (const match of source.matchAll(/<(?:img|Image)\b[^>]*\balt\s*=\s*(?:"[^"]*"|'[^']*'|\{[^}]*\})/gi)) {
-    if (!match[0]) errors.push(`${route}: image missing alt`);
+  for (const match of source.matchAll(/<(?:img|Image)\b[^>]*>/gi)) {
+    const tag = match[0];
+    if (!/\balt\s*=\s*(?:"[^"]*"|'[^']*'|\{[^}]*\})/i.test(tag)) {
+      errors.push(`${route}: image missing alt`);
+    }
   }
 
   for (const match of source.matchAll(/href\s*=\s*["'](\/[^"'#?]*)["']/g)) {
