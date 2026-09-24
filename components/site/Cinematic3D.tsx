@@ -19,6 +19,13 @@ export function Cinematic3D() {
     const section = sectionRef.current;
     if (!section) return;
 
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) {
+      setProgress(0);
+      setChapter(0);
+      return;
+    }
+
     let frame = 0;
     const update = () => {
       const rect = section.getBoundingClientRect();
