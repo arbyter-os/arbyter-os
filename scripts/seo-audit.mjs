@@ -15,7 +15,7 @@ function walk(dir) {
 }
 
 function routeFromFile(file) {
-  const rel = path.relative(APP, path.dirname(file)).replaceAll(path.sep, "/");
+  const rel = path.relative(APP, path.dirname(file)).replaceAll(path.sep, "/").replace(/^\/+/, "");
   const cleaned = rel
     .replace(/\([^/]+\)/g, "")
     .replace(/\[[^/]+\]/g, "[dynamic]");
@@ -28,7 +28,7 @@ function stripNonHtml(text) {
     .replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-const files = walk(APP);
+const files = walk(APP).filter((file) => !file.includes(`${path.sep}(app)${path.sep}`));
 const routes = new Set(files.map(routeFromFile));
 const errors = [];
 
