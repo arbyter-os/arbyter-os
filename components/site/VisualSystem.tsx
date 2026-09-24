@@ -62,8 +62,36 @@ export function RuntimeVisual({ mode = "runtime" }: { mode?: Mode }) {
   }, []);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setActive((v) => (v + 1) % 4), 2200);
-    return () => window.clearInterval(timer);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reduceMotion.matches) return;
+
+    let timer = 0;
+    let visible = document.visibilityState === "visible";
+
+    const start = () => {
+      if (!visible || timer) return;
+      timer = window.setInterval(() => setActive((v) => (v + 1) % 4), 2200);
+    };
+
+    const stop = () => {
+      if (!timer) return;
+      window.clearInterval(timer);
+      timer = 0;
+    };
+
+    const onVisibilityChange = () => {
+      visible = document.visibilityState === "visible";
+      if (visible) start();
+      else stop();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    start();
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   return <div ref={ref} className={`runtime-visual visual-${mode}`} aria-label="Arbyter runtime governance visual">
