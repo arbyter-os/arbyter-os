@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "pnpm seo:audit && next build",
     "start": "next start",
     "test": "node --experimental-strip-types --test tests/vertical-slice.test.ts",
     "seo:audit": "node scripts/seo-audit.mjs"
