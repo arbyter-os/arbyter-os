@@ -22,8 +22,8 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     const compactViewport = window.matchMedia("(max-width: 800px)").matches;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#030307");
-    scene.fog = new THREE.FogExp2("#030307", 0.018);
+    scene.background = new THREE.Color("#0b1020");
+    scene.fog = new THREE.FogExp2("#0b1020", 0.014);
 
     const camera = new THREE.PerspectiveCamera(
       42,
