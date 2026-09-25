@@ -66,7 +66,7 @@ export async function POST(
     const organizationId = userRecord.organization_id
     const { data: approval, error: approvalError } = await supabase
       .from("approval_requests")
-      .select("id, organization_id, agent_id, execution_id, requested_by, title, status")
+      .select("id, organization_id, agent_id, execution_id, requested_by, title, status, expires_at")
       .eq("id", approvalId)
       .eq("organization_id", organizationId)
       .maybeSingle()
@@ -78,6 +78,26 @@ export async function POST(
 
     if (approval.status !== "pending") {
       return NextResponse.json({ error: "This approval request has already been resolved." }, { status: 409 })
+    }
+
+    // P0-3: an expired pending approval can no longer be approved. It is
+    // transitioned to the terminal 'expired' status (lazily, at this
+    // boundary) and every later resolve/resume attempt fails closed.
+    const expiresAtMs = approval.expires_at
+      ? new Date(approval.expires_at).getTime()
+      : null
+    if (
+      expiresAtMs === null ||
+      !Number.isFinite(expiresAtMs) ||
+      Date.now() >= expiresAtMs
+    ) {
+      await supabase
+        .from("approval_requests")
+        .update({ status: "expired" })
+        .eq("id", approval.id)
+        .eq("organization_id", organizationId)
+        .eq("status", "pending")
+      return NextResponse.json({ error: "This approval request has expired." }, { status: 409 })
     }
 
     if (!approval.requested_by || typeof approval.requested_by !== "string") {

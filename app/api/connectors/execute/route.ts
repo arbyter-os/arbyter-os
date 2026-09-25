@@ -6,6 +6,11 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { executeAgentTask } from "@/lib/execution/engine"
 import { assertTaskAssignedToAgent } from "@/lib/execution/task-agent-authorization"
+import {
+  requirePrivilegedMfa,
+  isPrivilegedMfaRequiredError,
+  isPrivilegedAuthorizationError,
+} from "@/lib/security/privileged-auth"
 import type { ConnectorCapability } from "@/lib/connectors/types"
 
 export async function POST(request: Request) {
@@ -19,6 +24,31 @@ export async function POST(request: Request) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 })
+    }
+
+    // P0-4: privileged MFA must hold at THIS route boundary, not only in
+    // middleware or deeper in the engine. Direct connector execution is a
+    // privileged external action.
+    try {
+      await requirePrivilegedMfa(supabase, user.id)
+    } catch (error) {
+      if (isPrivilegedMfaRequiredError(error)) {
+        return NextResponse.json(
+          { error: "Multi-factor authentication is required for this action." },
+          { status: 403 },
+        )
+      }
+      if (isPrivilegedAuthorizationError(error)) {
+        return NextResponse.json(
+          { error: "Only an owner or admin can perform this action." },
+          { status: 403 },
+        )
+      }
+      console.error("Connector execution authorization lookup failed:", error)
+      return NextResponse.json(
+        { error: "Execution authorization is temporarily unavailable." },
+        { status: 503 },
+      )
     }
 
     const body = await readJsonBody(request)

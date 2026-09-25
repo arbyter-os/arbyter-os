@@ -6,6 +6,7 @@ import { executeConnectorAction } from "@/lib/connectors/runtime"
 import { getConnector } from "@/lib/connectors/registry"
 import { resolveConnectionCredential } from "@/lib/credentials/runtime"
 import { recordExecutionAudit } from "./audit"
+import { assertVerifiedAgentIdentity } from "./agent-identity"
 import { sanitizeExecutionError } from "./error-sanitizer"
 import { mapIntentParametersToConnectorPayload } from "@/lib/connectors/intent-mapping"
 
@@ -193,7 +194,7 @@ export async function executeAgentTask(
       await supabase
         .from("agent_connections")
         .select(
-          "id, provider, status, health_status, capabilities, environment"
+          "id, provider, status, health_status, capabilities, environment, configuration"
         )
         .eq("id", input.agentConnectionId)
         .eq("agent_id", input.agentId)
@@ -214,7 +215,7 @@ export async function executeAgentTask(
       await supabase
         .from("agent_connections")
         .select(
-          "id, provider, status, health_status, capabilities, environment"
+          "id, provider, status, health_status, capabilities, environment, configuration"
         )
         .eq("agent_id", input.agentId)
         .eq(
@@ -511,6 +512,43 @@ export async function executeAgentTask(
       input.organizationId,
     )
 
+    // P0-1 identity gate: the agent must carry a verified identity owned by
+    // the executing organization before any connector action runs. Fail-closed
+    // on missing, unverified, disabled or cross-organization identity.
+    try {
+      await assertVerifiedAgentIdentity({
+        supabase,
+        organizationId: input.organizationId,
+        agentId: input.agentId,
+      })
+    } catch (error) {
+      await updateTaskStatus(
+        input.organizationId,
+        input.taskId,
+        "blocked"
+      )
+
+      const audit = await recordExecutionAudit({
+        organizationId: input.organizationId,
+        executionId: execution.id,
+        agentId: input.agentId,
+        taskId: input.taskId,
+        status: "blocked",
+        riskLevel: "high",
+        output: {},
+        errorMessage:
+          "Execution blocked: agent identity is not verified.",
+      })
+
+      return {
+        success: false,
+        executionId: execution.id,
+        status: "blocked",
+        governance,
+        audit,
+      }
+    }
+
     const credential =
       await resolveConnectionCredential({
         organizationId: input.organizationId,
@@ -543,6 +581,14 @@ export async function executeAgentTask(
           organizationId:
             input.organizationId,
           credential: credential ?? undefined,
+          // P0-6: connection-level configuration carries the owner-set
+          // organization-bound sender identity (e.g. agentmail_inbox).
+          connectionConfiguration:
+            connection.configuration &&
+            typeof connection.configuration === "object" &&
+            !Array.isArray(connection.configuration)
+              ? (connection.configuration as Record<string, unknown>)
+              : undefined,
         }
       )
 

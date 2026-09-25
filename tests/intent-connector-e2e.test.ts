@@ -14,6 +14,13 @@ export function createClient() {
   const rows = {
     users: { data: { organization_id: "org-1", role: "owner" }, error: null },
     ai_agents: { data: { id: "agent-1", name: "Mail Agent", status: "active" }, error: null },
+    // P0-1: the engine's identity gate reads agent_identities before every
+    // connector call; the stub provides a verified identity using the REAL
+    // schema shape ('verified' is the only state column).
+    agent_identities: {
+      data: { verified: true },
+      error: null,
+    },
     agent_connections: {
       data: [{
         id: "conn-1",

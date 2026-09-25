@@ -4,6 +4,9 @@ export type ResolvedConnectionCredential = {
   id: string
   type: string
   secret: string
+  /** agent_credentials.metadata: provider-specific organization bindings
+   *  (e.g. the AgentMail sender inbox this credential was created for). */
+  metadata?: Record<string, unknown>
 }
 
 export async function resolveConnectionCredential({
@@ -18,7 +21,7 @@ export async function resolveConnectionCredential({
   const { data: credential, error } = await admin
     .from("agent_credentials")
     .select(
-      "id, credential_type, secret_reference, status, expires_at"
+      "id, credential_type, secret_reference, status, expires_at, metadata"
     )
     .eq("organization_id", organizationId)
     .eq("agent_connection_id", connectionId)
@@ -66,5 +69,9 @@ export async function resolveConnectionCredential({
     id: credential.id,
     type: credential.credential_type,
     secret,
+    metadata:
+      credential.metadata && typeof credential.metadata === "object" && !Array.isArray(credential.metadata)
+        ? (credential.metadata as Record<string, unknown>)
+        : undefined,
   }
 }

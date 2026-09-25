@@ -210,17 +210,25 @@ test("authorization occurs before the approval write", () => {
   assert.ok(approvalWriteIndex > authorizationIndex)
 })
 
-test("policy assignment lookup is reached only after org-scoped agent authorization", () => {
+test("org-scoped agent authorization survives as the governance guard (P0-5)", () => {
+  // P0-5: the legacy lib/orchestrator engine was removed. Its governance
+  // module (lib/orchestrator/governance.ts) was the only caller of
+  // authorizeAgentOrganization with a policy_assignments lookup behind it.
+  // The surviving production boundary is lib/execution/engine.ts, which
+  // resolves the agent via an organization-scoped ai_agents query before any
+  // execution. Lock that ordering in as the replacement invariant.
   const source = readFileSync(
-    resolve(process.cwd(), "lib/orchestrator/governance.ts"),
+    resolve(process.cwd(), "lib/execution/engine.ts"),
     "utf8"
   )
-  const authorizationIndex = source.indexOf("authorizeAgentOrganization(")
-  const assignmentIndex = source.indexOf(".from('policy_assignments')")
+  const agentIndex = source.indexOf('.from("ai_agents")')
+  const executionIndex = source.indexOf("executeConnectorAction(")
+  const identityIndex = source.indexOf("assertVerifiedAgentIdentity(")
 
-  assert.ok(authorizationIndex >= 0)
-  assert.ok(assignmentIndex > authorizationIndex)
-  assert.match(source, /\.eq\('agent_id', request\.agentId\)/)
+  assert.ok(agentIndex >= 0, "engine must load the agent from ai_agents scoped by organization")
+  assert.ok(source.includes('.eq("organization_id", input.organizationId)'))
+  assert.ok(identityIndex > agentIndex, "the verified-identity gate must follow the org-scoped agent lookup")
+  assert.ok(executionIndex > identityIndex, "no connector execution may precede the identity gate")
 })
 
 test("governance API uses a generic unauthorized resource response", () => {

@@ -16,7 +16,13 @@ export type ConnectorContext = {
     id: string;
     type: string;
     secret: string;
+    /** Credential-row metadata (agent_credentials.metadata): provider-specific
+     *  organization bindings such as the AgentMail sender inbox live here. */
+    metadata?: unknown;
   };
+  /** Connection-level configuration (agent_connections.configuration):
+   *  owner-controlled connector settings, e.g. agentmail_inbox. */
+  connectionConfiguration?: Record<string, unknown>;
 };
 
 export type ConnectorResult = {

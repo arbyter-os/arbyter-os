@@ -130,14 +130,20 @@ test("pinned HTTPS connects to the validated IP while preserving hostname SNI on
   assert.equal(requestOptions.headers.host, "example.com");
 });
 
-test("execution layer routes both API and webhook configurable endpoints through validation and pinned fetch", async () => {
+test("execution layer routes configurable endpoints through validation and pinned transport (P0-5: legacy executor removed)", async () => {
   const fs = await import("node:fs/promises");
-  const executorSource = await fs.readFile("./lib/orchestrator/executor.ts", "utf8");
-  assert.doesNotMatch(executorSource, /fetch\(route\.endpointUrl/);
-  assert.equal((executorSource.match(/fetchValidatedExternalUrl\(endpointValidation/g) ?? []).length, 2);
-  assert.equal((executorSource.match(/validateExternalUrl\(route\.endpointUrl/g) ?? []).length, 2);
-  assert.match(executorSource, /provider: 'api'/);
-  assert.match(executorSource, /provider: 'webhook'/);
+  // P0-5: lib/orchestrator/executor.ts (an unauthenticated second execution
+  // engine) was deleted. The surviving outbound-HTTP execution surfaces are
+  // the agentmail connector and the agents/verify route; both must keep using
+  // the pinned validation primitive.
+  await assert.rejects(
+    fs.access("./lib/orchestrator/executor.ts"),
+    "the legacy orchestrator executor must not exist",
+  );
+  const connectorSource = await fs.readFile("./lib/connectors/agentmail.ts", "utf8");
+  assert.doesNotMatch(connectorSource, /fetch\(`?https?:/);
+  assert.match(connectorSource, /fetchValidatedExternalUrl\(validation/);
+  assert.match(connectorSource, /validateExternalUrl\(endpoint/);
 });
 
 test("connector verification also uses the pinned primitive for configurable endpoints", async () => {

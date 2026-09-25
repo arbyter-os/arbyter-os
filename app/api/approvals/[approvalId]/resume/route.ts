@@ -7,6 +7,8 @@ import { executeConnectorAction } from "@/lib/connectors/runtime"
 import { resolveConnectionCredential } from "@/lib/credentials/runtime"
 import { recordExecutionAudit } from "@/lib/execution/audit"
 import { assertTaskAssignedToAgent } from "@/lib/execution/task-agent-authorization"
+import { assertVerifiedAgentIdentity, isAgentIdentityVerificationError } from "@/lib/execution/agent-identity"
+import { requirePrivilegedMfa, isPrivilegedMfaRequiredError, isPrivilegedAuthorizationError } from "@/lib/security/privileged-auth"
 import { getConnector } from "@/lib/connectors/registry"
 import {
   APPROVAL_INTEGRITY_HASH_METADATA_KEY,
@@ -40,6 +42,30 @@ export async function POST(
       return NextResponse.json(
         { error: "You must be signed in." },
         { status: 401 }
+      )
+    }
+
+    // P0-4: resume triggers a real external connector action, so the AAL2
+    // requirement must hold at THIS route boundary, not just in middleware.
+    try {
+      await requirePrivilegedMfa(supabase, user.id)
+    } catch (error) {
+      if (isPrivilegedMfaRequiredError(error)) {
+        return NextResponse.json(
+          { error: "Multi-factor authentication is required for this action." },
+          { status: 403 },
+        )
+      }
+      if (isPrivilegedAuthorizationError(error)) {
+        return NextResponse.json(
+          { error: "Only an owner or admin can perform this action." },
+          { status: 403 },
+        )
+      }
+      console.error("Resume authorization lookup failed:", error)
+      return NextResponse.json(
+        { error: "Execution authorization is temporarily unavailable." },
+        { status: 503 },
       )
     }
 
@@ -102,6 +128,7 @@ export async function POST(
         execution_id,
         requested_by,
         status,
+        expires_at,
         risk_level,
         title,
         description,
@@ -130,6 +157,32 @@ export async function POST(
             "Only an approved request can be resumed.",
         },
         { status: 409 }
+      )
+    }
+
+    // P0-3: expiry is enforced at THIS boundary against current wall-clock
+    // time, not against display state. An expired approval must never
+    // execute, and it is transitioned to the terminal 'expired' status.
+    // A missing expires_at is also refused: the schema guarantees NOT NULL
+    // (20260925120000_add_approval_expiration.sql backfills every row), so a
+    // null here means tampering or a pre-migration anomaly — fail closed.
+    const expiresAtMs = approval.expires_at
+      ? new Date(approval.expires_at).getTime()
+      : null
+    if (
+      expiresAtMs === null ||
+      !Number.isFinite(expiresAtMs) ||
+      Date.now() >= expiresAtMs
+    ) {
+      await createAdminClient()
+        .from("approval_requests")
+        .update({ status: "expired" })
+        .eq("id", approval.id)
+        .eq("organization_id", organizationId)
+        .eq("status", "approved")
+      return NextResponse.json(
+        { error: "This approval has expired and can no longer be resumed." },
+        { status: 409 },
       )
     }
 
@@ -283,7 +336,7 @@ export async function POST(
     const { data: currentConnection, error: currentConnectionError } =
       await supabase
         .from("agent_connections")
-        .select("id, provider, status, health_status, capabilities, agent_id")
+        .select("id, provider, status, health_status, capabilities, agent_id, configuration")
         .eq("id", execution.agent_connection_id)
         .eq("agent_id", execution.agent_id)
         .eq("organization_id", organizationId)
@@ -375,6 +428,100 @@ export async function POST(
       }
     }
 
+    // P0-1 + P0-2 final security boundary, immediately before credential
+    // resolution and the execution claim. Every check below re-reads CURRENT
+    // database state so nothing that changed between approval and resume can
+    // leak through:
+    //   - agent identity must exist, be verified (verified === true), and
+    //     belong to this organization (P0-1, fail-closed);
+    //   - the agent must still be active — paused, disabled or otherwise
+    //     non-active agents must not execute through an approved execution
+    //     (P0-2);
+    //   - the caller's owner/admin role must still hold (TOCTOU, mirroring
+    //     the engine's revalidateExecutionPrivilege).
+    try {
+      await assertVerifiedAgentIdentity({
+        supabase,
+        organizationId,
+        agentId: execution.agent_id,
+      })
+    } catch (error) {
+      if (isAgentIdentityVerificationError(error)) {
+        await createAdminClient()
+          .from("agent_executions")
+          .update({
+            status: "blocked",
+            error_message: "Resume blocked: agent identity is not verified.",
+          })
+          .eq("id", execution.id)
+          .eq("organization_id", organizationId)
+        return NextResponse.json(
+          { error: "Agent identity is not verified; the approved execution cannot resume." },
+          { status: 403 },
+        )
+      }
+      throw error
+    }
+
+    const { data: currentAgentState, error: currentAgentStateError } =
+      await supabase
+        .from("ai_agents")
+        // Real ai_agents columns only: id + status. Liveness (paused /
+        // quarantined / any disabled-equivalent state) is carried entirely by
+        // status; there is no separate `disabled` column.
+        .select("id, status")
+        .eq("id", execution.agent_id)
+        .eq("organization_id", organizationId)
+        .maybeSingle()
+
+    if (currentAgentStateError) {
+      throw currentAgentStateError
+    }
+
+    // Fail closed: agent row missing or in any non-active state
+    // (paused / disabled / quarantined / unknown) must not execute.
+    if (!currentAgentState || currentAgentState.status !== "active") {
+      await createAdminClient()
+        .from("agent_executions")
+        .update({
+          status: "blocked",
+          error_message: "Resume blocked: agent is not active.",
+        })
+        .eq("id", execution.id)
+        .eq("organization_id", organizationId)
+      return NextResponse.json(
+        { error: "The agent is not active; the approved execution cannot resume." },
+        { status: 409 },
+      )
+    }
+
+    // TOCTOU re-validation, mirroring the engine's pre-connector check: the
+    // caller's role is re-read after the claim, immediately before execution.
+    const { data: callerRole, error: callerRoleError } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle()
+
+    if (callerRoleError) {
+      throw callerRoleError
+    }
+
+    if (!callerRole || (callerRole.role !== "owner" && callerRole.role !== "admin")) {
+      await createAdminClient()
+        .from("agent_executions")
+        .update({
+          status: "blocked",
+          error_message: "Resume blocked: caller is no longer privileged.",
+        })
+        .eq("id", execution.id)
+        .eq("organization_id", organizationId)
+      return NextResponse.json(
+        { error: "Only an owner or admin can resume an approved execution." },
+        { status: 403 },
+      )
+    }
+
     const credential =
       await resolveConnectionCredential({
         organizationId,
@@ -445,6 +592,14 @@ export async function POST(
           agentId: execution.agent_id,
           organizationId,
           credential,
+          // P0-6: connection-level configuration carries the owner-set
+          // organization-bound sender identity (e.g. agentmail_inbox).
+          connectionConfiguration:
+            currentConnection.configuration &&
+            typeof currentConnection.configuration === "object" &&
+            !Array.isArray(currentConnection.configuration)
+              ? (currentConnection.configuration as Record<string, unknown>)
+              : undefined,
         }
       )
 

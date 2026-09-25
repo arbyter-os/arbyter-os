@@ -96,6 +96,10 @@ export async function createExecutionApproval(
       risk_level: input.riskLevel,
       status: "pending",
       requested_at: new Date().toISOString(),
+      // P0-3: absolute expiry, fixed at creation. TTL → deny: an approval that
+      // is not resolved and resumed before expires_at can never execute. The
+      // resolve/resume boundaries re-check expiry against current time.
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
       metadata: {
         ...(input.metadata ?? {}),
         task_id: input.taskId ?? null,

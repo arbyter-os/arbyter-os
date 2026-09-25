@@ -4,6 +4,11 @@ import { validationErrorResponse } from "@/lib/validation/errors"
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { executeAgentTask } from "@/lib/execution/engine"
+import {
+  requirePrivilegedMfa,
+  isPrivilegedMfaRequiredError,
+  isPrivilegedAuthorizationError,
+} from "@/lib/security/privileged-auth"
 import type { ConnectorCapability } from "@/lib/connectors/types"
 
 type TaskExecutionBody = {
@@ -43,6 +48,30 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "You must be signed in." },
         { status: 401 }
+      )
+    }
+
+    // P0-4: privileged MFA must hold at THIS route boundary, not only in
+    // middleware. Executing a task triggers a real external connector action.
+    try {
+      await requirePrivilegedMfa(supabase, user.id)
+    } catch (error) {
+      if (isPrivilegedMfaRequiredError(error)) {
+        return NextResponse.json(
+          { error: "Multi-factor authentication is required for this action." },
+          { status: 403 },
+        )
+      }
+      if (isPrivilegedAuthorizationError(error)) {
+        return NextResponse.json(
+          { error: "Only an owner or admin can perform this action." },
+          { status: 403 },
+        )
+      }
+      console.error("Task authorization lookup failed:", error)
+      return NextResponse.json(
+        { error: "Execution authorization is temporarily unavailable." },
+        { status: 503 },
       )
     }
 
