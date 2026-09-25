@@ -1,0 +1,45 @@
+# Arbyter
+
+> Arbyter is the runtime governance layer between organizations and their AI agents.
+
+## What Arbyter does
+- Translates organizational policy, permissions, regulatory requirements, and operational intent into enforceable runtime controls.
+- Discovers and connects AI agents across enterprise environments.
+- Evaluates agent actions and can allow, block, or require human approval.
+- Creates an audit trail for governed decisions and actions.
+- Supports MCP, APIs, webhooks, SDK-connected agents, and internal agents.
+- Provides governance, control, security, compliance, risk, audit, orchestration, discovery, and human-in-the-loop workflows.
+- Supports natural-language and voice-driven commands for governing agent behavior.
+
+## Core concepts
+- AI agent governance
+- Runtime governance
+- Runtime policy enforcement
+- AI control plane
+- Agent permissions and tool authorization
+- Human-in-the-loop AI
+- AI agent discovery
+- AI agent security and compliance
+- MCP governance
+- Enterprise AI governance
+
+## Core flow
+Organization intent -> policy -> Arbyter evaluation -> agent action -> allow / block / approval -> audit.
+
+## Important distinction
+Arbyter is not a traditional operating system. It is a governance and control layer between organizations and AI agents.
+
+## Primary pages
+- /platform
+- /how-it-works
+- /runtime-governance
+- /policy-enforcement
+- /agent-governance
+- /agent-discovery
+- /ai-agent-command
+- /ai-agent-security
+- /enterprise-ai-governance
+- /mcp-governance
+- /demo
+- /glossary
+- /resources

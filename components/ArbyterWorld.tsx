@@ -18,9 +18,12 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     const mount = mountRef.current;
     if (!mount) return;
 
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const compactViewport = window.matchMedia("(max-width: 800px)").matches;
+
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#aeb3bf");
-    scene.fog = new THREE.FogExp2("#aeb3bf", 0.018);
+    scene.background = new THREE.Color("#030307");
+    scene.fog = new THREE.FogExp2("#030307", 0.018);
 
     const camera = new THREE.PerspectiveCamera(
       42,
@@ -35,25 +38,25 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
       alpha: false,
       powerPreference: "high-performance",
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, compactViewport ? 1.25 : 1.75));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     mount.appendChild(renderer.domElement);
 
-    const ambient = new THREE.HemisphereLight("#ffffff", "#555a68", 2.2);
+    const ambient = new THREE.HemisphereLight("#ffffff", "#090a18", 1.7);
     scene.add(ambient);
 
-    const sunLight = new THREE.PointLight("#ffffff", 180, 70);
+    const sunLight = new THREE.PointLight("#ffffff", 120, 70);
     sunLight.position.set(0, 5.5, -1);
     scene.add(sunLight);
 
-    const blueLight = new THREE.PointLight(BLUE, 30, 50);
+    const blueLight = new THREE.PointLight("#6f78ff", 45, 55);
     blueLight.position.set(-8, 4, 3);
     scene.add(blueLight);
 
-    const terrainGeometry = new THREE.PlaneGeometry(180, 180, 120, 120);
+    const terrainGeometry = new THREE.PlaneGeometry(180, 180, compactViewport ? 70 : 120, compactViewport ? 70 : 120);
     const positions = terrainGeometry.attributes.position;
 
     for (let i = 0; i < positions.count; i++) {
@@ -72,7 +75,7 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     terrainGeometry.computeVertexNormals();
 
     const terrainMaterial = new THREE.MeshStandardMaterial({
-      color: "#858a98",
+      color: "#11131c",
       roughness: 0.96,
       metalness: 0.02,
     });
@@ -83,10 +86,10 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
 
     const mountainBaseGeo = new THREE.ConeGeometry(8, 14, 6);
     const mountainMaterial = new THREE.MeshStandardMaterial({
-      color: "#737887",
+      color: "#0a0b12",
       roughness: 1,
     });
-    const mountainCount = 20;
+    const mountainCount = compactViewport ? 12 : 20;
     const mountainMesh = new THREE.InstancedMesh(
       mountainBaseGeo,
       mountainMaterial,
@@ -114,7 +117,7 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     sunGroup.position.set(0, 1.15, -3.2);
     scene.add(sunGroup);
 
-    const sunGeometry = new THREE.SphereGeometry(2.65, 64, 64);
+    const sunGeometry = new THREE.SphereGeometry(2.65, compactViewport ? 40 : 64, compactViewport ? 40 : 64);
     const sunMaterial = new THREE.ShaderMaterial({
       transparent: true,
       uniforms: { uTime: { value: 0 } },
@@ -160,7 +163,7 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     const sun = new THREE.Mesh(sunGeometry, sunMaterial);
     sunGroup.add(sun);
 
-    const haloGeometry = new THREE.SphereGeometry(3.8, 48, 48);
+    const haloGeometry = new THREE.SphereGeometry(3.8, compactViewport ? 32 : 48, compactViewport ? 32 : 48);
     const haloMaterial = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -184,7 +187,7 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     const halo = new THREE.Mesh(haloGeometry, haloMaterial);
     sunGroup.add(halo);
 
-    const particleCount = 1200;
+    const particleCount = compactViewport ? 450 : 900;
     const particlePositions = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount; i++) {
       const radius = 3.2 + Math.random() * 7;
@@ -214,24 +217,44 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, compactViewport ? 1.25 : 1.75));
     };
     window.addEventListener("resize", handleResize);
 
     const clock = new THREE.Clock();
+    let isVisible = true;
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        if (!isVisible) {
+          isVisible = true;
+          if (!animationFrameId) animate();
+        }
+        return;
+      }
+
+      isVisible = false;
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = 0;
+      }
+    }, { threshold: 0 });
+    visibilityObserver.observe(mount);
     const lookTarget = new THREE.Vector3();
     let smoothProgress = progressRef.current;
     let animationFrameId = 0;
 
     const animate = () => {
+      if (!isVisible) return;
       animationFrameId = requestAnimationFrame(animate);
-      const elapsed = clock.getElapsedTime();
+      const elapsed = reducedMotion ? 0 : clock.getElapsedTime();
       smoothProgress += (progressRef.current - smoothProgress) * 0.055;
 
-      sunMaterial.uniforms.uTime.value = elapsed;
-      sun.rotation.y = elapsed * 0.12;
-      halo.rotation.y = -elapsed * 0.08;
-      particles.rotation.y = elapsed * 0.025;
+      sunMaterial.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
+      if (!reducedMotion) {
+        sun.rotation.y = elapsed * 0.12;
+        halo.rotation.y = -elapsed * 0.08;
+        particles.rotation.y = elapsed * 0.025;
+      }
 
       const p = smoothProgress;
       let camY: number;
@@ -271,6 +294,7 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
+      visibilityObserver.disconnect();
 
       scene.traverse((object: THREE.Object3D) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Points || object instanceof THREE.InstancedMesh) {
@@ -292,5 +316,5 @@ export default function ArbyterWorld({ progress }: { progress: number }) {
     };
   }, []);
 
-  return <div ref={mountRef} className="fixed inset-0 pointer-events-none" />;
+  return <div ref={mountRef} className="absolute inset-0 pointer-events-none" />;
 }

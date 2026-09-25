@@ -27,6 +27,7 @@ export async function updateSession(request: NextRequest) {
   requestHeaders.set("x-nonce", nonce)
   requestHeaders.set("Content-Security-Policy", policy)
   const pathname = request.nextUrl.pathname
+  requestHeaders.set("x-arbyter-pathname", pathname)
 
   let response = NextResponse.next({ request: { headers: requestHeaders } })
 
