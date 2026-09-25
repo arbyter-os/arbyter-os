@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const title = route?.title || "Arbyter"
   const description = route?.description || SITE.description
   const canonical = canonicalFor(pathname)
-  const noIndex = route?.noIndex ?? true
+  const noIndex = route?.noIndex ?? false
 
   return {
     metadataBase: new URL(SITE.baseUrl),
