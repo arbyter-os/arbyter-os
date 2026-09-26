@@ -348,5 +348,7 @@ function requiresPrivilegedMfa(pathname: string, method: string): boolean {
 export async function proxy(request: NextRequest) { return updateSession(request) }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  // Static assets (images + self-hosted fonts) skip the auth proxy: they must be
+  // servable to unauthenticated pages (login included) and are not route surface.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2?|ttf|otf)$).*)"],
 }

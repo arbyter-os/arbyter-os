@@ -16,8 +16,10 @@ export function SiteNav() {
 
   return (
     <header className={open ? "site-nav is-open" : "site-nav"}>
-      <Link href="/" className="site-wordmark" onClick={() => setOpen(false)}>
-        ARBYTER<span>/OS</span>
+      <Link href="/" className="site-logo" onClick={() => setOpen(false)} aria-label="Arbyter home">
+        {/* Existing Arbyter emblem, unchanged */}
+        <img src="/arbryter-os.logo.svg" alt="Arbyter logo" width={30} height={27} />
+        <span className="site-wordmark">ARBYTER<span>/OS</span></span>
       </Link>
 
       <nav className="site-nav-links">
