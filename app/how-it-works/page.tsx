@@ -1,13 +1,21 @@
 import { PageFrame } from "@/components/site/PageFrame";
-import { Flow } from "@/components/site/VisualSystem";
-import { ScrollStory } from "@/components/site/ScrollStory";
+import { DeepContent } from "@/components/site/DeepContent";
 
-export default function HowItWorks(){return <PageFrame eyebrow="HOW IT WORKS / 02" title={<>From policy<br/><em>to runtime.</em></>} intro="Arbyter sits in the execution path. A business rule becomes a decision that can be enforced before an agent action becomes an outcome.">
-<ScrollStory steps={[
-{eyebrow:"01 / INTENT",title:"Start with what the organization wants.",body:"Business intent and operational requirements establish the boundary before an agent begins acting.",mode:"command"},
-{eyebrow:"02 / POLICY",title:"Turn intent into a rule.",body:"Arbyter connects organizational language to a concrete runtime control.",mode:"policy"},
-{eyebrow:"03 / EXECUTION",title:"Evaluate the action in context.",body:"Identity, capability, tool, destination and policy meet at the moment of execution.",mode:"runtime"},
-{eyebrow:"04 / DECISION",title:"Allow. Block. Or ask.",body:"The result is an enforceable decision, with human approval where the rule requires it.",mode:"security"},
-]} />
-<section className="process-section"><Flow items={["Intent","Policy","Evaluation","Allow / Block / Approve","Audit"]}/></section>
-</PageFrame>}
+export default function HowItWorks() {
+  return (
+    <PageFrame eyebrow="HOW IT WORKS / 02" title={<>From policy<br /><em>to runtime.</em></>} intro="Arbyter sits in the execution path. A business rule becomes a decision that can be enforced before an agent action becomes an outcome.">
+      <DeepContent sections={[
+        {eyebrow:"01 / DISCOVER",title:"Start by finding the agents.",body:<><p>Before an organization can govern an AI workforce, it needs to know what exists. Arbyter can discover agents and their connection surfaces across APIs, MCP, cloud environments, internal infrastructure and AI platforms.</p><p>The result is an inventory that can be used to understand ownership, capabilities and where an agent can act.</p></>},
+        {eyebrow:"02 / UNDERSTAND",title:"Map capability to context.",body:<><p>An agent's name does not describe its real authority. Governance needs to understand what tools it can call, which systems it can reach, what capabilities it has and what context surrounds an action.</p><p>Arbyter uses this information as part of the runtime evaluation rather than treating every agent action as identical.</p></>},
+        {eyebrow:"03 / INTENT",title:"Start with what the organization wants.",body:<><p>Organizations already express requirements in ordinary language: protect customer data, require review for high-impact decisions, restrict production changes, separate duties or prevent certain external actions.</p><p>Those requirements become the starting point for a governance rule rather than forcing business teams to write implementation code.</p></>},
+        {eyebrow:"04 / POLICY",title:"Turn intent into an enforceable rule.",body:<><p>The next step is translating intent into conditions that can be evaluated when an agent acts. A policy can describe the action, the relevant data or destination, the required approval and the outcome when the condition is not satisfied.</p><p>This creates a bridge between governance language and execution behavior.</p></>},
+        {eyebrow:"05 / EVALUATION",title:"Evaluate the action in context.",body:<><p>At runtime, Arbyter evaluates the action against the information available about the agent and the applicable policy. Identity, capability, tool, destination and action context can all contribute to the decision.</p><p>The important point is timing: the control is evaluated when the action is about to matter.</p></>},
+        {eyebrow:"06 / DECISION",title:"Allow. Block. Restrict. Or ask.",body:<><p>A rule should produce an operational result. Arbyter can allow an action when it satisfies the boundary, block it when it violates a rule, restrict its scope, pause it or require human approval when the organization has defined a human checkpoint.</p><p>The decision is therefore part of execution rather than a report generated after execution.</p></>},
+        {eyebrow:"07 / APPROVAL",title:"Give humans the final word where required.",body:<><p>Human-in-the-loop governance is most useful when it is specific. Instead of requiring approval for every action, organizations can identify classes of actions that need a person.</p><p>An approval becomes a recorded part of the runtime event, creating a clear relationship between the proposed action, the rule and the human decision.</p></>},
+        {eyebrow:"08 / EXECUTION",title:"Let approved work continue.",body:<><p>Governance should not exist only to stop agents. The goal is controlled autonomy: routine actions proceed inside known boundaries while exceptional actions are interrupted or routed to people.</p><p>That makes governance an execution layer rather than a separate review process that slows every workflow equally.</p></>},
+        {eyebrow:"09 / AUDIT",title:"Keep the decision trail.",body:<><p>Each governed event can be understood as a chain: agent, action, context, policy, decision and outcome. When approval is involved, the approval becomes part of that chain.</p><p>This gives operations, compliance and security teams a common record for investigation and review.</p></>},
+        {eyebrow:"10 / IMPROVE",title:"Use what happened to improve the boundary.",body:<><p>Runtime governance is not static. Teams can review decisions, investigate unusual events and refine policies as workflows change. New agents can be discovered and brought into the same operating model.</p><p>The loop becomes discover, understand, govern, enforce, audit and improve.</p></>}
+      ]} />
+    </PageFrame>
+  );
+}
