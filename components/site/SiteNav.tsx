@@ -31,8 +31,8 @@ export function SiteNav() {
       </nav>
 
       <div className="site-nav-actions">
-        <Link href="/login" className="site-enter" onClick={() => setOpen(false)}>
-          ENTER
+        <Link href="/demo" className="site-enter" onClick={() => setOpen(false)}>
+          BOOK YOUR SLOT
         </Link>
         <button
           type="button"
@@ -54,6 +54,10 @@ export function SiteNav() {
             {label}
           </Link>
         ))}
+        <Link href="/demo" onClick={() => setOpen(false)}>
+          <span>08</span>
+          Book your slot
+        </Link>
       </nav>
     </header>
   );
