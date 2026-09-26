@@ -9,6 +9,7 @@ import {
   requirePrivilegedMfa,
 } from "@/lib/security/privileged-auth"
 import { RATE_LIMITS } from "@/lib/security/rate-limit-config"
+import { PUBLIC_SEO_ROUTES } from "@/lib/seo/routes"
 
 function applySecurityHeaders(response: NextResponse) {
   response.headers.set("X-Content-Type-Options", "nosniff")
@@ -192,10 +193,17 @@ export async function updateSession(request: NextRequest) {
   response.headers.set("Content-Security-Policy", policy)
 
   const isAuthPage = pathname === "/login" || pathname.startsWith("/auth")
-  // The application route group is private by default. Only the landing page and
-  // explicit authentication routes are public; new app pages cannot silently
-  // become unauthenticated by forgetting to update a deny-list.
-  const isPublicPage = pathname === "/" || isAuthPage
+  // Public surface = the canonical SEO/marketing route list (shared with
+  // metadata/robots/sitemap generation in lib/seo/routes.ts) plus the explicit
+  // authentication routes and the crawler files robots.ts/sitemap.ts emit. The
+  // application route group stays private by default: an unlisted page is
+  // protected, so a new app page cannot silently become unauthenticated by
+  // forgetting to update a deny-list.
+  const isPublicPage =
+    isAuthPage ||
+    PUBLIC_SEO_ROUTES.includes(pathname) ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
   const isProtectedPage = !pathname.startsWith("/api/") && !isPublicPage
 
   if (!user && isProtectedPage) {
