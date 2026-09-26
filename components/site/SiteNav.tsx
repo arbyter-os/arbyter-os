@@ -5,12 +5,10 @@ import { useState } from "react";
 
 const links = [
   ["Platform", "/platform"],
-  ["How it works", "/how-it-works"],
-  ["Intelligence", "/intelligence"],
-  ["Security", "/ai-agent-security"],
-  ["Discovery", "/agent-discovery"],
+  ["How It Works", "/how-it-works"],
+  ["Use Cases", "/use-cases"],
+  ["Resources", "/resources"],
   ["Pricing", "/pricing"],
-  ["Demo", "/demo"],
 ];
 
 export function SiteNav() {
@@ -31,6 +29,12 @@ export function SiteNav() {
       </nav>
 
       <div className="site-nav-actions">
+        <Link href="/login" className="site-nav-auth" onClick={() => setOpen(false)}>
+          SIGN IN
+        </Link>
+        <Link href="/sign-up" className="site-nav-auth" onClick={() => setOpen(false)}>
+          SIGN UP
+        </Link>
         <Link href="/demo" className="site-enter" onClick={() => setOpen(false)}>
           BOOK YOUR SLOT
         </Link>
@@ -54,9 +58,21 @@ export function SiteNav() {
             {label}
           </Link>
         ))}
-        <Link href="/demo" onClick={() => setOpen(false)}>
+        <Link href="/pricing" onClick={() => setOpen(false)}>
+          <span>06</span>
+          Pricing
+        </Link>
+        <Link href="/login" onClick={() => setOpen(false)}>
+          <span>07</span>
+          Sign In
+        </Link>
+        <Link href="/sign-up" onClick={() => setOpen(false)}>
           <span>08</span>
-          Book your slot
+          Sign Up
+        </Link>
+        <Link href="/demo" onClick={() => setOpen(false)}>
+          <span>09</span>
+          Book Your Slot
         </Link>
       </nav>
     </header>
