@@ -43,11 +43,11 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#050505" }
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#f7f7f5" }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`dark bg-black ${manrope.variable} ${geistMono.variable}`}>
+    <html lang="en" className={`${manrope.variable} ${geistMono.variable}`}>
       <body className="antialiased">
         <JsonLd data={organizationSchema} />
         <JsonLd data={softwareSchema} />
