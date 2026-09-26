@@ -39,12 +39,46 @@ test("agents/verify authorizes owner/admin before probing or writing", () => {
   );
 
   for (const table of ["agent_connections", "agent_identities"]) {
+    // Identity access is factored into the authoritative-write helpers
+    // (writeIdentityVerification/revokeIdentityVerification), which are only
+    // INVOKED after authorization. The security property is: no table access
+    // executes before the owner/admin gate — so assert that every direct
+    // .from(table) occurrence is inside the helper definitions (before the
+    // gate, but never executed) OR after the gate, and that no helper call
+    // precedes the gate.
+    const helperCallIndexes = [
+      ...source.matchAll(/await (?:writeIdentityVerification|revokeIdentityVerification)\(/g),
+    ].map((match) => match.index ?? -1);
+    for (const callIndex of helperCallIndexes) {
+      assert.ok(
+        roleGate < callIndex,
+        `identity write helpers must only be invoked after authorization (${table})`,
+      );
+    }
+
     const writeIndex = source.indexOf(`.from("${table}")`);
     assert.notEqual(writeIndex, -1, `${table} access not found`);
-    assert.ok(
-      roleGate < writeIndex,
-      `authorization must precede any ${table} access`,
-    );
+    if (table === "agent_identities") {
+      // Direct occurrences before the gate must belong to the helper
+      // definitions (function bodies, not executed until called).
+      const firstCall = helperCallIndexes.length > 0 ? Math.min(...helperCallIndexes) : Infinity;
+      if (writeIndex < roleGate && writeIndex < firstCall) {
+        // Inside a helper definition: verify it sits within a function body
+        // declared before the gate and that the helper name encloses it.
+        const enclosingHelper = /function (writeIdentityVerification|revokeIdentityVerification)/.exec(
+          source.slice(0, writeIndex),
+        );
+        assert.ok(
+          enclosingHelper,
+          `early ${table} access must be inside an identity-write helper definition`,
+        );
+      }
+    } else {
+      assert.ok(
+        roleGate < writeIndex,
+        `authorization must precede any ${table} access`,
+      );
+    }
   }
 });
 

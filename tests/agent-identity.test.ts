@@ -103,6 +103,14 @@ export function createAdminClient() {
   globalThis.__adminUpdates = globalThis.__adminUpdates ?? []
   const updates = globalThis.__adminUpdates
   return {
+    // P1-2: org execution quota consumes the distributed limiter via rpc;
+    // always allowed in tests unless a case stubs an exhausted bucket.
+    async rpc(fn) {
+      if (fn === "check_rate_limit_cost") {
+        return { data: [{ allowed: globalThis.__orgQuotaAllowed ?? true, remaining: 0, retry_after_seconds: 1 }], error: null }
+      }
+      return { data: null, error: null }
+    },
     from() {
       const chain = {
         insert(values) { updates.push({ op: "insert", values }); return chain },
@@ -201,7 +209,7 @@ declare global {
   // eslint-disable-next-line no-var
   var __gateConnectorCalls: Array<unknown> | undefined
   // eslint-disable-next-line no-var
-  var __adminUpdates: Array<{ op: string; values: Record<string, unknown> }> | undefined
+  var __adminUpdates: Array<{ op: string; table?: string; values: Record<string, unknown> }> | undefined
   // eslint-disable-next-line no-var
   var __credentialResolves: number | undefined
   // eslint-disable-next-line no-var

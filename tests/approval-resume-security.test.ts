@@ -38,6 +38,18 @@ function setState(overrides: Partial<ResumeState> = {}) {
       capabilities: { "messages.send": true },
       agent_id: "agent-1",
     },
+    // F2: the server-generated provenance root. governance_decisions has NO
+    // client INSERT/UPDATE policies (service-role-only writes), so a row with
+    // decision = 'approval_required' for this execution is exactly the
+    // evidence resume requires. The default happy-path fixture carries one;
+    // forgery tests remove or corrupt it.
+    governance_decisions: {
+      id: "decision-1",
+      agent_id: "agent-1",
+      execution_id: "exec-1",
+      decision: "approval_required",
+      metadata: {},
+    },
     approval_requests: {
       id: "11111111-1111-4111-8111-111111111111",
       agent_id: "agent-1",
@@ -114,11 +126,19 @@ export function createAdminClient() {
   globalThis.__adminUpdates = globalThis.__adminUpdates ?? []
   const updates = globalThis.__adminUpdates
   return {
-    from() {
+    // P1-2: org execution quota consumes the distributed limiter via rpc;
+    // allowed unless a case stubs an exhausted bucket via __orgQuotaAllowed.
+    async rpc(fn) {
+      if (fn === "check_rate_limit_cost") {
+        return { data: [{ allowed: globalThis.__orgQuotaAllowed ?? true, remaining: 0, retry_after_seconds: 1 }], error: null }
+      }
+      return { data: null, error: null }
+    },
+    from(table) {
       const chain = {
-        insert(values) { updates.push({ op: "insert", values }); return chain },
+        insert(values) { updates.push({ op: "insert", table, values }); return chain },
         select() { return chain },
-        update(values) { updates.push({ op: "update", values }); return chain },
+        update(values) { updates.push({ op: "update", table, values }); return chain },
         eq() { return chain },
         single() { return Promise.resolve({ data: { id: "row-1" }, error: null }) },
         async maybeSingle() { return { data: { id: "claimed" }, error: null } },
@@ -198,7 +218,7 @@ declare global {
   // eslint-disable-next-line no-var
   var __resumeConnectorCalls: Array<unknown> | undefined
   // eslint-disable-next-line no-var
-  var __adminUpdates: Array<{ op: string; values: Record<string, unknown> }> | undefined
+  var __adminUpdates: Array<{ op: string; table?: string; values: Record<string, unknown> }> | undefined
   // eslint-disable-next-line no-var
   var __adminInserts: Array<{ table: string; values: Record<string, unknown> }> | undefined
   // eslint-disable-next-line no-var
@@ -541,7 +561,7 @@ test("P0-3: createExecutionApproval stamps a future absolute expires_at", async 
   })
   const after = Date.now()
 
-  const inserts = (globalThis.__adminInserts ?? []).filter(
+  const inserts = (globalThis.__adminUpdates ?? []).filter(
     (r) => r.table === "approval_requests" && (r.values as Record<string, unknown>).status === "pending",
   )
   assert.ok(inserts.length >= 1, "a pending approval insert must have been captured")

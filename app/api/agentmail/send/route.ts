@@ -6,6 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 import { executeAgentTask } from "@/lib/execution/engine";
 import { checkRateLimitCost } from "@/lib/security/rate-limit";
 import {
+  consumeOrgMailQuota,
+  OrgMailQuotaExceededError,
+  OrgQuotaUnavailableError,
+  ORG_MAIL_QUOTA_LIMIT_MESSAGE,
+} from "@/lib/security/org-quota";
+import {
   requirePrivilegedMfa,
   isPrivilegedMfaRequiredError,
   isPrivilegedAuthorizationError,
@@ -148,6 +154,29 @@ export async function POST(request: NextRequest) {
         { error: "Rate limiting is temporarily unavailable. Please try again later." },
         { status: 503 },
       );
+    }
+
+    // P1-3: organization-wide AgentMail quota. AgentMail authenticates the
+    // shared provider ACCOUNT, so sends from every org draw on one sender
+    // reputation; the org bucket bounds the aggregate before any connection
+    // lookup or execution. Fails closed when the quota service is down.
+    try {
+      await consumeOrgMailQuota(userRecord.organization_id)
+    } catch (error) {
+      if (error instanceof OrgMailQuotaExceededError) {
+        return NextResponse.json(
+          { error: ORG_MAIL_QUOTA_LIMIT_MESSAGE },
+          { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+        )
+      }
+      if (error instanceof OrgQuotaUnavailableError) {
+        console.error("AgentMail org quota lookup failed:", error)
+        return NextResponse.json(
+          { error: "AgentMail quota service is temporarily unavailable." },
+          { status: 503 },
+        )
+      }
+      throw error
     }
 
     const { data: connection, error: connectionError } =

@@ -50,6 +50,26 @@ export async function executeGovernanceAction(
         }
       }
 
+      // P1-1: approval creation is now a PRIVILEGED action (mirroring the
+      // approval_requests RLS policy), not a member-executable request. The
+      // route's previous member-allowed path could never persist a row under
+      // the new policy; enforce the same privilege model in the application
+      // so the API contract matches the database.
+      const { data: creatorRole, error: creatorRoleError } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
+        .maybeSingle()
+
+      if (creatorRoleError || !creatorRole || (creatorRole.role !== "owner" && creatorRole.role !== "admin")) {
+        return {
+          success: false,
+          action: "request_approval",
+          message: "Only an owner or admin can request approval.",
+          requiresHuman: true,
+        }
+      }
+
       const authorized = await authorizeApprovalResources(
         supabase,
         context.organizationId,
@@ -66,12 +86,31 @@ export async function executeGovernanceAction(
         }
       }
 
+      const { data: requester, error: requesterError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", (await supabase.auth.getUser()).data.user?.id ?? "")
+        .maybeSingle()
+
+      if (requesterError || !requester) {
+        return {
+          success: false,
+          action: "request_approval",
+          message: "Unable to create the approval request.",
+          requiresHuman: true,
+        }
+      }
+
+      // Execution-less governance request (execution_id stays NULL — the RLS
+      // policy forbids execution-linked inserts by any authenticated writer).
+      // requested_by must be the calling user for the policy to accept it.
       const { error } = await supabase
         .from("approval_requests")
         .insert({
           organization_id: context.organizationId,
           agent_id: context.agentId,
           task_id: context.taskId,
+          requested_by: requester.id,
           status: "pending",
         })
 

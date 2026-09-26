@@ -28,6 +28,10 @@ const ADMIN_ACTIONS = new Set<GovernanceAction>([
   "modify_policy",
   "pause_agent",
   "disable_tool",
+  // P1-1: approval creation is a privileged security-state change (matching
+  // the approval_requests INSERT policy); members can no longer create
+  // approvals, so the route's authorization must match.
+  "request_approval",
 ])
 
 export async function POST(request: Request) {

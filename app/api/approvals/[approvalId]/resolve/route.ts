@@ -5,6 +5,11 @@ import { NextResponse } from "next/server"
 import { assertApiParam } from "@/lib/validation/api-schemas"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import {
+  requirePrivilegedMfa,
+  isPrivilegedMfaRequiredError,
+  isPrivilegedAuthorizationError,
+} from "@/lib/security/privileged-auth"
 
 type RouteContext = {
   params: Promise<{
@@ -28,6 +33,32 @@ export async function POST(
 
     if (!user) {
       return NextResponse.json({ error: "You must be signed in." }, { status: 401 })
+    }
+
+    // F3: approving or rejecting an approval changes security state consumed
+    // by the resume boundary, so the AAL2 requirement must hold at THIS route
+    // boundary as well — the same invariant every other privileged route
+    // enforces (P0-4/F3); do not rely on proxy middleware alone.
+    try {
+      await requirePrivilegedMfa(supabase, user.id)
+    } catch (error) {
+      if (isPrivilegedMfaRequiredError(error)) {
+        return NextResponse.json(
+          { error: "Multi-factor authentication is required for this action." },
+          { status: 403 },
+        )
+      }
+      if (isPrivilegedAuthorizationError(error)) {
+        return NextResponse.json(
+          { error: "Only organization owners or admins can resolve approvals." },
+          { status: 403 },
+        )
+      }
+      console.error("Approval resolution authorization lookup failed:", error)
+      return NextResponse.json(
+        { error: "Approval resolution is temporarily unavailable." },
+        { status: 503 },
+      )
     }
 
     const { approvalId } = await context.params

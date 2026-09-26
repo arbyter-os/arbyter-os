@@ -5,6 +5,11 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import {
+  requirePrivilegedMfa,
+  isPrivilegedMfaRequiredError,
+  isPrivilegedAuthorizationError,
+} from "@/lib/security/privileged-auth";
+import {
   fetchValidatedExternalUrl,
   validateExternalUrl,
 } from "@/lib/security/validate-external-url";
@@ -27,6 +32,101 @@ async function validateEndpoint(rawUrl: string) {
 
 function normalizeConnectionType(connectionType: string | null) {
   return (connectionType || "api").trim().toLowerCase();
+}
+
+type VerifySupabaseClient = {
+  from(table: string): any;
+};
+
+/**
+ * F4: authoritative identity write. The verification outcome must actually
+ * persist: agent_identities writes are owner/admin + AAL2 under RLS, so an
+ * unexpected zero-row write (stale session, concurrent policy change, RLS
+ * no-op) is a FAILURE, not a success. The write uses .select().single() so a
+ * no-op surfaces as an error, and the persisted value is re-read and asserted
+ * against the requested value. Fail-closed: an unverifiable write never
+ * yields a verified agent.
+ */
+export async function writeIdentityVerification(
+  supabase: VerifySupabaseClient,
+  params: {
+    organizationId: string;
+    agentId: string;
+    identityId: string | null;
+    verified: boolean;
+    checkedAt: string;
+  },
+): Promise<void> {
+  if (params.identityId) {
+    const { data, error } = await supabase
+      .from("agent_identities")
+      .update({
+        verified: params.verified,
+        verified_at: params.verified ? params.checkedAt : null,
+      })
+      .eq("id", params.identityId)
+      .eq("organization_id", params.organizationId)
+      .select("id, verified")
+      .single();
+
+    if (error) throw error;
+    if (!data || data.verified !== params.verified) {
+      throw new Error("Agent identity update did not persist.");
+    }
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("agent_identities")
+    .insert({
+      organization_id: params.organizationId,
+      agent_id: params.agentId,
+      verified: params.verified,
+      verified_at: params.verified ? params.checkedAt : null,
+    })
+    .select("id, verified")
+    .single();
+
+  if (error) throw error;
+  if (!data || data.verified !== params.verified) {
+    throw new Error("Agent identity insert did not persist.");
+  }
+}
+
+/**
+ * F4: authoritative revocation. Invalid endpoints must demonstrably revoke
+ * identity (verified = false). A silent RLS no-op here would leave a verified
+ * agent in place — the fail-open direction. Revocation is confirmed by
+ * requiring the update to return every identity row that existed.
+ */
+export async function revokeIdentityVerification(
+  supabase: VerifySupabaseClient,
+  params: { organizationId: string; agentId: string },
+): Promise<void> {
+  const { data: existingRows, error: lookupError } = await supabase
+    .from("agent_identities")
+    .select("id")
+    .eq("agent_id", params.agentId)
+    .eq("organization_id", params.organizationId);
+
+  if (lookupError) throw lookupError;
+
+  const existingIds = (existingRows ?? []).map((row: { id: string }) => row.id);
+  if (existingIds.length === 0) return; // nothing to revoke
+
+  const { data: updatedRows, error } = await supabase
+    .from("agent_identities")
+    .update({ verified: false, verified_at: null })
+    .eq("agent_id", params.agentId)
+    .eq("organization_id", params.organizationId)
+    .select("id");
+
+  if (error) throw error;
+
+  const updatedIds = (updatedRows ?? []).map((row: { id: string }) => row.id);
+  if (updatedIds.length !== existingIds.length) {
+    throw new Error("Agent identity revocation did not persist.");
+  }
 }
 
 export async function POST(request: Request) {
@@ -97,6 +197,42 @@ export async function POST(request: Request) {
           message: "Only an owner or admin can verify agent connections.",
         },
         { status: 403 },
+      );
+    }
+
+    // F4: verification writes agent_identities.verified — the exact state the
+    // execution boundary's identity gate consumes — so it is a privileged
+    // security-state change and requires AAL2 at this route boundary, not
+    // only in middleware (mirrors requirePrivilegedMfa use on execution
+    // routes; P0-4/F3 invariant).
+    try {
+      await requirePrivilegedMfa(supabase, user.id);
+    } catch (error) {
+      if (isPrivilegedMfaRequiredError(error)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Multi-factor authentication is required to verify an agent.",
+          },
+          { status: 403 },
+        );
+      }
+      if (isPrivilegedAuthorizationError(error)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Only an owner or admin can verify agent connections.",
+          },
+          { status: 403 },
+        );
+      }
+      console.error("Agent verification authorization lookup failed:", error);
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Could not verify the agent because authorization is temporarily unavailable.",
+        },
+        { status: 503 },
       );
     }
 
@@ -291,27 +427,21 @@ export async function POST(request: Request) {
             checked_at: checkedAt,
           },
           checked_at: checkedAt,
-        });
+        });      await supabase
+        .from("agent_connections")
+        .update({
+          status: "error",
+          health_status: "unhealthy",
+          last_health_check_at: checkedAt,
+          consecutive_failures: currentFailures + 1,
+        })
+        .eq("id", connection.id)
+        .eq("organization_id", organizationId);
 
-        await supabase
-          .from("agent_connections")
-          .update({
-            status: "error",
-            health_status: "unhealthy",
-            last_health_check_at: checkedAt,
-            consecutive_failures: currentFailures + 1,
-          })
-          .eq("id", connection.id)
-          .eq("organization_id", organizationId);
-
-        await supabase
-          .from("agent_identities")
-          .update({
-            verified: false,
-            verified_at: null,
-          })
-          .eq("agent_id", agentId)
-          .eq("organization_id", organizationId);
+      await revokeIdentityVerification(supabase, {
+        organizationId,
+        agentId,
+      });
 
         await createAdminClient().from("agent_connection_events").insert({
           organization_id: organizationId,
@@ -457,25 +587,15 @@ export async function POST(request: Request) {
       }
 
       let identityError = null;
-      if (existingIdentity) {
-        const { error } = await supabase
-          .from("agent_identities")
-          .update({
-            verified: isHealthy,
-            verified_at: isHealthy ? checkedAt : null,
-          })
-          .eq("id", existingIdentity.id)
-          .eq("organization_id", organizationId);
-        identityError = error;
-      } else {
-        const { error } = await supabase
-          .from("agent_identities")
-          .insert({
-            organization_id: organizationId,
-            agent_id: agentId,
-            verified: isHealthy,
-            verified_at: isHealthy ? checkedAt : null,
-          });
+      try {
+        await writeIdentityVerification(supabase, {
+          organizationId,
+          agentId,
+          identityId: existingIdentity?.id ?? null,
+          verified: isHealthy,
+          checkedAt,
+        });
+      } catch (error) {
         identityError = error;
       }
 
@@ -608,14 +728,10 @@ export async function POST(request: Request) {
         .eq("id", connection.id)
         .eq("organization_id", organizationId);
 
-      await supabase
-        .from("agent_identities")
-        .update({
-          verified: false,
-          verified_at: null,
-        })
-        .eq("agent_id", agentId)
-        .eq("organization_id", organizationId);
+      await revokeIdentityVerification(supabase, {
+        organizationId,
+        agentId,
+      });
 
       await createAdminClient()
         .from("agent_connection_events")
@@ -832,27 +948,15 @@ export async function POST(request: Request) {
 
     let identityError = null;
 
-    if (existingIdentity) {
-      const { error } = await supabase
-        .from("agent_identities")
-        .update({
-          verified: isHealthy,
-          verified_at: isHealthy ? checkedAt : null,
-        })
-        .eq("id", existingIdentity.id)
-        .eq("organization_id", organizationId);
-
-      identityError = error;
-    } else {
-      const { error } = await supabase
-        .from("agent_identities")
-        .insert({
-          organization_id: organizationId,
-          agent_id: agentId,
-          verified: isHealthy,
-          verified_at: isHealthy ? checkedAt : null,
-        });
-
+    try {
+      await writeIdentityVerification(supabase, {
+        organizationId,
+        agentId,
+        identityId: existingIdentity?.id ?? null,
+        verified: isHealthy,
+        checkedAt,
+      });
+    } catch (error) {
       identityError = error;
     }
 

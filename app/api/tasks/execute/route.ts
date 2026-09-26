@@ -10,6 +10,7 @@ import {
   isPrivilegedAuthorizationError,
 } from "@/lib/security/privileged-auth"
 import type { ConnectorCapability } from "@/lib/connectors/types"
+import { OrgExecutionQuotaExceededError, OrgQuotaUnavailableError, ORG_EXECUTION_QUOTA_LIMIT_MESSAGE } from "@/lib/security/org-quota"
 
 type TaskExecutionBody = {
   taskId?: unknown
@@ -255,6 +256,21 @@ export async function POST(request: Request) {
   } catch (error) {
     const invalidRequest = validationErrorResponse(error)
     if (invalidRequest) return invalidRequest
+    // P1-2: organization-wide execution quota conditions (shared bucket
+    // across every member and entry route).
+    if (error instanceof OrgExecutionQuotaExceededError) {
+      return NextResponse.json(
+        { error: ORG_EXECUTION_QUOTA_LIMIT_MESSAGE },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+      )
+    }
+    if (error instanceof OrgQuotaUnavailableError) {
+      console.error("Task execution org quota lookup failed:", error)
+      return NextResponse.json(
+        { error: "Execution quota service is temporarily unavailable." },
+        { status: 503 },
+      )
+    }
     console.error("Task execution failed:", error)
 
     return NextResponse.json(

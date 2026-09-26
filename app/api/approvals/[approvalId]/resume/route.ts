@@ -9,12 +9,22 @@ import { recordExecutionAudit } from "@/lib/execution/audit"
 import { assertTaskAssignedToAgent } from "@/lib/execution/task-agent-authorization"
 import { assertVerifiedAgentIdentity, isAgentIdentityVerificationError } from "@/lib/execution/agent-identity"
 import { requirePrivilegedMfa, isPrivilegedMfaRequiredError, isPrivilegedAuthorizationError } from "@/lib/security/privileged-auth"
+import {
+  consumeOrgExecutionQuota,
+  OrgExecutionQuotaExceededError,
+  OrgQuotaUnavailableError,
+  ORG_EXECUTION_QUOTA_LIMIT_MESSAGE,
+} from "@/lib/security/org-quota"
 import { getConnector } from "@/lib/connectors/registry"
 import {
   APPROVAL_INTEGRITY_HASH_METADATA_KEY,
   buildApprovalIntegrityEnvelope,
   hashApprovalIntegrityEnvelope,
 } from "@/lib/security/approval-integrity"
+import {
+  assertApprovalProvenance,
+  isApprovalProvenanceError,
+} from "@/lib/security/approval-provenance"
 
 type RouteContext = {
   params: Promise<{
@@ -116,6 +126,28 @@ export async function POST(
     const organizationId =
       userRecord.organization_id
 
+    // P1-2: organization-wide execution quota. Resume is an execution-bearing
+    // path and shares the org's single exec bucket with the four direct
+    // execution routes; consumed before any further state is read or written.
+    try {
+      await consumeOrgExecutionQuota(organizationId)
+    } catch (error) {
+      if (error instanceof OrgExecutionQuotaExceededError) {
+        return NextResponse.json(
+          { error: ORG_EXECUTION_QUOTA_LIMIT_MESSAGE },
+          { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+        )
+      }
+      if (error instanceof OrgQuotaUnavailableError) {
+        console.error("Resume org quota lookup failed:", error)
+        return NextResponse.json(
+          { error: "Execution quota service is temporarily unavailable." },
+          { status: 503 },
+        )
+      }
+      throw error
+    }
+
     const {
       data: approval,
       error: approvalError,
@@ -126,6 +158,7 @@ export async function POST(
         id,
         agent_id,
         execution_id,
+        governance_decision_id,
         requested_by,
         status,
         expires_at,
@@ -247,6 +280,7 @@ export async function POST(
         `
       )
       .eq("id", approval.execution_id)
+      .eq("agent_id", approval.agent_id)
       .eq("organization_id", organizationId)
       .maybeSingle()
 
@@ -259,6 +293,41 @@ export async function POST(
         { error: "Execution not found." },
         { status: 404 }
       )
+    }
+
+    // F2: provenance. Prove this approval is legitimately bound to a
+    // server-generated REQUIRE_APPROVAL decision for THIS exact execution
+    // before any further state is consumed. Closes the forged-approval path
+    // (member-created approval laundering a governance BLOCK into execution)
+    // and retargeting via approval metadata. Fail closed.
+    try {
+      await assertApprovalProvenance({
+        supabase,
+        organizationId,
+        approval: {
+          id: approval.id,
+          execution_id: approval.execution_id,
+          agent_id: approval.agent_id,
+          governance_decision_id: approval.governance_decision_id ?? null,
+          metadata: approval.metadata,
+        },
+        execution,
+      })
+    } catch (error) {
+      if (isApprovalProvenanceError(error)) {
+        await createAdminClient()
+          .from("approval_requests")
+          .update({ status: "rejected" })
+          .eq("id", approval.id)
+          .eq("organization_id", organizationId)
+          .eq("status", "approved")
+        console.error("Approval provenance verification failed:", error.message)
+        return NextResponse.json(
+          { error: "This approval request is not a valid approval for this execution." },
+          { status: 403 },
+        )
+      }
+      throw error
     }
 
     if (execution.status === "completed") {

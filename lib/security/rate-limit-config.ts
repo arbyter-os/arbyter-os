@@ -38,4 +38,11 @@ export const RATE_LIMITS = {
   discoveryMcp: { limit: envInt("RATE_LIMIT_DISCOVERY_MCP", 10), windowMs: envMs("RATE_LIMIT_DISCOVERY_MCP_WINDOW_MS", 60_000) },
   discoveryRun: { limit: envInt("RATE_LIMIT_DISCOVERY_RUN", 10), windowMs: envMs("RATE_LIMIT_DISCOVERY_RUN_WINDOW_MS", 60_000) },
   agentsVerify: { limit: envInt("RATE_LIMIT_AGENTS_VERIFY", 10), windowMs: envMs("RATE_LIMIT_AGENTS_VERIFY_WINDOW_MS", 60_000) },
+  // P1-2/P1-3: organization-wide quotas (shared bucket across ALL members of
+  // an org, across every entry route). Initial values from the rate-limit
+  // audit: 30 executions/min/org (bounded by the 10/min per-user LLM budget
+  // and the five execution-bearing entry routes), 20 AgentMail sends/min/org
+  // (shared provider account/sender-reputation resource).
+  orgExecutionQuota: { limit: envInt("RATE_LIMIT_ORG_EXECUTION", 30), windowMs: envMs("RATE_LIMIT_ORG_EXECUTION_WINDOW_MS", 60_000) },
+  orgMailQuota: { limit: envInt("RATE_LIMIT_ORG_MAIL", 20), windowMs: envMs("RATE_LIMIT_ORG_MAIL_WINDOW_MS", 60_000) },
 } as const

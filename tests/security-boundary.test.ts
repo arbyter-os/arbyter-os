@@ -38,8 +38,9 @@ test("INVARIANT deny: governance BLOCK returns before credential/connector execu
 })
 
 test("INVARIANT pause: a non-active agent cannot enter execution from the engine", () => {
-  assert.match(engineSource, /agent\.status === "paused"/)
-  assert.match(engineSource, /Agent is paused\./)
+  // F4: allowlist, not blocklist — only status === 'active' may proceed.
+  assert.match(engineSource, /agent\.status !== "active"/)
+  assert.match(engineSource, /Agent is not active\./)
 })
 
 test("INVARIANT identity: the engine gates execution behind verified agent identity", () => {
@@ -58,6 +59,13 @@ test("INVARIANT identity: the resume path enforces the same verified-identity ga
   assert.ok(identityIndex > 0, "resume must call the identity gate")
   assert.ok(credentialIndex > identityIndex, "resume credential resolution must follow the identity gate")
   assert.ok(connectorIndex > identityIndex, "resume connector execution must follow the identity gate")
+})
+
+test("INVARIANT pause (engine): only an ACTIVE agent may enter execution (allowlist, not blocklist)", () => {
+  // F4: the engine must enforce the same allowlist as resume — any non-active
+  // status (paused, quarantined, disabled-equivalent) fails closed.
+  assert.match(engineSource, /status !== "active"/)
+  assert.match(engineSource, /Agent is not active\./)
 })
 
 test("INVARIANT pause (resume): approved executions re-check agent state before executing", () => {
@@ -165,6 +173,14 @@ export function createClient() {
     return chain
   }
   return {
+    // P1-2: the engine consumes the org execution quota through the user
+    // client's rpc; allowed unless a case stubs an exhausted bucket.
+    async rpc(fn) {
+      if (fn === "check_rate_limit_cost") {
+        return { data: [{ allowed: globalThis.__boundaryOrgQuotaAllowed ?? true, remaining: 0, retry_after_seconds: 1 }], error: null }
+      }
+      return { data: null, error: null }
+    },
     auth: { getUser: async () => ({ data: { user: { id: "user-1" } }, error: null }) },
     from(table) { return builder(table) },
   }
@@ -176,6 +192,14 @@ export function createAdminClient() {
   globalThis.__boundaryAdminUpdates = globalThis.__boundaryAdminUpdates ?? []
   const updates = globalThis.__boundaryAdminUpdates
   return {
+    // P1-2: org execution quota flows through checkRateLimitCost -> the
+    // ADMIN client's rpc; allowed unless a case stubs an exhausted bucket.
+    async rpc(fn) {
+      if (fn === "check_rate_limit_cost") {
+        return { data: [{ allowed: globalThis.__boundaryOrgQuotaAllowed ?? true, remaining: 0, retry_after_seconds: 1 }], error: null }
+      }
+      return { data: null, error: null }
+    },
     from() {
       const chain = {
         insert(values) { updates.push({ op: "insert", values }); return chain },
@@ -284,6 +308,8 @@ declare global {
   var __boundaryAdminUpdates: Array<{ op: string; values: Record<string, unknown> }> | undefined
   // eslint-disable-next-line no-var
   var __boundaryAgentStatus: string | undefined
+  // eslint-disable-next-line no-var
+  var __boundaryOrgQuotaAllowed: boolean | undefined
 }
 
 const { executeAgentTask } = await import("../lib/execution/engine.ts")
@@ -330,18 +356,18 @@ test("BEHAVIOR quarantine/pause: a paused agent cannot execute at all", async ()
   // but a paused agent (stubbed through the ai_agents row below), the engine
   // must still refuse to run the connector.
   resetBoundary()
-  // The identity row stays verified; the engine's paused-agent check is what
-  // blocks. This test asserts that verified identity alone is not sufficient
-  // when the engine's own agent-status check fires.
-  // NOTE: the engine signals a paused agent by THROWING (pre-existing
-  // behavior: 'Agent is paused.'), unlike the identity gate which returns a
-  // blocked result. The invariant is the same either way: no connector call,
-  // no credential resolution.
+  // F4: the engine uses the same ACTIVE-allowlist invariant as the resume
+  // boundary. Verified identity alone is not sufficient when the engine's
+  // own agent-status check fires.
+  // NOTE: the engine signals a non-active agent by THROWING (pre-existing
+  // behavior), unlike the identity gate which returns a blocked result. The
+  // invariant is the same either way: no connector call, no credential
+  // resolution.
   globalThis.__boundaryAgentStatus = "paused"
 
   await assert.rejects(
     () => executeAgentTask(input),
-    /Agent is paused/,
+    /Agent is not active/,
   )
 
   assert.equal(globalThis.__boundaryConnectorRuns, 0)

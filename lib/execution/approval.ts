@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import {
   APPROVAL_AGENT_ID_METADATA_KEY,
   APPROVAL_EXECUTION_ID_METADATA_KEY,
   APPROVAL_INTEGRITY_ENVELOPE_METADATA_KEY,
   APPROVAL_INTEGRITY_HASH_METADATA_KEY,
+  APPROVAL_SERVER_CREATED_METADATA_KEY,
   buildApprovalIntegrityEnvelope,
   hashApprovalIntegrityEnvelope,
 } from "@/lib/security/approval-integrity"
@@ -23,6 +25,16 @@ export type ExecutionApprovalInput = {
 export async function createExecutionApproval(
   input: ExecutionApprovalInput
 ) {
+  // P1-1: execution-linked approval rows are server-generated security state.
+  // Authentication and the execution lookup use the USER client (the caller's
+  // own session and RLS-scoped reads); the INSERT itself goes through the
+  // service-role client — the only legitimate writer of execution-linked
+  // approvals now that RLS forbids execution_id on every authenticated
+  // insert (20260925160000_restrict_approval_inserts.sql). This makes the
+  // engine's approval row unforged-able at the database layer and immune to
+  // the direct-PostgREST approval-spam vector that proxy.ts cannot see.
+  // Caller authentication/authorization has already been enforced by the
+  // engine (auth, org binding, owner/admin role) before this point.
   const supabase = await createClient()
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -82,7 +94,7 @@ export async function createExecutionApproval(
   })
   const integrityHash = hashApprovalIntegrityEnvelope(integrityEnvelope)
 
-  const { data, error } = await supabase
+  const { data, error } = await createAdminClient()
     .from("approval_requests")
     .insert({
       organization_id: input.organizationId,
@@ -108,6 +120,12 @@ export async function createExecutionApproval(
         [APPROVAL_INTEGRITY_ENVELOPE_METADATA_KEY]: integrityEnvelope,
         [APPROVAL_EXECUTION_ID_METADATA_KEY]: execution.id,
         [APPROVAL_AGENT_ID_METADATA_KEY]: execution.agent_id,
+        // F2: server-created marker. The authoritative engine created this
+        // approval because governance REQUIRED approval; the resume boundary
+        // roots provenance in the service-role-written governance_decisions
+        // table (see lib/security/approval-provenance.ts), not in this
+        // client-mutable metadata value.
+        [APPROVAL_SERVER_CREATED_METADATA_KEY]: true,
       },
     })
     .select()

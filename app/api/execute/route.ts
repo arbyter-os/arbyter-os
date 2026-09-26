@@ -15,6 +15,7 @@ import {
   requirePrivilegedMfa,
 } from "@/lib/security/privileged-auth"
 import { GeminiBudgetExceededError, GEMINI_BUDGET_WINDOW_MS } from "@/lib/security/gemini-budget"
+import { OrgExecutionQuotaExceededError, OrgQuotaUnavailableError, ORG_EXECUTION_QUOTA_LIMIT_MESSAGE } from "@/lib/security/org-quota"
 import { IntentMappingError } from "@/lib/connectors/intent-mapping"
 
 type Orchestrator = (message: string) => Promise<OrchestrationResult>
@@ -135,6 +136,22 @@ export async function handleExecuteRequest(
           status: 429,
           headers: { "Retry-After": String(Math.ceil(GEMINI_BUDGET_WINDOW_MS / 1000)) },
         },
+      )
+    }
+
+    // P1-2: organization-wide execution quota (shared across all members and
+    // entry routes). A rate-limit condition, not a server fault.
+    if (error instanceof OrgExecutionQuotaExceededError) {
+      return NextResponse.json(
+        { error: ORG_EXECUTION_QUOTA_LIMIT_MESSAGE },
+        { status: 429, headers: { "Retry-After": String(error.retryAfterSeconds) } },
+      )
+    }
+    if (error instanceof OrgQuotaUnavailableError) {
+      console.error("Execution org quota lookup failed:", error)
+      return NextResponse.json(
+        { error: "Execution quota service is temporarily unavailable." },
+        { status: 503 },
       )
     }
 

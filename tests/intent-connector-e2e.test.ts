@@ -58,6 +58,13 @@ export function createAdminClient() {
   let inserted = null
   return {
     get __inserted() { return inserted },
+    // P1-2: org execution quota consumes the distributed limiter via rpc.
+    async rpc(fn) {
+      if (fn === "check_rate_limit_cost") {
+        return { data: [{ allowed: globalThis.__orgQuotaAllowed ?? true, remaining: 0, retry_after_seconds: 1 }], error: null }
+      }
+      return { data: null, error: null }
+    },
     from() {
       const chain = {
         insert(values) { inserted = values; return chain },

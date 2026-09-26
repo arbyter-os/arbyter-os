@@ -331,6 +331,7 @@ function requiresPrivilegedMfa(pathname: string, method: string): boolean {
     pathname === "/api/governance/policies/create" ||
     pathname === "/api/agents" ||
     pathname === "/api/agents/connections" ||
+    pathname === "/api/agents/verify" ||
     pathname === "/api/discovery/review" ||
     pathname === "/api/discovery/mcp"
   )

@@ -9,6 +9,7 @@ import { recordExecutionAudit } from "./audit"
 import { assertVerifiedAgentIdentity } from "./agent-identity"
 import { sanitizeExecutionError } from "./error-sanitizer"
 import { mapIntentParametersToConnectorPayload } from "@/lib/connectors/intent-mapping"
+import { consumeOrgExecutionQuota, OrgExecutionQuotaExceededError, OrgQuotaUnavailableError } from "@/lib/security/org-quota"
 
 export type ExecutionInput = {
   organizationId: string
@@ -131,6 +132,12 @@ export async function executeAgentTask(
     throw new Error("Only an owner or admin can execute connector actions.")
   }
 
+  // P1-2: organization-wide execution quota. One shared bucket per org across
+  // every execution-bearing entry route, consumed BEFORE any agent lookup,
+  // task claim, execution row, LLM call, credential resolution, or connector
+  // call. Fails closed when the quota service is unavailable.
+  await consumeOrgExecutionQuota(input.organizationId)
+
   const { data: agent, error: agentError } =
     await supabase
       .from("ai_agents")
@@ -145,8 +152,12 @@ export async function executeAgentTask(
     throw new Error("Agent not found.")
   }
 
-  if (agent.status === "paused") {
-    throw new Error("Agent is paused.")
+  // F4: allowlist, matching the resume boundary's invariant — only an
+  // explicitly ACTIVE agent may execute. A paused-only blocklist would let
+  // any other non-active status through; the allowlist fails closed on
+  // paused, quarantined, or any future non-active state.
+  if (agent.status !== "active") {
+    throw new Error("Agent is not active. Execution requires an active agent.")
   }
 
   let task = null
@@ -345,6 +356,9 @@ export async function executeAgentTask(
     throw executionError
   }
 
+  let governanceDecisionId: string | undefined
+  let governanceRiskLevel: string | undefined
+
   try {
     const governance =
       await evaluateGovernance(
@@ -390,6 +404,8 @@ export async function executeAgentTask(
       )
 
     const riskLevel = governance.risk ?? "low"
+    governanceRiskLevel = riskLevel
+    governanceDecisionId = governance.audit?.governanceDecisionId
 
     if (
       governance.decision.decision ===
@@ -459,6 +475,7 @@ export async function executeAgentTask(
             executionId: execution.id,
             taskId: input.taskId,
             riskLevel,
+            governanceDecisionId,
             title:
               task?.title ??
               "Agent action requires approval.",

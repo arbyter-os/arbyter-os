@@ -74,3 +74,12 @@ export const APPROVAL_INTEGRITY_HASH_METADATA_KEY =
 
 export const APPROVAL_INTEGRITY_ENVELOPE_METADATA_KEY =
   "approvalExecutionIntegrityEnvelope"
+
+/** Stamped only by the server (lib/execution/approval.ts) when the approval
+ *  was created by the authoritative execution engine in response to a
+ *  governance REQUIRE_APPROVAL decision. Client-created approvals never
+ *  receive a trustworthy value here; provenance is rooted in the
+ *  service-role-written governance_decisions table instead.
+ */
+export const APPROVAL_SERVER_CREATED_METADATA_KEY =
+  "approvalServerCreated"

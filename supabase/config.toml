@@ -1,0 +1,58 @@
+# Arbyter OS — Supabase Auth configuration (config-as-code)
+#
+# Purpose: close the direct-endpoint rate-limit bypass described in
+# SECURITY-AUDIT-2026-09-21.md §1. The publishable key is intentionally public, so
+# /auth/v1/token?grant_type=password can be called directly, bypassing every app-level
+# limit (per-IP limit in proxy.ts, per-account limit in app/api/auth/login/route.ts).
+# The only enforceable control layer is Supabase Auth's own configuration.
+#
+# NAMING DIFFERS BY SURFACE (verified against supabase/auth source — internal/api/token.go
+# and internal/api/apilimiter/apilimiter.go — the current CLI config template, and a live
+# Management API GET /v1/projects/{ref}/config/auth response):
+#
+#   surface                     token endpoint knob        signup knob
+#   -------------------------   -------------------------  ---------------------
+#   config.toml (this file)     [auth.rate_limit]          [auth] enable_signup
+#                               token_refresh              = false
+#   Management API (hosted)     rate_limit_token_refresh   disable_signup (= true)
+#   Dashboard (hosted)          "Token endpoint requests"  "Allow new users to sign up"
+#                                                          (OFF, under Providers → Email)
+#
+#   NOTE: there is no `rate_limit_token` field in any supported schema. The legacy-named
+#   `rate_limit_token_refresh` / `token_refresh` is the ONLY knob for the token endpoint.
+#
+# WHAT token_refresh GOVERNS: the single limiter applied to /auth/v1/token for ALL of the
+# password, refresh_token, id_token and pkce grants (web3 has its own limit). The value is
+# sustained requests per 5 minutes per IP address, with bursts up to 30.
+#
+# HOW TO APPLY: hosted projects do NOT read this file automatically — apply via the
+# Dashboard or the Management API, then keep this file as the source of truth. Local
+# `supabase start` reads this file directly. Exact steps:
+# docs/operations/supabase-auth-hardening.md.
+
+project_id = "arbyter-os"
+
+[auth]
+# The app provisions organizations via a trigger on auth.users (handle_new_user) but has
+# no signup UI and no invite flow in this build. Supabase Auth signup is therefore pure
+# attack surface: disable it. (Hosted Management API equivalent: "disable_signup": true.)
+enable_signup = false
+
+[auth.rate_limit]
+# Platform default is 150 sustained requests / 5 min per IP (bursts up to 30) for the
+# whole token endpoint. Tightened to blunt direct-endpoint password spraying while
+# keeping headroom for legitimate logins: the app's own per-IP login limit is 10/min,
+# and app-mediated logins share this Auth-layer bucket via the server's egress IPs —
+# monitor for legitimate 429s before going lower.
+token_refresh = 30
+
+[auth.captcha]
+# CAPTCHA is enforced by Supabase Auth on /auth/v1/token (all grants, including password)
+# and on /signup, /recover, /resend, /magiclink and /otp once enabled — the per-account
+# control that throttles distributed credential stuffing. Do NOT enable until
+#   1. a real provider secret is set below (and the matching site key in the frontend),
+#   2. the login flow sends captchaToken (runbook §3),
+# otherwise ALL legitimate login breaks.
+enabled = false
+provider = "hcaptcha"
+# secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
