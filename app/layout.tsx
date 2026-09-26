@@ -1,14 +1,13 @@
 import { Analytics } from "@vercel/analytics/next"
 import type { Metadata, Viewport } from "next"
 import { headers } from "next/headers"
-import { Geist_Mono, Manrope } from "next/font/google"
+import { Geist_Mono } from "next/font/google"
 import { JsonLd } from "@/components/seo/JsonLd"
 import { organizationSchema, softwareSchema, websiteSchema } from "@/lib/seo/schemas"
 import { SITE } from "@/lib/seo/config"
 import { SEO_ROUTES } from "@/lib/seo/routes"
 import "./globals.css"
 
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-display", display: "swap" })
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono", display: "swap" })
 
 function canonicalFor(pathname: string) {
@@ -47,7 +46,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${manrope.variable} ${geistMono.variable}`}>
+    <html lang="en" className={geistMono.variable}>
       <body className="antialiased">
         <JsonLd data={organizationSchema} />
         <JsonLd data={softwareSchema} />
