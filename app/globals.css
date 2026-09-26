@@ -275,9 +275,9 @@ body::before{
     background:#0a0a0a;
     transition:transform .2s ease, opacity .2s ease, width .2s ease, height .2s ease, border-radius .2s ease;
   }
-  .site-nav.is-open .site-menu-toggle span:first-child { width:16px; height:1.6px; border-radius:1px; transform:translateY(4.5px) rotate(45deg); }
+  .site-nav.is-open .site-menu-toggle span:first-child { width:16px; height:1.6px; border-radius:1px; transform:translateY(9px) rotate(45deg); }
   .site-nav.is-open .site-menu-toggle span:nth-child(2) { opacity:0; transform:scaleX(.4); }
-  .site-nav.is-open .site-menu-toggle span:last-child { width:16px; height:1.6px; border-radius:1px; transform:translateY(-4.5px) rotate(-45deg); }
+  .site-nav.is-open .site-menu-toggle span:last-child { width:16px; height:1.6px; border-radius:1px; transform:translateY(-9px) rotate(-45deg); }
   .site-mobile-nav {
     position:absolute;
     top:72px;
