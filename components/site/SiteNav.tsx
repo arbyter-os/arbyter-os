@@ -58,20 +58,16 @@ export function SiteNav() {
             {label}
           </Link>
         ))}
-        <Link href="/pricing" onClick={() => setOpen(false)}>
-          <span>06</span>
-          Pricing
-        </Link>
         <Link href="/login" onClick={() => setOpen(false)}>
-          <span>07</span>
+          <span>06</span>
           Sign In
         </Link>
         <Link href="/sign-up" onClick={() => setOpen(false)}>
-          <span>08</span>
+          <span>07</span>
           Sign Up
         </Link>
         <Link href="/demo" onClick={() => setOpen(false)}>
-          <span>09</span>
+          <span>08</span>
           Book Your Slot
         </Link>
       </nav>
